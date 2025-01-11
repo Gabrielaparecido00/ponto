@@ -49,16 +49,12 @@
         button:hover {
             background-color: #45a049;
         }
-        #photo {
-            width: 240px; /* Nova largura */
-            height: 320px; /* Nova altura */
+        #photo, #video {
+            width: 240px; /* Mesma largura */
+            height: 320px; /* Mesma altura */
             border: 1px solid #ddd;
             border-radius: 4px;
-        }
-        #video {
-            width: 240px; /* Também ajustado para corresponder à nova relação de aspecto */
-            height: 320px;
-            display: none;
+            margin-top: 10px;
         }
         #captureBtn {
             margin-top: 10px;
@@ -106,8 +102,8 @@
             </div>
             <div class="form-group">
                 <label for="photo">Foto:</label>
-                <video id="video" width="240" height="320" style="display:none;"></video>
-                <canvas id="photo" width="240" height="320"></canvas>
+                <video id="video" autoplay></video>
+                <canvas id="photo"></canvas>
                 <button type="button" id="captureBtn">Capturar Foto</button>
             </div>
             <div class="form-group">
@@ -127,14 +123,15 @@
     navigator.mediaDevices.getUserMedia({ video: true })
         .then(stream => {
             video.srcObject = stream;
-            video.play();
         })
         .catch(err => console.error('Erro ao acessar a câmera:', err));
 
     // Capturar foto
     captureBtn.addEventListener('click', () => {
         const context = photo.getContext('2d');
-        context.drawImage(video, 0, 0, 240, 320);
+        photo.width = video.videoWidth;
+        photo.height = video.videoHeight;
+        context.drawImage(video, 0, 0, photo.width, photo.height);
     });
 
     // Atualizar carimbo de data e hora
@@ -206,7 +203,7 @@
 </script>
 
 <div class="signature">
-    Feito por <a href="https://www.linkedin.com/in/gabriel-aparecido06/" >Gabriel Wandele - Outubro/2024</a>
+    Feito por <a href="https://www.linkedin.com/in/gabriel-aparecido06/">Gabriel Wandele - Outubro/2024</a>
 </div>
 </body>
 </html>
