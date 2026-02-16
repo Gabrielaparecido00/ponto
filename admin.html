@@ -43,7 +43,7 @@
   }
   .modal{
     background:#fff;
-    width:min(820px, 94vw);
+    width:min(900px, 94vw);
     border-radius:12px;
     padding:16px;
     box-shadow:0 10px 30px rgba(0,0,0,0.2);
@@ -110,7 +110,8 @@
     <button onclick="showSection('secJornadas')">Jornadas</button>
     <button onclick="showSection('secColab')">Colaboradores</button>
     <button onclick="showSection('secLocal')">Locais</button>
-    <button onclick="showSection('secOcorr')">Ocorrências</button>
+    <button onclick="showSection('secOcorr')">Ocorrências (dia)</button>
+    <button onclick="showSection('secAfast')">Férias (período)</button>
     <button class="secondary" onclick="logout()">Sair</button>
   </div>
 
@@ -152,7 +153,7 @@
   <!-- COLABORADORES -->
   <div id="secColab" class="section">
     <h3>Colaboradores</h3>
-    <div class="small">CPF é obrigatório • Sem excluir colaborador (apenas ativar/inativar) • Cadastre o horário previsto</div>
+    <div class="small">CPF é obrigatório • Sem excluir colaborador • Cadastre escala e horário previsto</div>
 
     <div class="row">
       <input id="cadRe" placeholder="RE" inputmode="numeric">
@@ -219,7 +220,7 @@
   <div id="secOcorr" class="section">
     <h3>Ocorrências (por dia)</h3>
     <div class="small">
-      Ao salvar (FALTA/ATESTADO/ABONO), a ocorrência vira prioridade e apaga registros (jornadas) do dia da ENTRADA.
+      Ao salvar (FALTA/ATESTADO/ABONO), a ocorrência vira prioridade e apaga jornadas do dia (pela data da ENTRADA).
     </div>
 
     <div class="row">
@@ -234,6 +235,42 @@
       <button onclick="salvarOcorrencia()">Salvar ocorrência (prioritária)</button>
     </div>
   </div>
+
+  <!-- FÉRIAS (PERÍODO) -->
+  <div id="secAfast" class="section">
+    <h3>Férias (por período)</h3>
+    <div class="small">
+      Cadastre 1 período e o sistema marca automaticamente no espelho (somente dias de trabalho).<br>
+      Ao salvar férias, o sistema apaga jornadas do período (dias úteis, conforme escala do colaborador).
+    </div>
+
+    <div class="row">
+      <input id="afRe" placeholder="RE" inputmode="numeric">
+      <input id="afInicio" type="date">
+      <input id="afFim" type="date">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;">
+        <input type="checkbox" id="afDiasUteis" checked> Somente dias de trabalho
+      </label>
+      <input id="afMotivo" placeholder="Motivo (opcional)">
+      <button onclick="salvarFerias()">Salvar FÉRIAS</button>
+      <button onclick="carregarFerias()">Atualizar lista</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>RE</th>
+          <th>Nome</th>
+          <th>Período</th>
+          <th>Somente dias trabalho?</th>
+          <th>Motivo</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tbodyFerias"></tbody>
+    </table>
+  </div>
+
 </div>
 
 <!-- MODAL -->
@@ -277,6 +314,7 @@ const painelDiv = document.getElementById("painelDiv");
 let ultimaTabela = [];
 let cacheLocais = [];
 let cacheColabs = [];
+let cacheFerias = [];
 
 // menu
 window.showSection = function(id){
@@ -284,6 +322,7 @@ window.showSection = function(id){
   document.getElementById(id).classList.add("active");
   if (id === "secLocal") carregarLocais();
   if (id === "secColab") carregarColaboradores();
+  if (id === "secAfast") { carregarColaboradores().then(carregarFerias); }
 };
 
 // auth
@@ -301,8 +340,9 @@ onAuthStateChanged(auth, user => {
   if (user){ carregarLocais(); carregarColaboradores(); }
 });
 
-// helpers
+// helpers gerais
 function norm(s){ return (s||"").toString().trim().toLowerCase(); }
+function pad2(n){ return String(n).padStart(2,"0"); }
 function toDateAny(ts){
   if (!ts) return null;
   if (ts.toDate) return ts.toDate();
@@ -319,8 +359,13 @@ function formatBRDate(ts){
   if (!d || isNaN(d)) return "";
   return d.toLocaleDateString("pt-BR");
 }
+function brDateFromYmd(ymd){
+  if (!ymd) return "";
+  const [y,m,d] = ymd.split("-");
+  if (!y||!m||!d) return ymd;
+  return `${d}/${m}/${y}`;
+}
 function isoFromBrDateTime(str){
-  // DD/MM/AAAA HH:MM
   const m = (str||"").trim().match(/^(\d{2})\/(\d{2})\/(\d{4})\s+([01]\d|2[0-3]):([0-5]\d)$/);
   if (!m) return null;
   const dd=m[1], mm=m[2], yyyy=m[3], hh=m[4], mi=m[5];
@@ -335,6 +380,28 @@ function brDateTimeFromIso(ts){
   const hora = d.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"});
   return `${data} ${hora}`;
 }
+function horarioTxt(c){
+  const he = (c?.horaEntrada||"").trim();
+  const hs = (c?.horaSaida||"").trim();
+  if (he && hs) return `${he}–${hs}`;
+  if (he || hs) return `${he||"—"}–${hs||"—"}`;
+  return "—";
+}
+function isFolgaByEscala(dateObj, escala){
+  const dow = dateObj.getDay();
+  const e = (escala || "5x2").toLowerCase();
+  if (e === "5x2") return (dow === 0 || dow === 6);
+  if (e === "6x1") return (dow === 0);
+  return false;
+}
+function isDiaTrabalho(dateObj, escala){
+  return !isFolgaByEscala(dateObj, escala);
+}
+function isWithinRange(ymd, ini, fim){
+  return !!(ymd && ini && fim && ymd >= ini && ymd <= fim);
+}
+
+// localização/posto
 function haversineMeters(lat1, lon1, lat2, lon2){
   const R=6371000; const toRad=x=>x*Math.PI/180;
   const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
@@ -363,13 +430,6 @@ function reconhecerLocal(locationStr){
     if (d<=l.raio){ if (!best || d<best.d) best={nome:l.nome,d}; }
   }
   return best ? best.nome : "Não reconhecido";
-}
-function horarioTxt(c){
-  const he = (c?.horaEntrada||"").trim();
-  const hs = (c?.horaSaida||"").trim();
-  if (he && hs) return `${he}–${hs}`;
-  if (he || hs) return `${he||"—"}–${hs||"—"}`;
-  return "—";
 }
 
 // modal
@@ -423,22 +483,23 @@ window.carregarColaboradores = async function(){
     .sort((a,b)=> (a.nome||"").localeCompare(b.nome||""));
 
   const tbody=document.getElementById("tbodyColab");
-  tbody.innerHTML="";
-
-  for (const c of cacheColabs){
-    const status = (c.ativo === false) ? "Inativo" : "Ativo";
-    const escala = (c.escala || "5x2");
-    const tr=document.createElement("tr");
-    tr.innerHTML = `
-      <td>${c.re || c.id}</td>
-      <td>${c.nome || ""}</td>
-      <td>${c.cpf || ""}</td>
-      <td>${escala}</td>
-      <td>${horarioTxt(c)}</td>
-      <td>${status}</td>
-      <td><button class="minBtn" onclick="editarColab('${c.id}')">Modificar</button></td>
-    `;
-    tbody.appendChild(tr);
+  if (tbody){
+    tbody.innerHTML="";
+    for (const c of cacheColabs){
+      const status = (c.ativo === false) ? "Inativo" : "Ativo";
+      const escala = (c.escala || "5x2");
+      const tr=document.createElement("tr");
+      tr.innerHTML = `
+        <td>${c.re || c.id}</td>
+        <td>${c.nome || ""}</td>
+        <td>${c.cpf || ""}</td>
+        <td>${escala}</td>
+        <td>${horarioTxt(c)}</td>
+        <td>${status}</td>
+        <td><button class="minBtn" onclick="editarColab('${c.id}')">Modificar</button></td>
+      `;
+      tbody.appendChild(tr);
+    }
   }
 };
 
@@ -514,6 +575,7 @@ window.editarColab = function(reDocId){
 
       closeModal();
       carregarColaboradores();
+      carregarFerias();
     }
   });
 };
@@ -632,7 +694,6 @@ window.buscar = async function(){
   const snap = await getDocs(collection(db,"jornadas"));
   let jornadas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
 
-  // filtra por data da ENTRADA (base), comparando por YYYY-MM-DD
   jornadas = jornadas.filter(j => {
     const iso = (j.entrada?.ts || "").toString();
     const d = iso ? iso.slice(0,10) : "";
@@ -728,7 +789,7 @@ window.editarJornada = function(docId){
   });
 };
 
-// ===== OCORRÊNCIAS (prioridade e apaga jornadas do dia) =====
+// ===== OCORRÊNCIAS (dia) =====
 function ocDocId(re, ymd){ return `${re}_${ymd}`; }
 
 async function apagarJornadasDoDia(re, dataYmd){
@@ -749,7 +810,7 @@ async function apagarJornadasDoDia(re, dataYmd){
 
 window.salvarOcorrencia = async function(){
   const re = (document.getElementById("ocRe").value || "").trim();
-  const data = document.getElementById("ocData").value; // YYYY-MM-DD
+  const data = document.getElementById("ocData").value;
   const tipo = document.getElementById("ocTipo").value;
   const motivo = (document.getElementById("ocMotivo").value || "").trim();
 
@@ -757,7 +818,7 @@ window.salvarOcorrencia = async function(){
   if (!data) return alert("Informe a data.");
   if (!tipo) return alert("Selecione o tipo.");
 
-  if (!confirm(`Salvar ocorrência?\nRE: ${re}\nData: ${data}\nTipo: ${tipo}\n\nIsso vai APAGAR registros do dia (se existirem).`)) return;
+  if (!confirm(`Salvar ocorrência?\nRE: ${re}\nData: ${brDateFromYmd(data)}\nTipo: ${tipo}\n\nIsso vai APAGAR registros do dia (se existirem).`)) return;
 
   await setDoc(doc(db,"ocorrencias", ocDocId(re, data)), {
     re, data, tipo, motivo,
@@ -765,9 +826,196 @@ window.salvarOcorrencia = async function(){
   }, { merge:true });
 
   const n = await apagarJornadasDoDia(re, data);
-
   alert(`Ocorrência salva.\nRegistros apagados do dia: ${n}`);
   document.getElementById("ocMotivo").value = "";
+};
+
+// ===== FÉRIAS (afastamentos por período) =====
+async function getColab(re){
+  const ref = doc(db,"colaboradores", re);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
+  return { id:snap.id, ...(snap.data()||{}) };
+}
+
+function rangeDays(iniYmd, fimYmd){
+  const out = [];
+  const [y1,m1,d1] = iniYmd.split("-").map(Number);
+  const [y2,m2,d2] = fimYmd.split("-").map(Number);
+  let cur = new Date(y1, m1-1, d1, 12, 0, 0);
+  const end = new Date(y2, m2-1, d2, 12, 0, 0);
+  while (cur <= end){
+    out.push(new Date(cur));
+    cur.setDate(cur.getDate()+1);
+  }
+  return out;
+}
+
+async function apagarJornadasNoPeriodo(re, iniYmd, fimYmd, escala, somenteDiasTrabalho){
+  const qJ = query(collection(db,"jornadas"), where("re","==",re));
+  const snap = await getDocs(qJ);
+  const all = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+
+  // cria set de dias alvo
+  const days = rangeDays(iniYmd, fimYmd);
+  const alvo = new Set();
+  for (const dt of days){
+    const ymd = dt.toISOString().slice(0,10);
+    if (somenteDiasTrabalho){
+      if (!isDiaTrabalho(dt, escala)) continue;
+    }
+    alvo.add(ymd);
+  }
+
+  const apagar = all.filter(j => {
+    const d = (j?.entrada?.ts || "").toString().slice(0,10);
+    return alvo.has(d);
+  });
+
+  for (const j of apagar){
+    await deleteDoc(doc(db,"jornadas", j.id));
+  }
+  return apagar.length;
+}
+
+window.salvarFerias = async function(){
+  const re = (document.getElementById("afRe").value || "").trim();
+  const inicio = document.getElementById("afInicio").value;
+  const fim = document.getElementById("afFim").value;
+  const aplicarSomenteDiasTrabalho = document.getElementById("afDiasUteis").checked;
+  const motivo = (document.getElementById("afMotivo").value || "").trim();
+
+  if (!re) return alert("Informe o RE.");
+  if (!inicio || !fim) return alert("Informe início e fim.");
+  if (fim < inicio) return alert("Fim não pode ser menor que início.");
+
+  const col = await getColab(re);
+  if (!col) return alert("Colaborador não encontrado.");
+  const escala = (col.escala || "5x2");
+
+  if (!confirm(
+    `Salvar FÉRIAS?\nRE: ${re}\nNome: ${col.nome||""}\nPeríodo: ${brDateFromYmd(inicio)} até ${brDateFromYmd(fim)}\nSomente dias de trabalho: ${aplicarSomenteDiasTrabalho ? "SIM" : "NÃO"}\n\nIsso vai APAGAR jornadas dentro do período (conforme regra).`
+  )) return;
+
+  await addDoc(collection(db,"afastamentos"), {
+    re,
+    tipo: "ferias",
+    inicio,
+    fim,
+    aplicarSomenteDiasTrabalho,
+    motivo,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  });
+
+  const apagadas = await apagarJornadasNoPeriodo(re, inicio, fim, escala, aplicarSomenteDiasTrabalho);
+
+  alert(`Férias salvas.\nJornadas apagadas no período: ${apagadas}`);
+
+  document.getElementById("afMotivo").value="";
+  carregarFerias();
+};
+
+window.carregarFerias = async function(){
+  const snap = await getDocs(collection(db,"afastamentos"));
+  cacheFerias = snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }))
+    .filter(x => String(x.tipo||"").toLowerCase() === "ferias")
+    .sort((a,b) => (String(b.inicio||"")).localeCompare(String(a.inicio||"")));
+
+  const tbody = document.getElementById("tbodyFerias");
+  tbody.innerHTML="";
+
+  for (const f of cacheFerias){
+    const col = cacheColabs.find(c => (c.re||c.id) === f.re) || null;
+    const nome = col?.nome || "";
+    const periodo = `${brDateFromYmd(String(f.inicio||"").slice(0,10))} até ${brDateFromYmd(String(f.fim||"").slice(0,10))}`;
+    const du = (f.aplicarSomenteDiasTrabalho === true) ? "SIM" : "NÃO";
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${f.re || ""}</td>
+      <td>${nome}</td>
+      <td>${periodo}</td>
+      <td>${du}</td>
+      <td>${(f.motivo||"")}</td>
+      <td><button class="minBtn" onclick="editarFerias('${f.id}')">Modificar</button></td>
+    `;
+    tbody.appendChild(tr);
+  }
+};
+
+window.editarFerias = function(id){
+  const f = cacheFerias.find(x => x.id === id);
+  if (!f) return alert("Férias não encontradas.");
+
+  openModal({
+    title: `Modificar Férias — RE ${f.re}`,
+    bodyHtml: `
+      <div class="grid">
+        <div>
+          <label>RE</label>
+          <input id="mfRe" value="${f.re||""}" disabled>
+        </div>
+        <div>
+          <label>Tipo</label>
+          <input value="FÉRIAS" disabled>
+        </div>
+        <div>
+          <label>Início</label>
+          <input id="mfInicio" type="date" value="${String(f.inicio||"").slice(0,10)}">
+        </div>
+        <div>
+          <label>Fim</label>
+          <input id="mfFim" type="date" value="${String(f.fim||"").slice(0,10)}">
+        </div>
+        <div style="grid-column:1 / -1">
+          <label style="display:flex;align-items:center;gap:8px;">
+            <input id="mfDiasUteis" type="checkbox" ${f.aplicarSomenteDiasTrabalho===true ? "checked" : ""}>
+            Somente dias de trabalho
+          </label>
+        </div>
+        <div style="grid-column:1 / -1">
+          <label>Motivo</label>
+          <input id="mfMotivo" value="${(f.motivo||"").toString().replaceAll('"','&quot;')}">
+        </div>
+        <div class="small" style="grid-column:1 / -1">
+          <button class="btnDangerInline" id="btnExcluirFerias">Excluir período de férias</button>
+        </div>
+      </div>
+    `,
+    onSave: async () => {
+      const ini = document.getElementById("mfInicio").value;
+      const fim = document.getElementById("mfFim").value;
+      const du = document.getElementById("mfDiasUteis").checked;
+      const motivo = (document.getElementById("mfMotivo").value || "").trim();
+
+      if (!ini || !fim) return alert("Informe início e fim.");
+      if (fim < ini) return alert("Fim não pode ser menor que início.");
+
+      if (!confirm("Salvar alteração do período de férias?")) return;
+
+      await updateDoc(doc(db,"afastamentos", id), {
+        inicio: ini,
+        fim: fim,
+        aplicarSomenteDiasTrabalho: du,
+        motivo,
+        updatedAt: new Date().toISOString()
+      });
+
+      closeModal();
+      carregarFerias();
+    }
+  });
+
+  setTimeout(() => {
+    const btn = document.getElementById("btnExcluirFerias");
+    if (!btn) return;
+    btn.onclick = async () => {
+      if (!confirm("Excluir este período de férias?")) return;
+      await deleteDoc(doc(db,"afastamentos", id));
+      closeModal();
+      carregarFerias();
+    };
+  }, 0);
 };
 
 // export
