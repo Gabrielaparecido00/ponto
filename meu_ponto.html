@@ -143,12 +143,11 @@ document.getElementById("btnVoltar2").onclick = voltar;
 
 // estado
 let user = null;                // {re,nome,cpf,escala}
-let cacheLocais = [];           // [{nome,lat,lng,raio}]
-let jornadasMes = [];           // jornadas do mês (entrada no mês)
-let linhasMes = [];             // linhas 01..ultimoDia com dados ou vazias
+let cacheLocais = [];
+let jornadasMes = [];
+let linhasMes = [];
 let mapOcorrencias = {};        // { "YYYY-MM-DD": {tipo,motivo,...} }
 
-// ===== helpers gerais =====
 function voltar(){ window.location.href = "index.html"; }
 
 function pad2(n){ return String(n).padStart(2,"0"); }
@@ -174,21 +173,21 @@ function daysInMonth(year, month1to12){
   return new Date(year, month1to12, 0).getDate();
 }
 
-// ===== escala (5x2 / 6x1) =====
+// escala
 function isFolgaByEscala(dateObj, escala){
-  const dow = dateObj.getDay(); // 0=Dom,1=Seg,...6=Sab
+  const dow = dateObj.getDay();
   const e = (escala || "5x2").toLowerCase();
   if (e === "5x2") return (dow === 0 || dow === 6);
   if (e === "6x1") return (dow === 0);
   return false;
 }
 
-// ===== localização / posto =====
+// locais
 function haversineMeters(lat1, lon1, lat2, lon2){
   const R = 6371000;
   const toRad = x => x * Math.PI / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1); // ✅ correto
+  const dLat = toRad(lat2-lat1);
+  const dLon = toRad(lon2-lon1);
   const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
   return 2*R*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
@@ -220,67 +219,41 @@ function reconhecerLocal(locationStr){
   }
   return best ? best.nome : "Não reconhecido";
 }
-
 async function carregarLocais(){
   const snap = await getDocs(collection(db, "locais"));
   cacheLocais = snap.docs.map(d => d.data())
     .filter(l => Number.isFinite(l.lat) && Number.isFinite(l.lng) && Number.isFinite(l.raio));
 }
 
-// ===== ocorrências (por DocId) =====
+// ocorrências por DocId
 function ocDocId(re, ymd){ return `${re}_${ymd}`; }
-
 async function carregarOcorrenciasMesPorDocId(re, ano, mes, last){
   const map = {};
-  for (let dia = 1; dia <= last; dia++){
+  for (let dia=1; dia<=last; dia++){
     const dataKey = `${ano}-${pad2(mes)}-${pad2(dia)}`;
     try{
       const ref = doc(db, "ocorrencias", ocDocId(re, dataKey));
       const snap = await getDoc(ref);
       if (snap.exists()){
-        const o = snap.data() || {};
-        map[dataKey] = { id: snap.id, ...o };
+        map[dataKey] = { id:snap.id, ...(snap.data()||{}) };
       }
     }catch(e){
-      console.error("Erro ao ler ocorrência do dia:", dataKey, e);
+      console.error("Erro ao ler ocorrência:", dataKey, e);
     }
   }
   return map;
 }
 
-// ===== PDF helpers =====
-async function loadImageAsDataURL(url){
-  const res = await fetch(url);
-  const blob = await res.blob();
-  return await new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result);
-    r.onerror = reject;
-    r.readAsDataURL(blob);
-  });
-}
-async function getImageNaturalSize(dataUrl){
-  return await new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve({ w: img.naturalWidth || img.width, h: img.naturalHeight || img.height });
-    img.onerror = reject;
-    img.src = dataUrl;
-  });
-}
-function shortObsForPdf(text){
-  const t = (text || "").replace(/\s+/g, " ").trim();
-  const max = 60;
-  if (t.length <= max) return t;
-  return t.slice(0, max - 1) + "…";
-}
-function shortPostoForPdf(text){
-  const t = (text || "").trim();
-  const max = 28;
-  if (t.length <= max) return t;
-  return t.slice(0, max - 1) + "…";
+function labelOc(o){
+  if (!o || !o.tipo) return "";
+  const t = (o.tipo || "").toString().toLowerCase();
+  if (t === "falta") return "FALTA (lançada pelo admin)";
+  if (t === "atestado") return "ATESTADO";
+  if (t === "abono") return "ABONO";
+  return (o.tipo || "").toString().toUpperCase();
 }
 
-// ===== selects mês/ano =====
+// selects mês/ano
 (function initMonthYear(){
   const now = new Date();
   const y = now.getFullYear();
@@ -300,12 +273,10 @@ function shortPostoForPdf(text){
   }
 })();
 
-// ===== login =====
+// login
 btnEntrar.addEventListener("click", entrar);
 btnCarregar.addEventListener("click", carregar);
 btnPdf.addEventListener("click", exportarPdf);
-
-// ✅ auto-recarregar ao mudar mês/ano
 mesSel.addEventListener("change", () => { if (user) carregar(); });
 anoSel.addEventListener("change", () => { if (user) carregar(); });
 
@@ -341,14 +312,13 @@ async function entrar(){
   await carregar();
 }
 
-// ===== carregar espelho =====
 async function carregar(){
   if (!user) return;
 
   const mes = Number(mesSel.value);
   const ano = Number(anoSel.value);
 
-  // 1) Jornadas
+  // 1) jornadas
   let jornadas = [];
   try{
     const qJ = query(collection(db, "jornadas"), where("re", "==", user.re));
@@ -367,15 +337,8 @@ async function carregar(){
 
   const last = daysInMonth(ano, mes);
 
-  // 2) Ocorrências por DocId (sem índice)
-  mapOcorrencias = {};
-  try{
-    mapOcorrencias = await carregarOcorrenciasMesPorDocId(user.re, ano, mes, last);
-    console.log("Ocorrências carregadas:", Object.keys(mapOcorrencias).length, mapOcorrencias);
-  }catch(e){
-    console.error("Falha geral ao carregar ocorrências:", e);
-    mapOcorrencias = {};
-  }
+  // 2) ocorrências (por docId)
+  mapOcorrencias = await carregarOcorrenciasMesPorDocId(user.re, ano, mes, last);
 
   // map dia -> jornadas
   const mapDia = {};
@@ -386,7 +349,6 @@ async function carregar(){
     mapDia[dia].push(j);
   }
 
-  // linhas 01..ultimoDia
   linhasMes = [];
   for (let dia=1; dia<=last; dia++){
     const dateObj = new Date(ano, mes-1, dia, 12, 0, 0);
@@ -413,28 +375,26 @@ function obsJornada(j){
   return obs.join(" | ");
 }
 
-function labelOc(o){
-  if (!o || !o.tipo) return "";
-  return (o.tipo || "").replaceAll("_"," ");
-}
-
 function renderTabela(){
   tbody.innerHTML = "";
-
   const mes = Number(mesSel.value);
   const ano = Number(anoSel.value);
 
   for (const linha of linhasMes){
-    const dateObj = linha.dateObj;
-    const j1 = (linha.jornadas && linha.jornadas.length) ? linha.jornadas[0] : null;
-    const ehFolga = isFolgaByEscala(dateObj, user?.escala);
-
     const dataKey = `${ano}-${pad2(mes)}-${pad2(linha.dia)}`;
     const oc = mapOcorrencias[dataKey] || null;
 
-    let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="", obs="";
+    const ehFolga = isFolgaByEscala(linha.dateObj, user?.escala);
+    const j1 = (linha.jornadas && linha.jornadas.length) ? linha.jornadas[0] : null;
 
-    if (j1){
+    let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="-", obs="";
+
+    // ✅ prioridade absoluta: ocorrência manda
+    if (oc){
+      obs = labelOc(oc) + (oc.motivo ? ` | ${oc.motivo}` : "");
+      if (ehFolga) obs += " (dia de folga)";
+      // horários ficam em branco por prioridade
+    } else if (j1){
       const dEnt = toDateAny(j1.entrada?.ts);
       const dSai = toDateAny(j1.saida?.ts);
 
@@ -452,19 +412,14 @@ function renderTabela(){
       }
     } else {
       posto = "-";
-      if (ehFolga){
-        obs = "FOLGA (escala)";
-      } else if (oc){
-        obs = labelOc(oc) + (oc.motivo ? ` | ${oc.motivo}` : "");
-      } else {
-        obs = "FALTA";
-      }
+      if (ehFolga) obs = "FOLGA (escala)";
+      else obs = "FALTA";
     }
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${String(linha.dia).padStart(2,"0")}/${String(mes).padStart(2,"0")}/${ano}</td>
-      <td class="${(j1 || ehFolga || oc) ? "" : "muted"}">${weekday(dateObj)}</td>
+      <td class="${(j1 || ehFolga || oc) ? "" : "muted"}">${weekday(linha.dateObj)}</td>
       <td>${entrada}</td>
       <td>${saiInt}</td>
       <td>${retInt}</td>
@@ -478,11 +433,29 @@ function renderTabela(){
   }
 }
 
-// ===== PDF (múltiplas páginas) =====
+// PDF helpers
+async function loadImageAsDataURL(url){
+  const res = await fetch(url);
+  const blob = await res.blob();
+  return await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+}
+async function getImageNaturalSize(dataUrl){
+  return await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve({ w: img.naturalWidth || img.width, h: img.naturalHeight || img.height });
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+}
+
 async function exportarPdf(){
   if (!user) return;
-
-  try{ await carregar(); }catch(e){ console.error("Falha ao recarregar antes do PDF:", e); }
+  try{ await carregar(); }catch(e){ console.error(e); }
 
   const mes = Number(mesSel.value);
   const ano = Number(anoSel.value);
@@ -498,20 +471,15 @@ async function exportarPdf(){
   try {
     logoDataUrl = await loadImageAsDataURL("GW.png");
     logoNat = await getImageNaturalSize(logoDataUrl);
-  } catch {
-    logoDataUrl = null;
-    logoNat = null;
-  }
+  } catch {}
 
   const marginX = 30;
   const headerTop = 22;
 
   const logoW = 110;
-  let logoH = 0;
+  let logoH = 45;
   if (logoNat && logoNat.w && logoNat.h){
     logoH = Math.round(logoW * (logoNat.h / logoNat.w));
-  } else {
-    logoH = 45;
   }
 
   const headerH = (logoDataUrl ? (logoH + 10) : 0) + 14 + 12 + 12 + 12 + 12 + 6;
@@ -531,7 +499,6 @@ async function exportarPdf(){
     docPdf.text(`Escala: ${user.escala}`, marginX, y); y += 12;
     docPdf.text(`Competência: ${mesTxt}/${ano}`, marginX, y); y += 12;
   }
-
   function drawFooter(){
     docPdf.setFontSize(8);
     docPdf.text("Sistema desenvolvido por Gabriel Wandele, todos direitos reservados", marginX, pageH - 10);
@@ -540,14 +507,17 @@ async function exportarPdf(){
   const head = [[ "Data","Dia","Ent","Sai Int","Ret","Sai","HE Ent","HE Sai","Posto","Obs" ]];
 
   const body = linhasMes.map(linha => {
-    const j1 = (linha.jornadas && linha.jornadas.length) ? linha.jornadas[0] : null;
-    const ehFolga = isFolgaByEscala(linha.dateObj, user?.escala);
-
     const dataKey = `${ano}-${pad2(mes)}-${pad2(linha.dia)}`;
     const oc = mapOcorrencias[dataKey] || null;
+    const ehFolga = isFolgaByEscala(linha.dateObj, user?.escala);
+    const j1 = (linha.jornadas && linha.jornadas.length) ? linha.jornadas[0] : null;
 
-    let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="", obs="";
-    if (j1){
+    let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="-", obs="";
+
+    if (oc){
+      obs = labelOc(oc) + (oc.motivo ? ` | ${oc.motivo}` : "");
+      if (ehFolga) obs += " (folga)";
+    } else if (j1){
       const dEnt = toDateAny(j1.entrada?.ts);
       const dSai = toDateAny(j1.saida?.ts);
 
@@ -557,22 +527,11 @@ async function exportarPdf(){
       saida   = hm(dSai) + ((dSai && dEnt && ymd(dSai) !== ymd(dEnt)) ? " (+1)" : "");
       entHe   = hm(toDateAny(j1.entrada_he?.ts));
       saiHe   = hm(toDateAny(j1.saida_he?.ts));
-      posto   = shortPostoForPdf(reconhecerLocal(getBestLocationFromJornada(j1)));
-      obs     = shortObsForPdf(obsJornada(j1));
-
-      if (linha.jornadas.length > 1){
-        const extra = `2+ (${linha.jornadas.length})`;
-        obs = shortObsForPdf((obs ? (obs + " | ") : "") + extra);
-      }
+      posto   = reconhecerLocal(getBestLocationFromJornada(j1));
+      obs     = obsJornada(j1);
     } else {
-      posto = "-";
-      if (ehFolga){
-        obs = "FOLGA";
-      } else if (oc){
-        obs = shortObsForPdf(labelOc(oc) + (oc.motivo ? ` | ${oc.motivo}` : ""));
-      } else {
-        obs = "FALTA";
-      }
+      if (ehFolga) obs = "FOLGA";
+      else obs = "FALTA";
     }
 
     return [
