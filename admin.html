@@ -9,8 +9,7 @@
   body { font-family: Arial; background:#f5f5f5; text-align:center; }
   .container { background:#fff; padding:20px; margin:20px auto; max-width:1300px; border-radius:10px; }
   .logo { width:260px; margin-bottom: 10px; }
-  input, button, select, textarea { padding:10px; margin:5px; }
-  textarea{ width:100%; box-sizing:border-box; resize:vertical; min-height:70px; }
+  input, button, select { padding:10px; margin:5px; }
   button { cursor:pointer; }
   .row { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:end; margin-top:10px; }
   table { width:100%; border-collapse:collapse; margin-top:18px; font-size:13px; }
@@ -103,13 +102,15 @@
 <div id="painelDiv" class="container" style="display:none;">
   <img src="GW.png" class="logo" />
   <h2>Painel Admin</h2>
-  <div class="small">Editar horários no formato: <b>AAAA-MM-DD HH:MM</b> (ex: 2026-02-16 07:10)</div>
+  <div class="small">
+    Editar horários no formato: <b>DD/MM/AAAA HH:MM</b> (ex: 16/02/2026 07:10)
+  </div>
 
   <div class="menu">
     <button onclick="showSection('secJornadas')">Jornadas</button>
     <button onclick="showSection('secColab')">Colaboradores</button>
     <button onclick="showSection('secLocal')">Locais</button>
-    <button onclick="showSection('secOcor')">Ocorrências</button>
+    <button onclick="showSection('secOcorr')">Ocorrências</button>
     <button class="secondary" onclick="logout()">Sair</button>
   </div>
 
@@ -134,8 +135,8 @@
           <th>Nome</th>
           <th>RE</th>
           <th>Entrada</th>
-          <th>Saída Intervalo</th>
-          <th>Retorno</th>
+          <th>Início Intraj.</th>
+          <th>Fim Intraj.</th>
           <th>Saída</th>
           <th>Entrada HE</th>
           <th>Saída HE</th>
@@ -151,16 +152,21 @@
   <!-- COLABORADORES -->
   <div id="secColab" class="section">
     <h3>Colaboradores</h3>
-    <div class="small">CPF é obrigatório • Sem excluir colaborador (apenas ativar/inativar)</div>
+    <div class="small">CPF é obrigatório • Sem excluir colaborador (apenas ativar/inativar) • Cadastre o horário previsto</div>
 
     <div class="row">
       <input id="cadRe" placeholder="RE" inputmode="numeric">
       <input id="cadNome" placeholder="Nome completo">
       <input id="cadCpf" placeholder="CPF (obrigatório)" inputmode="numeric">
+
       <select id="cadEscala">
-        <option value="5x2" selected>5x2 (Seg-Sex)</option>
-        <option value="6x1">6x1 (Folga Domingo)</option>
+        <option value="5x2">5x2 (Seg-Sex)</option>
+        <option value="6x1">6x1 (Folga Dom)</option>
       </select>
+
+      <input id="cadHoraEntrada" type="time" title="Hora prevista de entrada">
+      <input id="cadHoraSaida" type="time" title="Hora prevista de saída">
+
       <button onclick="cadastrarColab()">Cadastrar</button>
       <button onclick="carregarColaboradores()">Atualizar lista</button>
     </div>
@@ -172,6 +178,7 @@
           <th>Nome</th>
           <th>CPF</th>
           <th>Escala</th>
+          <th>Horário</th>
           <th>Status</th>
           <th>Ações</th>
         </tr>
@@ -208,49 +215,24 @@
     </table>
   </div>
 
-  <!-- OCORRÊNCIAS (ATESTADO/ABONO POR DIA) -->
-  <div id="secOcor" class="section">
-    <h3>Ocorrências (Abonar por dia)</h3>
-    <div class="small">DocId = <b>RE_YYYY-MM-DD</b> • Serve para <b>ATESTADO</b>, <b>ABONO</b> e <b>FALTA JUSTIFICADA</b>.</div>
+  <!-- OCORRÊNCIAS -->
+  <div id="secOcorr" class="section">
+    <h3>Ocorrências (por dia)</h3>
+    <div class="small">
+      Ao salvar (FALTA/ATESTADO/ABONO), a ocorrência vira prioridade e apaga registros (jornadas) do dia da ENTRADA.
+    </div>
 
     <div class="row">
       <input id="ocRe" placeholder="RE" inputmode="numeric">
       <input id="ocData" type="date">
       <select id="ocTipo">
-        <option value="ATESTADO" selected>ATESTADO</option>
-        <option value="ABONO">ABONO</option>
-        <option value="FALTA_JUSTIFICADA">FALTA JUSTIFICADA</option>
+        <option value="falta">FALTA</option>
+        <option value="atestado">ATESTADO</option>
+        <option value="abono">ABONO</option>
       </select>
-      <button onclick="salvarOcorrencia()">Salvar/Atualizar</button>
-      <button onclick="listarOcorrencias()">Atualizar lista</button>
+      <input id="ocMotivo" placeholder="Motivo (opcional)">
+      <button onclick="salvarOcorrencia()">Salvar ocorrência (prioritária)</button>
     </div>
-
-    <div class="row" style="max-width:900px;margin:0 auto;">
-      <textarea id="ocMotivo" placeholder="Motivo / Observação (opcional)"></textarea>
-    </div>
-
-    <hr class="hr">
-
-    <div class="row">
-      <label>Filtrar De:</label><input type="date" id="ocIni">
-      <label>Até:</label><input type="date" id="ocFim">
-      <input id="ocFiltroRe" placeholder="Filtrar por RE (opcional)" inputmode="numeric">
-      <button onclick="listarOcorrencias()">Buscar</button>
-    </div>
-
-    <table>
-      <thead>
-        <tr>
-          <th>Data</th>
-          <th>RE</th>
-          <th>Tipo</th>
-          <th>Motivo</th>
-          <th>Criado por</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody id="tbodyOcor"></tbody>
-    </table>
   </div>
 </div>
 
@@ -269,8 +251,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
-  getFirestore, doc, setDoc, getDocs, collection, updateDoc, addDoc, deleteDoc, deleteField,
-  query, where
+  getFirestore, doc, setDoc, getDocs, collection, updateDoc, addDoc, deleteDoc, deleteField, query, where, getDoc
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import {
   getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
@@ -303,7 +284,6 @@ window.showSection = function(id){
   document.getElementById(id).classList.add("active");
   if (id === "secLocal") carregarLocais();
   if (id === "secColab") carregarColaboradores();
-  if (id === "secOcor") listarOcorrencias();
 };
 
 // auth
@@ -334,17 +314,26 @@ function formatHHMM(ts){
   if (!d || isNaN(d)) return "";
   return d.toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit" });
 }
-function formatYYYYMMDD(ts){
+function formatBRDate(ts){
   const d = toDateAny(ts);
   if (!d || isNaN(d)) return "";
-  return d.toISOString().slice(0,10);
+  return d.toLocaleDateString("pt-BR");
 }
-function isoFromYmdHm(str){
-  const m = (str||"").trim().match(/^(\d{4})-(\d{2})-(\d{2})\s+([01]\d|2[0-3]):([0-5]\d)$/);
+function isoFromBrDateTime(str){
+  // DD/MM/AAAA HH:MM
+  const m = (str||"").trim().match(/^(\d{2})\/(\d{2})\/(\d{4})\s+([01]\d|2[0-3]):([0-5]\d)$/);
   if (!m) return null;
-  const dt = new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:00`);
+  const dd=m[1], mm=m[2], yyyy=m[3], hh=m[4], mi=m[5];
+  const dt = new Date(`${yyyy}-${mm}-${dd}T${hh}:${mi}:00`);
   if (isNaN(dt)) return null;
   return dt.toISOString();
+}
+function brDateTimeFromIso(ts){
+  const d = toDateAny(ts);
+  if (!d || isNaN(d)) return "";
+  const data = d.toLocaleDateString("pt-BR");
+  const hora = d.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"});
+  return `${data} ${hora}`;
 }
 function haversineMeters(lat1, lon1, lat2, lon2){
   const R=6371000; const toRad=x=>x*Math.PI/180;
@@ -375,6 +364,13 @@ function reconhecerLocal(locationStr){
   }
   return best ? best.nome : "Não reconhecido";
 }
+function horarioTxt(c){
+  const he = (c?.horaEntrada||"").trim();
+  const hs = (c?.horaSaida||"").trim();
+  if (he && hs) return `${he}–${hs}`;
+  if (he || hs) return `${he||"—"}–${hs||"—"}`;
+  return "—";
+}
 
 // modal
 const overlay=document.getElementById("modalOverlay");
@@ -392,29 +388,32 @@ function openModal({title, bodyHtml, onSave}){
   saveBtn.onclick=onSave || null;
 }
 
-// ===== COLABORADORES (CPF obrigatório, sem excluir) =====
+// ===== COLABORADORES =====
 window.cadastrarColab = async function(){
   const re = document.getElementById("cadRe").value.trim();
   const nome = document.getElementById("cadNome").value.trim();
   let cpf = document.getElementById("cadCpf").value.trim();
   const escala = document.getElementById("cadEscala").value;
+  const horaEntrada = (document.getElementById("cadHoraEntrada").value || "").trim();
+  const horaSaida = (document.getElementById("cadHoraSaida").value || "").trim();
 
   if (!re || !nome) return alert("Preencha RE e Nome.");
   cpf = cpf.replace(/\D/g,"");
   if (!cpf || cpf.length < 4) return alert("CPF é obrigatório (mínimo 4 dígitos).");
 
-  if (!confirm(`Cadastrar?\nRE: ${re}\nNome: ${nome}\nEscala: ${escala}`)) return;
+  if (!confirm(`Cadastrar?\nRE: ${re}\nNome: ${nome}\nEscala: ${escala}\nHorário: ${horaEntrada||"—"}–${horaSaida||"—"}`)) return;
 
   await setDoc(doc(db,"colaboradores",re), {
-    re, nome, cpf, escala,
-    ativo:true,
-    updatedAt:new Date().toISOString()
+    re, nome, cpf, escala, horaEntrada, horaSaida,
+    ativo:true, updatedAt:new Date().toISOString()
   }, { merge:true });
 
   document.getElementById("cadRe").value="";
   document.getElementById("cadNome").value="";
   document.getElementById("cadCpf").value="";
   document.getElementById("cadEscala").value="5x2";
+  document.getElementById("cadHoraEntrada").value="";
+  document.getElementById("cadHoraSaida").value="";
   carregarColaboradores();
 };
 
@@ -428,12 +427,14 @@ window.carregarColaboradores = async function(){
 
   for (const c of cacheColabs){
     const status = (c.ativo === false) ? "Inativo" : "Ativo";
+    const escala = (c.escala || "5x2");
     const tr=document.createElement("tr");
     tr.innerHTML = `
       <td>${c.re || c.id}</td>
       <td>${c.nome || ""}</td>
       <td>${c.cpf || ""}</td>
-      <td>${c.escala || "5x2"}</td>
+      <td>${escala}</td>
+      <td>${horarioTxt(c)}</td>
       <td>${status}</td>
       <td><button class="minBtn" onclick="editarColab('${c.id}')">Modificar</button></td>
     `;
@@ -457,17 +458,20 @@ window.editarColab = function(reDocId){
           <label>CPF (obrigatório)</label>
           <input id="mCpf" value="${c.cpf || ""}" placeholder="Somente números">
         </div>
+
         <div style="grid-column:1 / -1">
           <label>Nome</label>
           <input id="mNome" value="${c.nome || ""}">
         </div>
+
         <div>
           <label>Escala</label>
           <select id="mEscala">
             <option value="5x2" ${(c.escala||"5x2")==="5x2" ? "selected" : ""}>5x2 (Seg-Sex)</option>
-            <option value="6x1" ${(c.escala||"5x2")==="6x1" ? "selected" : ""}>6x1 (Folga Domingo)</option>
+            <option value="6x1" ${(c.escala||"5x2")==="6x1" ? "selected" : ""}>6x1 (Folga Dom)</option>
           </select>
         </div>
+
         <div>
           <label>Status</label>
           <select id="mAtivo">
@@ -475,6 +479,16 @@ window.editarColab = function(reDocId){
             <option value="false" ${c.ativo === false ? "selected" : ""}>Inativo</option>
           </select>
         </div>
+
+        <div>
+          <label>Hora entrada prevista</label>
+          <input id="mHoraEntrada" type="time" value="${(c.horaEntrada||"").toString().trim()}">
+        </div>
+        <div>
+          <label>Hora saída prevista</label>
+          <input id="mHoraSaida" type="time" value="${(c.horaSaida||"").toString().trim()}">
+        </div>
+
         <div class="small" style="grid-column:1 / -1">
           Colaborador inativo NÃO consegue registrar ponto no sistema.
         </div>
@@ -485,6 +499,8 @@ window.editarColab = function(reDocId){
       let cpf = document.getElementById("mCpf").value.trim().replace(/\D/g,"");
       const ativo = document.getElementById("mAtivo").value === "true";
       const escala = document.getElementById("mEscala").value;
+      const horaEntrada = (document.getElementById("mHoraEntrada").value || "").trim();
+      const horaSaida = (document.getElementById("mHoraSaida").value || "").trim();
 
       if (!nome) return alert("Nome não pode ficar vazio.");
       if (!cpf || cpf.length < 4) return alert("CPF é obrigatório (mínimo 4 dígitos).");
@@ -492,7 +508,8 @@ window.editarColab = function(reDocId){
       if (!confirm("Salvar alteração do colaborador?")) return;
 
       await setDoc(doc(db,"colaboradores",reDocId), {
-        nome, cpf, ativo, escala, updatedAt:new Date().toISOString()
+        nome, cpf, ativo, escala, horaEntrada, horaSaida,
+        updatedAt:new Date().toISOString()
       }, { merge:true });
 
       closeModal();
@@ -501,7 +518,7 @@ window.editarColab = function(reDocId){
   });
 };
 
-// ===== LOCAIS (editar via modal, excluir dentro do modal) =====
+// ===== LOCAIS =====
 window.cadastrarLocal = async function(){
   const nome = document.getElementById("locNome").value.trim();
   const lat = Number(document.getElementById("locLat").value.trim());
@@ -615,8 +632,10 @@ window.buscar = async function(){
   const snap = await getDocs(collection(db,"jornadas"));
   let jornadas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
 
+  // filtra por data da ENTRADA (base), comparando por YYYY-MM-DD
   jornadas = jornadas.filter(j => {
-    const d = formatYYYYMMDD(j.entrada?.ts);
+    const iso = (j.entrada?.ts || "").toString();
+    const d = iso ? iso.slice(0,10) : "";
     if (!d) return false;
     return d >= iniStr && d <= fimStr;
   });
@@ -635,7 +654,7 @@ function montarJornadas(jornadas){
   tbody.innerHTML="";
 
   for (const j of jornadas){
-    const dataEntrada = formatYYYYMMDD(j.entrada?.ts);
+    const dataEntrada = formatBRDate(j.entrada?.ts);
     const loc = getBestLocationFromJornada(j);
     const rec = reconhecerLocal(loc);
 
@@ -662,26 +681,20 @@ window.editarJornada = function(docId){
   const j = ultimaTabela.find(x => x.id === docId);
   if (!j) return alert("Jornada não encontrada.");
 
-  const val = (ts) => {
-    const d = toDateAny(ts);
-    if (!d || isNaN(d)) return "";
-    const ymd = d.toISOString().slice(0,10);
-    const hm = d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
-    return `${ymd} ${hm}`;
-  };
+  const val = (ts) => brDateTimeFromIso(ts);
 
   openModal({
     title: `Modificar Jornada — RE ${j.re}`,
     bodyHtml: `
       <div class="grid">
-        <div><label>ENTRADA</label><input id="fEntrada" placeholder="AAAA-MM-DD HH:MM" value="${val(j.entrada?.ts)}"></div>
-        <div><label>SAÍDA INTERVALO</label><input id="fSaiInt" placeholder="AAAA-MM-DD HH:MM" value="${val(j.saida_intervalo?.ts)}"></div>
-        <div><label>RETORNO INTERVALO</label><input id="fRetInt" placeholder="AAAA-MM-DD HH:MM" value="${val(j.retorno_intervalo?.ts)}"></div>
-        <div><label>SAÍDA</label><input id="fSaida" placeholder="AAAA-MM-DD HH:MM" value="${val(j.saida?.ts)}"></div>
-        <div><label>ENTRADA HE</label><input id="fEntHe" placeholder="AAAA-MM-DD HH:MM" value="${val(j.entrada_he?.ts)}"></div>
-        <div><label>SAÍDA HE</label><input id="fSaiHe" placeholder="AAAA-MM-DD HH:MM" value="${val(j.saida_he?.ts)}"></div>
+        <div><label>ENTRADA</label><input id="fEntrada" placeholder="DD/MM/AAAA HH:MM" value="${val(j.entrada?.ts)}"></div>
+        <div><label>INÍCIO INTRAJ.</label><input id="fSaiInt" placeholder="DD/MM/AAAA HH:MM" value="${val(j.saida_intervalo?.ts)}"></div>
+        <div><label>FIM INTRAJ.</label><input id="fRetInt" placeholder="DD/MM/AAAA HH:MM" value="${val(j.retorno_intervalo?.ts)}"></div>
+        <div><label>SAÍDA</label><input id="fSaida" placeholder="DD/MM/AAAA HH:MM" value="${val(j.saida?.ts)}"></div>
+        <div><label>ENTRADA HE</label><input id="fEntHe" placeholder="DD/MM/AAAA HH:MM" value="${val(j.entrada_he?.ts)}"></div>
+        <div><label>SAÍDA HE</label><input id="fSaiHe" placeholder="DD/MM/AAAA HH:MM" value="${val(j.saida_he?.ts)}"></div>
       </div>
-      <div class="small" style="margin-top:8px">Deixe em branco para remover o campo (vai apagar no banco).</div>
+      <div class="small" style="margin-top:8px">Deixe em branco para remover o campo (apaga no banco).</div>
     `,
     onSave: async () => {
       const campos = [
@@ -701,8 +714,8 @@ window.editarJornada = function(docId){
           payload[path] = deleteField();
           continue;
         }
-        const iso = isoFromYmdHm(t);
-        if (!iso) return alert(`Formato inválido em ${path}. Use AAAA-MM-DD HH:MM`);
+        const iso = isoFromBrDateTime(t);
+        if (!iso) return alert(`Formato inválido em ${path}. Use DD/MM/AAAA HH:MM`);
         payload[path] = iso;
       }
 
@@ -715,14 +728,56 @@ window.editarJornada = function(docId){
   });
 };
 
+// ===== OCORRÊNCIAS (prioridade e apaga jornadas do dia) =====
+function ocDocId(re, ymd){ return `${re}_${ymd}`; }
+
+async function apagarJornadasDoDia(re, dataYmd){
+  const qJ = query(collection(db,"jornadas"), where("re","==",re));
+  const snap = await getDocs(qJ);
+  const all = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+
+  const doDia = all.filter(j => {
+    const d = (j?.entrada?.ts || "").toString().slice(0,10);
+    return d === dataYmd;
+  });
+
+  for (const j of doDia){
+    await deleteDoc(doc(db,"jornadas", j.id));
+  }
+  return doDia.length;
+}
+
+window.salvarOcorrencia = async function(){
+  const re = (document.getElementById("ocRe").value || "").trim();
+  const data = document.getElementById("ocData").value; // YYYY-MM-DD
+  const tipo = document.getElementById("ocTipo").value;
+  const motivo = (document.getElementById("ocMotivo").value || "").trim();
+
+  if (!re) return alert("Informe o RE.");
+  if (!data) return alert("Informe a data.");
+  if (!tipo) return alert("Selecione o tipo.");
+
+  if (!confirm(`Salvar ocorrência?\nRE: ${re}\nData: ${data}\nTipo: ${tipo}\n\nIsso vai APAGAR registros do dia (se existirem).`)) return;
+
+  await setDoc(doc(db,"ocorrencias", ocDocId(re, data)), {
+    re, data, tipo, motivo,
+    updatedAt: new Date().toISOString()
+  }, { merge:true });
+
+  const n = await apagarJornadasDoDia(re, data);
+
+  alert(`Ocorrência salva.\nRegistros apagados do dia: ${n}`);
+  document.getElementById("ocMotivo").value = "";
+};
+
 // export
 window.exportar = function(){
-  let csv = "DataEntrada,Nome,RE,Entrada,SaidaIntervalo,RetornoIntervalo,Saida,EntradaHE,SaidaHE,Coords,Local\n";
+  let csv = "DataEntrada,Nome,RE,Entrada,InicioIntraj,FimIntraj,Saida,EntradaHE,SaidaHE,Coords,Local\n";
   for (const j of ultimaTabela){
     const loc = getBestLocationFromJornada(j);
     const rec = reconhecerLocal(loc);
     const linha = [
-      formatYYYYMMDD(j.entrada?.ts),
+      formatBRDate(j.entrada?.ts),
       j.nome || "",
       j.re || "",
       formatHHMM(j.entrada?.ts),
@@ -742,136 +797,6 @@ window.exportar = function(){
   a.href = url;
   a.download = "jornadas.csv";
   a.click();
-};
-
-// ===== OCORRÊNCIAS (abonar por dia) =====
-function docIdOc(re, data){ return `${re}_${data}`; }
-
-window.salvarOcorrencia = async function(){
-  const re = (document.getElementById("ocRe").value || "").trim();
-  const data = (document.getElementById("ocData").value || "").trim();
-  const tipo = document.getElementById("ocTipo").value;
-  const motivo = (document.getElementById("ocMotivo").value || "").trim();
-
-  if (!re) return alert("Digite o RE.");
-  if (!data) return alert("Escolha a data.");
-  const id = docIdOc(re, data);
-
-  if (!confirm(`Salvar ocorrência?\nRE: ${re}\nData: ${data}\nTipo: ${tipo}`)) return;
-
-  const criadoPor = auth.currentUser?.email || auth.currentUser?.uid || "admin";
-  await setDoc(doc(db,"ocorrencias",id), {
-    re, data, tipo, motivo,
-    criadoPor,
-    updatedAt: new Date().toISOString()
-  }, { merge:true });
-
-  alert("Ocorrência salva!");
-  document.getElementById("ocMotivo").value = "";
-  listarOcorrencias();
-};
-
-window.listarOcorrencias = async function(){
-  const ini = document.getElementById("ocIni").value || "2000-01-01";
-  const fim = document.getElementById("ocFim").value || "2999-12-31";
-  const filtroRe = norm(document.getElementById("ocFiltroRe").value);
-
-  // busca por data (como string YYYY-MM-DD funciona)
-  let qy = query(
-    collection(db,"ocorrencias"),
-    where("data", ">=", ini),
-    where("data", "<=", fim)
-  );
-  const snap = await getDocs(qy);
-  let rows = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-
-  if (filtroRe) rows = rows.filter(o => norm(o.re) === filtroRe);
-
-  rows.sort((a,b)=> (a.data||"").localeCompare(b.data||"") || (a.re||"").localeCompare(b.re||""));
-
-  const tbody = document.getElementById("tbodyOcor");
-  tbody.innerHTML = "";
-  for (const o of rows){
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${o.data || ""}</td>
-      <td>${o.re || ""}</td>
-      <td>${(o.tipo || "").replaceAll("_"," ")}</td>
-      <td>${o.motivo || ""}</td>
-      <td>${o.criadoPor || ""}</td>
-      <td><button class="minBtn" onclick="editarOcorrencia('${o.id}')">Modificar</button></td>
-    `;
-    tbody.appendChild(tr);
-  }
-};
-
-window.editarOcorrencia = function(id){
-  openModal({
-    title: "Modificar ocorrência",
-    bodyHtml: `
-      <div class="grid">
-        <div>
-          <label>DocId</label>
-          <input id="moId" value="${id}" disabled>
-        </div>
-        <div>
-          <label>Tipo</label>
-          <select id="moTipo">
-            <option value="ATESTADO">ATESTADO</option>
-            <option value="ABONO">ABONO</option>
-            <option value="FALTA_JUSTIFICADA">FALTA JUSTIFICADA</option>
-          </select>
-        </div>
-        <div>
-          <label>RE</label>
-          <input id="moRe" disabled>
-        </div>
-        <div>
-          <label>Data</label>
-          <input id="moData" disabled>
-        </div>
-        <div style="grid-column:1 / -1">
-          <label>Motivo</label>
-          <textarea id="moMotivo"></textarea>
-        </div>
-        <div class="small" style="grid-column:1 / -1">
-          <button class="btnDangerInline" id="btnExcluirOc">Excluir ocorrência</button>
-        </div>
-      </div>
-    `,
-    onSave: async () => {
-      const tipo = document.getElementById("moTipo").value;
-      const motivo = (document.getElementById("moMotivo").value || "").trim();
-      if (!confirm("Salvar alterações da ocorrência?")) return;
-
-      await updateDoc(doc(db,"ocorrencias",id), {
-        tipo, motivo, updatedAt: new Date().toISOString()
-      });
-
-      closeModal();
-      listarOcorrencias();
-    }
-  });
-
-  // preencher campos lendo no cache via query rápida
-  (async () => {
-    const snap = await getDocs(query(collection(db,"ocorrencias"), where("__name__", "==", id)));
-    const d = snap.docs[0]?.data() || {};
-    document.getElementById("moRe").value = d.re || "";
-    document.getElementById("moData").value = d.data || "";
-    document.getElementById("moMotivo").value = d.motivo || "";
-    document.getElementById("moTipo").value = d.tipo || "ATESTADO";
-
-    const btn = document.getElementById("btnExcluirOc");
-    if (btn){
-      btn.onclick = async () => {
-        if (!confirm("Excluir esta ocorrência?")) return;
-        await deleteDoc(doc(db,"ocorrencias",id));
-        closeModal();
-        listarOcorrencias();
-      };
-    }
-  })();
 };
 </script>
 </body>
