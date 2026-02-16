@@ -1,167 +1,86 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Registro de Ponto</title>
+import { getFirestore, collection, addDoc, query, where, getDocs, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-<style>
-body {
-    font-family: Arial;
-    background: #f0f0f0;
-    padding: 20px;
+const db = getFirestore();
+
+// CONFIG
+const TEMPO_MINIMO = 5 * 60 * 1000; // 5 minutos
+
+function formatarData(data) {
+    return data.toISOString().split('T')[0];
 }
 
-.container {
-    max-width: 500px;
-    margin: auto;
-    background: white;
-    padding: 20px;
-    border-radius: 10px;
+function formatarHora(data) {
+    return data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
-.logo {
-    width: 280px;
-    display: block;
-    margin: auto;
-}
+// DEFINIÇÃO DAS ETAPAS
+const etapas = [
+    { tipo: "entrada", label: "ENTRADA", confirm: "Você está entrando no serviço?" },
+    { tipo: "saida_intervalo", label: "SAÍDA INTERVALO", confirm: "Você está saindo para intervalo?" },
+    { tipo: "retorno_intervalo", label: "RETORNO INTERVALO", confirm: "Você está retornando do intervalo?" },
+    { tipo: "saida", label: "SAÍDA", confirm: "Você está encerrando o expediente?" },
+    { tipo: "entrada_he", label: "ENTRADA HE", confirm: "Você está iniciando hora extra?" },
+    { tipo: "saida_he", label: "SAÍDA HE", confirm: "Você está finalizando hora extra?" }
+];
 
-input, button {
-    width: 100%;
-    padding: 10px;
-    margin-top: 10px;
-}
+window.registrarPonto = async function () {
 
-button {
-    background: green;
-    color: white;
-    border: none;
-}
+    const usuario = auth.currentUser;
+    if (!usuario) {
+        alert("Faça login primeiro!");
+        return;
+    }
 
-canvas {
-    width: 100%;
-    border: 1px solid #ccc;
-}
+    const agora = new Date();
+    const hoje = formatarData(agora);
 
-#timestamp {
-    text-align: center;
-    margin-top: 10px;
-}
-</style>
+    // Buscar registros de hoje
+    const q = query(
+        collection(db, "pontos"),
+        where("uid", "==", usuario.uid),
+        where("data", "==", hoje),
+        orderBy("timestamp", "asc")
+    );
 
-</head>
-<body>
+    const snapshot = await getDocs(q);
+    const registros = snapshot.docs.map(doc => doc.data());
 
-<div class="container">
+    // BLOQUEIO DE DUPLICIDADE (5 minutos)
+    if (registros.length > 0) {
+        const ultimo = registros[registros.length - 1];
+        const ultimoTimestamp = ultimo.timestamp?.toDate();
 
-<img src="GW.png" class="logo">
+        if (ultimoTimestamp && (agora - ultimoTimestamp < TEMPO_MINIMO)) {
+            alert("Aguarde 5 minutos para registrar novamente.");
+            return;
+        }
+    }
 
-<h2>Registro de Ponto</h2>
+    // DEFINIR PRÓXIMA ETAPA
+    let etapaIndex = registros.length;
 
-<form id="form">
-<input id="nome" placeholder="Nome completo" required>
-<input id="re" placeholder="RE" required>
+    if (etapaIndex >= etapas.length) {
+        alert("Todos os registros do dia já foram feitos.");
+        return;
+    }
 
-<canvas id="foto" width="240" height="320"></canvas>
-<button type="button" id="capturar">Capturar Foto</button>
+    const etapa = etapas[etapaIndex];
 
-<button type="submit">Registrar</button>
-</form>
+    // CONFIRMAÇÃO
+    const confirmar = confirm(etapa.confirm);
 
-<div id="timestamp"></div>
+    if (!confirmar) return;
 
-</div>
-
-<!-- link escondido -->
-<footer style="text-align:center; margin-top:40px;">
-<a href="admin.html" style="font-size:10px; color:#ccc;">.</a>
-</footer>
-
-<script type="module">
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, addDoc, collection } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-// 🔥 SUA CONFIG
-const firebaseConfig = {
-  apiKey: "AIzaSyD--zpWLbLg5X82oGTyz6SuPFQV0sd7NWc",
-  authDomain: "controle-ponto-f539b.firebaseapp.com",
-  projectId: "controle-ponto-f539b",
-  storageBucket: "controle-ponto-f539b.firebasestorage.app",
-  messagingSenderId: "324716100257",
-  appId: "1:324716100257:web:32d49a9ab4916182dd4ee0",
-  measurementId: "G-P81H3C4SFK"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-const form = document.getElementById("form");
-const canvas = document.getElementById("foto");
-const btn = document.getElementById("capturar");
-
-let stream;
-
-// câmera
-navigator.mediaDevices.getUserMedia({ video: true })
-.then(s => stream = s)
-.catch(() => alert("Erro câmera"));
-
-// capturar
-btn.onclick = async () => {
-
-    if (!stream) return alert("Sem câmera");
-
-    const track = stream.getVideoTracks()[0];
-    const imageCapture = new ImageCapture(track);
-
-    const bitmap = await imageCapture.grabFrame();
-
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-};
-
-// relógio
-setInterval(()=>{
-    document.getElementById("timestamp").innerText =
-    new Date().toLocaleString();
-},1000);
-
-// salvar
-form.onsubmit = async (e) => {
-
-    e.preventDefault();
-
-    const nome = document.getElementById("nome").value;
-    const re = document.getElementById("re").value;
-
-    const foto = canvas.toDataURL("image/jpeg", 0.5);
-
-    let local = "N/A";
-
-    try {
-        const pos = await new Promise((res, rej)=>{
-            navigator.geolocation.getCurrentPosition(res, rej);
-        });
-
-        local = pos.coords.latitude + "," + pos.coords.longitude;
-    } catch {}
-
+    // SALVAR NO FIREBASE
     await addDoc(collection(db, "pontos"), {
-        fullName: nome,
-        re,
-        photo: foto,
-        timestamp: new Date().toISOString(),
-        location: local
+        uid: usuario.uid,
+        email: usuario.email,
+        tipo: etapa.tipo,
+        label: etapa.label,
+        data: hoje,
+        hora: formatarHora(agora),
+        timestamp: agora
     });
 
-    alert("Registrado!");
-
-    form.reset();
-    canvas.getContext("2d").clearRect(0,0,canvas.width,canvas.height);
+    alert(`${etapa.label} registrada com sucesso!`);
 };
-
-</script>
-
-</body>
-</html>
