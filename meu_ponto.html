@@ -327,10 +327,16 @@ async function carregar(){
   const mes = Number(mesSel.value);
   const ano = Number(anoSel.value);
 
-  // jornadas do RE no mês (pela ENTRADA)
-  const qJ = query(collection(db, "jornadas"), where("re", "==", user.re));
-  const snapJ = await getDocs(qJ);
-  const jornadas = snapJ.docs.map(d => ({ id:d.id, ...d.data() }));
+  // ✅ 1) Jornadas (não pode quebrar se ocorrer erro depois)
+  let jornadas = [];
+  try{
+    const qJ = query(collection(db, "jornadas"), where("re", "==", user.re));
+    const snapJ = await getDocs(qJ);
+    jornadas = snapJ.docs.map(d => ({ id:d.id, ...d.data() }));
+  }catch(e){
+    console.error("Falha ao carregar jornadas:", e);
+    jornadas = [];
+  }
 
   jornadasMes = jornadas.filter(j => {
     const dEnt = toDateAny(j.entrada?.ts);
@@ -340,20 +346,25 @@ async function carregar(){
 
   const last = daysInMonth(ano, mes);
 
-  // ✅ ocorrências do mês (por dia) — docId RE_YYYY-MM-DD
+  // ✅ 2) Ocorrências (NUNCA pode travar o espelho)
   const start = `${ano}-${pad2(mes)}-01`;
   const end   = `${ano}-${pad2(mes)}-${pad2(last)}`;
-  const qO = query(
-    collection(db, "ocorrencias"),
-    where("re", "==", user.re),
-    where("data", ">=", start),
-    where("data", "<=", end)
-  );
-  const snapO = await getDocs(qO);
   mapOcorrencias = {};
-  for (const d of snapO.docs){
-    const o = d.data() || {};
-    if (o.data) mapOcorrencias[o.data] = { id: d.id, ...o };
+  try{
+    const qO = query(
+      collection(db, "ocorrencias"),
+      where("re", "==", user.re),
+      where("data", ">=", start),
+      where("data", "<=", end)
+    );
+    const snapO = await getDocs(qO);
+    for (const d of snapO.docs){
+      const o = d.data() || {};
+      if (o.data) mapOcorrencias[o.data] = { id: d.id, ...o };
+    }
+  }catch(e){
+    console.error("Falha ao carregar ocorrências:", e);
+    mapOcorrencias = {};
   }
 
   // map dia -> jornadas
@@ -457,12 +468,12 @@ function renderTabela(){
   }
 }
 
-// ===== PDF (múltiplas páginas, com ocorrências) =====
+// ===== PDF (múltiplas páginas) =====
 async function exportarPdf(){
   if (!user) return;
 
-  // ✅ garante que PDF usa o mês atual selecionado
-  await carregar();
+  // ✅ tenta recarregar, mas não pode travar o PDF
+  try{ await carregar(); }catch(e){ console.error("Falha ao recarregar antes do PDF:", e); }
 
   const mes = Number(mesSel.value);
   const ano = Number(anoSel.value);
