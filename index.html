@@ -3,36 +3,34 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sistema de Ponto</title>
-
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<title>Registro de Ponto</title>
 
 <style>
 body {
-    font-family: 'Montserrat', Arial;
+    font-family: Arial;
     background: #f0f0f0;
     padding: 20px;
 }
 
 .container {
-    max-width: 600px;
+    max-width: 500px;
     margin: auto;
     background: white;
     padding: 20px;
-    border-radius: 12px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 
 .logo {
+    width: 260px;
     display: block;
     margin: 0 auto 20px;
-    width: 220px;
 }
 
 input, button {
     width: 100%;
     padding: 10px;
-    margin-top: 8px;
+    margin-top: 10px;
 }
 
 button {
@@ -42,236 +40,123 @@ button {
     cursor: pointer;
 }
 
-button:hover {
-    background: #45a049;
-}
-
 canvas {
     width: 100%;
-    margin-top: 10px;
-}
-
-.admin-area {
-    display: none;
-    margin-top: 20px;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 10px;
-}
-
-table th, table td {
     border: 1px solid #ccc;
-    padding: 8px;
-    font-size: 12px;
 }
 
-table th {
-    background: #eee;
-}
-
-.scroll {
-    max-height: 300px;
-    overflow-y: auto;
-}
-
-.logout {
-    background: red;
+#timestamp {
+    text-align: center;
+    margin-top: 10px;
 }
 </style>
-</head>
 
+</head>
 <body>
 
 <div class="container">
 
-<img src="GW.png" class="logo">
+    <img src="GW.png" class="logo">
 
-<h2>Registro de Ponto</h2>
+    <h2>Registro de Ponto</h2>
 
-<form id="punchForm">
-<input type="text" id="fullName" placeholder="Nome" required>
-<input type="text" id="re" placeholder="RE" required>
+    <form id="form">
+        <input id="nome" placeholder="Nome completo" required>
+        <input id="re" placeholder="RE" required>
 
-<canvas id="photo" width="240" height="320"></canvas>
-<button type="button" id="captureBtn">Capturar Foto</button>
+        <canvas id="foto" width="240" height="320"></canvas>
+        <button type="button" id="capturar">Capturar Foto</button>
 
-<button type="submit">Registrar</button>
-</form>
+        <button type="submit">Registrar</button>
+    </form>
 
-<hr>
-
-<h3>Login Admin</h3>
-<input type="text" id="user" placeholder="Usuário">
-<input type="password" id="pass" placeholder="Senha">
-<button id="loginBtn">Entrar</button>
-
-<!-- 🔥 PAINEL -->
-<div class="admin-area" id="adminArea">
-
-<h3>Painel Administrativo</h3>
-
-<button id="loadBtn">🔄 Atualizar Dados</button>
-<button id="exportBtn">📊 Exportar Excel</button>
-<button id="logoutBtn" class="logout">Sair</button>
-
-<div class="scroll">
-<table id="table">
-<thead>
-<tr>
-<th>Nome</th>
-<th>RE</th>
-<th>Data</th>
-<th>Localização</th>
-</tr>
-</thead>
-<tbody></tbody>
-</table>
-</div>
+    <div id="timestamp"></div>
 
 </div>
 
-</div>
+<!-- link escondido -->
+<footer style="text-align:center; margin-top:40px;">
+    <a href="admin.html" style="font-size:10px; color:#ccc;">.</a>
+</footer>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, addDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, addDoc, collection } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// 🔥 CONFIG
+// 🔥 CONFIG (SUA)
 const firebaseConfig = {
-  apiKey: "AIzaSyD--zpWLbLg5X82oGTyz6SuPFQV0sd7NWc",
-  authDomain: "controle-ponto-f539b.firebaseapp.com",
-  projectId: "controle-ponto-f539b",
-  storageBucket: "controle-ponto-f539b.firebasestorage.app",
-  messagingSenderId: "324716100257",
-  appId: "1:324716100257:web:32d49a9ab4916182dd4ee0"
+  apiKey: "SUA_API_KEY",
+  authDomain: "SEU_AUTH_DOMAIN",
+  projectId: "SEU_PROJECT_ID",
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// DOM
-const form = document.getElementById('punchForm');
-const photo = document.getElementById('photo');
-const captureBtn = document.getElementById('captureBtn');
+const form = document.getElementById("form");
+const canvas = document.getElementById("foto");
+const btn = document.getElementById("capturar");
 
-const loginBtn = document.getElementById('loginBtn');
-const adminArea = document.getElementById('adminArea');
-const loadBtn = document.getElementById('loadBtn');
-const exportBtn = document.getElementById('exportBtn');
-const logoutBtn = document.getElementById('logoutBtn');
+let stream;
 
-const tableBody = document.querySelector('#table tbody');
-
-let videoStream;
-
-// 🔐 LOGIN
-loginBtn.addEventListener('click', () => {
-    const user = document.getElementById('user').value;
-    const pass = document.getElementById('pass').value;
-
-    if (user === "gabrielwandele" && pass === "admin") {
-        adminArea.style.display = "block";
-        alert("Logado!");
-    } else {
-        alert("Erro login");
-    }
-});
-
-// LOGOUT
-logoutBtn.onclick = () => adminArea.style.display = "none";
-
-// 🎥 CAMERA
+// câmera
 navigator.mediaDevices.getUserMedia({ video: true })
-.then(stream => videoStream = stream);
+.then(s => stream = s)
+.catch(() => alert("Erro câmera"));
 
-// 📸 FOTO
-captureBtn.onclick = async () => {
-    const track = videoStream.getVideoTracks()[0];
+// capturar
+btn.onclick = async () => {
+
+    if (!stream) return alert("Sem câmera");
+
+    const track = stream.getVideoTracks()[0];
     const imageCapture = new ImageCapture(track);
 
     const bitmap = await imageCapture.grabFrame();
-    photo.getContext('2d').drawImage(bitmap, 0, 0, photo.width, photo.height);
+
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
 };
 
-// 🚀 REGISTRAR
+// relógio
+setInterval(()=>{
+    document.getElementById("timestamp").innerText =
+    new Date().toLocaleString();
+},1000);
+
+// salvar
 form.onsubmit = async (e) => {
+
     e.preventDefault();
 
-    const fullName = fullNameInput.value;
-    const re = reInput.value;
-    const photoData = photo.toDataURL('image/jpeg', 0.4);
+    const nome = document.getElementById("nome").value;
+    const re = document.getElementById("re").value;
 
-    let location = "N/A";
+    const foto = canvas.toDataURL("image/jpeg", 0.5);
+
+    let local = "N/A";
 
     try {
-        const pos = await new Promise((res, rej) => {
+        const pos = await new Promise((res, rej)=>{
             navigator.geolocation.getCurrentPosition(res, rej);
         });
-        location = pos.coords.latitude + ", " + pos.coords.longitude;
+
+        local = pos.coords.latitude + "," + pos.coords.longitude;
     } catch {}
 
     await addDoc(collection(db, "pontos"), {
-        fullName,
+        fullName: nome,
         re,
-        photoBase64: photoData,
+        photo: foto,
         timestamp: new Date().toISOString(),
-        location
+        location: local
     });
 
     alert("Registrado!");
-};
 
-// 🔄 CARREGAR DADOS
-loadBtn.onclick = async () => {
-
-    tableBody.innerHTML = "";
-
-    const querySnapshot = await getDocs(collection(db, "pontos"));
-
-    querySnapshot.forEach(doc => {
-        const d = doc.data();
-
-        const row = `
-        <tr>
-        <td>${d.fullName}</td>
-        <td>${d.re}</td>
-        <td>${new Date(d.timestamp).toLocaleString()}</td>
-        <td>${d.location}</td>
-        </tr>
-        `;
-
-        tableBody.innerHTML += row;
-    });
-};
-
-// 📊 EXPORTAR
-exportBtn.onclick = async () => {
-
-    const querySnapshot = await getDocs(collection(db, "pontos"));
-
-    let dados = [];
-
-    querySnapshot.forEach(doc => {
-        const d = doc.data();
-
-        dados.push({
-            Nome: d.fullName,
-            RE: d.re,
-            Data: new Date(d.timestamp).toLocaleString(),
-            Localizacao: d.location
-        });
-    });
-
-    const ws = XLSX.utils.json_to_sheet(dados);
-    const wb = XLSX.utils.book_new();
-
-    XLSX.utils.book_append_sheet(wb, ws, "Pontos");
-
-    XLSX.writeFile(wb, "pontos.xlsx");
+    form.reset();
+    canvas.getContext("2d").clearRect(0,0,canvas.width,canvas.height);
 };
 
 </script>
