@@ -10,12 +10,12 @@
 <style>
   body { font-family:'Montserrat', Arial, sans-serif; background:#f0f0f0; padding:20px; }
   .container{
-    max-width:500px; margin:auto; background:#fff; padding:20px; border-radius:12px;
+    max-width:520px; margin:auto; background:#fff; padding:20px; border-radius:12px;
     box-shadow:0 2px 10px rgba(0,0,0,0.10);
   }
   .logo{ width:220px; display:block; margin:0 auto 14px; }
   h2{ text-align:center; margin:8px 0 14px; }
-  input, button{
+  input, button, select{
     width:100%; padding:10px; border-radius:8px; border:1px solid #ccc; margin-bottom:10px;
     font-family:inherit;
   }
@@ -25,9 +25,16 @@
   button.secondary:hover{ background:#1a5dd6; }
   canvas{ width:100%; border:1px solid #ccc; border-radius:8px; }
   #timestamp{ text-align:center; margin-top:10px; font-weight:700; }
-  #nomeMostrado{ font-weight:700; text-align:center; margin:8px 0 14px; }
-  .footer{ text-align:center; margin-top:16px; font-size:12px; color:#666; }
+  #nomeMostrado{ font-weight:700; text-align:center; margin:8px 0 6px; }
+  #horarioMostrado{ text-align:center; margin:0 0 10px; font-size:12px; color:#444; }
   .smallInfo{ text-align:center; font-size:12px; color:#666; margin:8px 0 0; }
+  .phaseBox{
+    background:#f7f7f7; border:1px solid #e6e6e6; border-radius:10px;
+    padding:10px; margin:10px 0;
+  }
+  .phaseTitle{ font-weight:700; margin-bottom:6px; text-align:center; }
+  .phaseLine{ font-size:12px; color:#444; text-align:center; }
+  .footer{ text-align:center; margin-top:16px; font-size:12px; color:#666; }
 </style>
 </head>
 
@@ -38,15 +45,25 @@
 
   <input type="text" id="re" placeholder="Digite seu RE" inputmode="numeric" autocomplete="off">
   <div id="nomeMostrado">Nome: —</div>
+  <div id="horarioMostrado">Horário previsto: —</div>
+
+  <div class="phaseBox">
+    <div class="phaseTitle" id="faseAtual">Fase atual: —</div>
+    <div class="phaseLine" id="faseHint">Digite seu RE para carregar suas opções.</div>
+  </div>
+
+  <select id="acaoSelect" disabled>
+    <option value="">Selecione a marcação...</option>
+  </select>
 
   <canvas id="photo" width="240" height="320"></canvas>
   <button type="button" id="captureBtn">Capturar Foto</button>
 
-  <button type="button" id="registrarBtn">Registrar Ponto</button>
+  <button type="button" id="registrarBtn">Registrar</button>
   <button type="button" class="secondary" onclick="window.location.href='meu_ponto.html'">Área do colaborador</button>
 
   <div id="timestamp"></div>
-  <div class="smallInfo">⚠️ Registro só é permitido dentro de um posto cadastrado.</div>
+  <div class="smallInfo">⚠️ Registro só é permitido dentro de um posto cadastrado (raio).</div>
 </div>
 
 <div class="footer">
@@ -74,116 +91,24 @@ const db = getFirestore(app);
 // UI
 const reInput = document.getElementById("re");
 const nomeMostrado = document.getElementById("nomeMostrado");
+const horarioMostrado = document.getElementById("horarioMostrado");
 const registrarBtn = document.getElementById("registrarBtn");
 const captureBtn = document.getElementById("captureBtn");
 const canvas = document.getElementById("photo");
 const ctx = canvas.getContext("2d");
 
+const faseAtualEl = document.getElementById("faseAtual");
+const faseHintEl = document.getElementById("faseHint");
+const acaoSelect = document.getElementById("acaoSelect");
+
 // estado
-let nomeAtual = "";
-let colaboradorAtivo = false;
+let colaborador = null; // {re,nome,ativo,horaEntrada,horaSaida}
 let stream = null;
 let clickLock = false;
 
-// ===== locais (cache) =====
-let cacheLocais = []; // [{nome,lat,lng,raio}]
-
-function haversineMeters(lat1, lon1, lat2, lon2){
-  const R=6371000; const toRad=x=>x*Math.PI/180;
-  const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
-  const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-  return 2*R*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
-
-async function carregarLocaisSafe(){
-  try{
-    const snap = await getDocs(collection(db,"locais"));
-    cacheLocais = snap.docs
-      .map(d => ({ id:d.id, ...d.data() }))
-      .filter(l => Number.isFinite(l.lat) && Number.isFinite(l.lng) && Number.isFinite(l.raio));
-
-    return { ok:true, total: cacheLocais.length };
-  }catch(e){
-    console.error("ERRO ao carregar locais:", e);
-    cacheLocais = [];
-    return { ok:false, error: e };
-  }
-}
-
-// tenta carregar ao abrir (a validação recarrega também)
-carregarLocaisSafe();
-
-// ✅ localização obrigatória + precisa estar dentro de um local cadastrado
-async function getLocationStrict(){
-  // 1) sempre tenta ler locais
-  const resLocais = await carregarLocaisSafe();
-
-  // 2) se falhou ler locais -> BLOQUEIA
-  if (!resLocais.ok){
-    return {
-      ok:false,
-      message:"Não foi possível validar o posto (erro ao ler locais).\nVerifique as regras do Firestore para a coleção 'locais' e tente novamente."
-    };
-  }
-
-  // 3) se não tem local cadastrado -> BLOQUEIA
-  if (!cacheLocais.length){
-    return {
-      ok:false,
-      message:"Nenhum local (posto) está cadastrado no sistema.\nRegistro de ponto BLOQUEADO. Procure o administrador."
-    };
-  }
-
-  // 4) GPS obrigatório
-  let pos;
-  try{
-    pos = await new Promise((res, rej) =>
-      navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy:true, timeout:12000 })
-    );
-  }catch{
-    return { ok:false, message:"Localização é obrigatória.\nAtive o GPS e permita o acesso à localização." };
-  }
-
-  const lat = pos.coords.latitude;
-  const lng = pos.coords.longitude;
-
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)){
-    return { ok:false, message:"Não foi possível obter coordenadas válidas." };
-  }
-
-  // 5) precisa cair dentro do raio de algum posto
-  let best = null;
-  for (const l of cacheLocais){
-    const d = haversineMeters(lat, lng, l.lat, l.lng);
-    if (d <= l.raio){
-      if (!best || d < best.d) best = { nome:l.nome, d };
-    }
-  }
-
-  if (!best){
-    // calcula o posto mais próximo só para informar
-    let nearest = null;
-    for (const l of cacheLocais){
-      const d = haversineMeters(lat, lng, l.lat, l.lng);
-      if (!nearest || d < nearest.d) nearest = { nome:l.nome, d, raio:l.raio };
-    }
-
-    const dTxt = nearest
-      ? `Posto mais próximo: ${nearest.nome}\nDistância aprox.: ${Math.round(nearest.d)}m\nRaio do posto: ${Math.round(nearest.raio)}m`
-      : "";
-
-    return {
-      ok:false,
-      message:`Fora do posto cadastrado.\n${dTxt}\n\nNão é permitido registrar ponto fora do local.`
-    };
-  }
-
-  return { ok:true, locationStr: `${lat},${lng}`, posto: best.nome };
-}
-
 // relógio
 setInterval(() => {
-  document.getElementById("timestamp").innerText = "Data/Hora: " + new Date().toLocaleString();
+  document.getElementById("timestamp").innerText = "Data/Hora: " + new Date().toLocaleString("pt-BR");
 }, 1000);
 
 // câmera
@@ -203,16 +128,108 @@ captureBtn.addEventListener("click", async () => {
   }
 });
 
-// regras
+// ===== locais (cache) =====
+let cacheLocais = []; // [{nome,lat,lng,raio}]
+
+function haversineMeters(lat1, lon1, lat2, lon2){
+  const R=6371000; const toRad=x=>x*Math.PI/180;
+  const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
+  const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return 2*R*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+async function carregarLocaisSafe(){
+  try{
+    const snap = await getDocs(collection(db,"locais"));
+    cacheLocais = snap.docs
+      .map(d => ({ id:d.id, ...d.data() }))
+      .filter(l => Number.isFinite(l.lat) && Number.isFinite(l.lng) && Number.isFinite(l.raio));
+    return { ok:true, total: cacheLocais.length };
+  }catch(e){
+    console.error("ERRO ao carregar locais:", e);
+    cacheLocais = [];
+    return { ok:false, error:e };
+  }
+}
+carregarLocaisSafe();
+
+// localização obrigatória + precisa estar dentro de um local cadastrado
+async function getLocationStrict(){
+  const resLocais = await carregarLocaisSafe();
+  if (!resLocais.ok){
+    return { ok:false, message:"Não foi possível validar o posto (erro ao ler locais). Verifique regras do Firestore." };
+  }
+  if (!cacheLocais.length){
+    return { ok:false, message:"Nenhum local (posto) está cadastrado no sistema. Registro BLOQUEADO. Procure o administrador." };
+  }
+
+  let pos;
+  try{
+    pos = await new Promise((res, rej) =>
+      navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy:true, timeout:12000 })
+    );
+  }catch{
+    return { ok:false, message:"Localização é obrigatória. Ative o GPS e permita o acesso à localização." };
+  }
+
+  const lat = pos.coords.latitude;
+  const lng = pos.coords.longitude;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)){
+    return { ok:false, message:"Não foi possível obter coordenadas válidas." };
+  }
+
+  let best = null;
+  for (const l of cacheLocais){
+    const d = haversineMeters(lat, lng, l.lat, l.lng);
+    if (d <= l.raio){
+      if (!best || d < best.d) best = { nome:l.nome, d };
+    }
+  }
+
+  if (!best){
+    let nearest = null;
+    for (const l of cacheLocais){
+      const d = haversineMeters(lat, lng, l.lat, l.lng);
+      if (!nearest || d < nearest.d) nearest = { nome:l.nome, d, raio:l.raio };
+    }
+    const info = nearest
+      ? `Posto mais próximo: ${nearest.nome}\nDistância aprox.: ${Math.round(nearest.d)}m\nRaio do posto: ${Math.round(nearest.raio)}m`
+      : "";
+    return { ok:false, message:`Fora do posto cadastrado.\n${info}\n\nNão é permitido registrar ponto fora do local.` };
+  }
+
+  return { ok:true, locationStr:`${lat},${lng}`, posto:best.nome };
+}
+
+// ===== regras / etapas =====
 const TEMPO_MINIMO = 5 * 60 * 1000; // 5 min
-const etapas = [
-  { key: "entrada",           label: "ENTRADA",           confirm: "Você está entrando no serviço?" },
-  { key: "saida_intervalo",   label: "SAÍDA INTERVALO",   confirm: "Você está saindo para intervalo?" },
-  { key: "retorno_intervalo", label: "RETORNO INTERVALO", confirm: "Você está retornando do intervalo?" },
-  { key: "saida",             label: "SAÍDA",             confirm: "Você está encerrando o expediente?" },
-  { key: "entrada_he",        label: "ENTRADA HE",        confirm: "Você está iniciando hora extra?" },
-  { key: "saida_he",          label: "SAÍDA HE",          confirm: "Você está finalizando hora extra?" }
-];
+
+const ETAPAS = {
+  ENTRADA: "entrada",
+  SAIDA_INTERVALO: "saida_intervalo",
+  RETORNO_INTERVALO: "retorno_intervalo",
+  SAIDA: "saida",
+  ENTRADA_HE: "entrada_he",
+  SAIDA_HE: "saida_he"
+};
+
+const etapaLabels = {
+  [ETAPAS.ENTRADA]: "ENTRADA",
+  [ETAPAS.SAIDA_INTERVALO]: "INÍCIO INTRAJORNADA",
+  [ETAPAS.RETORNO_INTERVALO]: "FIM INTRAJORNADA",
+  [ETAPAS.SAIDA]: "SAÍDA",
+  [ETAPAS.ENTRADA_HE]: "ENTRADA HE",
+  [ETAPAS.SAIDA_HE]: "SAÍDA HE"
+};
+
+const etapaConfirms = {
+  [ETAPAS.ENTRADA]: "Você está entrando no serviço?",
+  [ETAPAS.SAIDA_INTERVALO]: "Você está iniciando a intrajornada (intervalo)?",
+  [ETAPAS.RETORNO_INTERVALO]: "Você está encerrando a intrajornada (retorno do intervalo)?",
+  [ETAPAS.SAIDA]: "Você está encerrando o expediente?",
+  [ETAPAS.ENTRADA_HE]: "Você está iniciando hora extra?",
+  [ETAPAS.SAIDA_HE]: "Você está encerrando hora extra?"
+};
 
 function toDateAny(ts){
   if (!ts) return null;
@@ -220,62 +237,208 @@ function toDateAny(ts){
   if (ts instanceof Date) return ts;
   return new Date(ts);
 }
-function getNextStepFromJornada(j){
-  for (const e of etapas){
-    if (!j[e.key] || !j[e.key].ts) return e;
-  }
-  return null;
-}
 
 function limparForm(){
   reInput.value = "";
-  nomeAtual = "";
-  colaboradorAtivo = false;
+  colaborador = null;
   nomeMostrado.innerText = "Nome: —";
+  horarioMostrado.innerText = "Horário previsto: —";
+  faseAtualEl.innerText = "Fase atual: —";
+  faseHintEl.innerText = "Digite seu RE para carregar suas opções.";
+  acaoSelect.innerHTML = `<option value="">Selecione a marcação...</option>`;
+  acaoSelect.disabled = true;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
-// buscar colaborador
+function horarioTxt(c){
+  const he = (c?.horaEntrada || "").trim();
+  const hs = (c?.horaSaida || "").trim();
+  if (he && hs) return `${he}–${hs}`;
+  if (he || hs) return `${he || "—"}–${hs || "—"}`;
+  return "—";
+}
+
 async function buscarColaborador(re){
   const ref = doc(db, "colaboradores", re);
   const snap = await getDoc(ref);
-  if (!snap.exists()) return { nome:"", ativo:false };
-
+  if (!snap.exists()) return null;
   const data = snap.data() || {};
-  const nome = (data.nome || "").trim();
-  const ativo = (data.ativo !== false);
-  return { nome, ativo };
+  return {
+    re,
+    nome: (data.nome || "").trim(),
+    ativo: (data.ativo !== false),
+    horaEntrada: (data.horaEntrada || "").toString().trim(),
+    horaSaida: (data.horaSaida || "").toString().trim()
+  };
 }
 
-async function atualizarNomeNaTela(){
+function pickLastTs(j){
+  return (
+    toDateAny(j?.saida_he?.ts) ||
+    toDateAny(j?.entrada_he?.ts) ||
+    toDateAny(j?.saida?.ts) ||
+    toDateAny(j?.retorno_intervalo?.ts) ||
+    toDateAny(j?.saida_intervalo?.ts) ||
+    toDateAny(j?.entrada?.ts)
+  );
+}
+
+// define estado e ações permitidas
+function getEstadoEAcaoPermitida(j){
+  // sem jornada: só ENTRADA
+  if (!j) {
+    return {
+      fase: "Sem jornada aberta",
+      hint: "Você pode registrar: ENTRADA",
+      acoes: [ETAPAS.ENTRADA]
+    };
+  }
+
+  const temEntrada = !!j?.entrada?.ts;
+  const temSaiInt = !!j?.saida_intervalo?.ts;
+  const temRetInt = !!j?.retorno_intervalo?.ts;
+  const temSaida = !!j?.saida?.ts;
+  const temEntHe = !!j?.entrada_he?.ts;
+  const temSaiHe = !!j?.saida_he?.ts;
+
+  // 1) precisa ter entrada
+  if (!temEntrada){
+    return { fase:"Jornada inválida", hint:"Falta ENTRADA. Procure o admin.", acoes:[ETAPAS.ENTRADA] };
+  }
+
+  // 2) ainda dentro do expediente (sem saída final)
+  if (!temSaida){
+    if (!temSaiInt && !temRetInt){
+      // intrajornada opcional: pode iniciar intrajornada OU encerrar direto
+      return {
+        fase: "Após ENTRADA",
+        hint: "Escolha: iniciar intrajornada (intervalo) OU encerrar (SAÍDA).",
+        acoes: [ETAPAS.SAIDA_INTERVALO, ETAPAS.SAIDA]
+      };
+    }
+    if (temSaiInt && !temRetInt){
+      return {
+        fase: "Intrajornada em andamento",
+        hint: "Você só pode registrar: FIM INTRAJORNADA (retorno).",
+        acoes: [ETAPAS.RETORNO_INTERVALO]
+      };
+    }
+    if (temRetInt){
+      return {
+        fase: "Após intrajornada",
+        hint: "Você pode registrar: SAÍDA.",
+        acoes: [ETAPAS.SAIDA]
+      };
+    }
+    // qualquer outro caso estranho
+    return { fase:"Estado incomum", hint:"Procure o admin.", acoes:[] };
+  }
+
+  // 3) saída registrada: não pode voltar intrajornada, só HE opcional ou nova entrada
+  if (temSaida && !temEntHe && !temSaiHe){
+    return {
+      fase: "Expediente encerrado",
+      hint: "Opcional: iniciar HORA EXTRA (ENTRADA HE) ou iniciar uma nova ENTRADA (nova jornada).",
+      acoes: [ETAPAS.ENTRADA_HE, ETAPAS.ENTRADA]
+    };
+  }
+
+  if (temEntHe && !temSaiHe){
+    return {
+      fase: "Hora extra em andamento",
+      hint: "Você só pode registrar: SAÍDA HE.",
+      acoes: [ETAPAS.SAIDA_HE]
+    };
+  }
+
+  if (temSaiHe){
+    return {
+      fase: "Jornada finalizada",
+      hint: "Você pode iniciar uma nova ENTRADA (nova jornada).",
+      acoes: [ETAPAS.ENTRADA]
+    };
+  }
+
+  return { fase:"Estado incomum", hint:"Procure o admin.", acoes:[] };
+}
+
+function montarSelectAcoes(acoes){
+  acaoSelect.innerHTML = `<option value="">Selecione a marcação...</option>`;
+  for (const a of acoes){
+    const opt = document.createElement("option");
+    opt.value = a;
+    opt.textContent = etapaLabels[a] || a;
+    acaoSelect.appendChild(opt);
+  }
+  acaoSelect.disabled = acoes.length === 0;
+}
+
+async function obterJornadaAtivaDoRe(re){
+  // pega todas jornadas do RE e escolhe a última que NÃO está completa (ou a mais recente)
+  const q = query(collection(db, "jornadas"), where("re", "==", re));
+  const snap = await getDocs(q);
+  const jornadas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+
+  jornadas.sort((a,b) => {
+    const ta = toDateAny(a.updatedAt) || toDateAny(a.entrada?.ts) || new Date(0);
+    const tb = toDateAny(b.updatedAt) || toDateAny(b.entrada?.ts) || new Date(0);
+    return tb - ta;
+  });
+
+  // considera ativa: aquela que ainda não tem saida_he se entrada_he existe, ou que não tem saida.
+  for (const j of jornadas){
+    const temSaida = !!j?.saida?.ts;
+    const temEntHe = !!j?.entrada_he?.ts;
+    const temSaiHe = !!j?.saida_he?.ts;
+
+    // jornada em andamento (sem saida) OU está na HE (entrada_he sem saida_he)
+    if (!temSaida) return j;
+    if (temEntHe && !temSaiHe) return j;
+
+    // se só tem saida e você permite entrada_he depois, ainda é "meio aberta"
+    if (temSaida && !temEntHe && !temSaiHe) return j;
+  }
+
+  return null;
+}
+
+async function atualizarTela(){
   const re = reInput.value.trim();
-  nomeAtual = "";
-  colaboradorAtivo = false;
+  colaborador = null;
   nomeMostrado.innerText = "Nome: —";
+  horarioMostrado.innerText = "Horário previsto: —";
+  faseAtualEl.innerText = "Fase atual: —";
+  faseHintEl.innerText = "Digite seu RE para carregar suas opções.";
+  montarSelectAcoes([]);
   if (!re) return;
 
-  const res = await buscarColaborador(re);
-
-  if (!res.nome){
+  const c = await buscarColaborador(re);
+  if (!c || !c.nome){
     nomeMostrado.innerText = "Nome: (RE não cadastrado)";
     return;
   }
-
-  if (!res.ativo){
-    nomeMostrado.innerText = "Nome: " + res.nome + " (INATIVO)";
+  if (!c.ativo){
+    nomeMostrado.innerText = `Nome: ${c.nome} (INATIVO)`;
     return;
   }
 
-  nomeAtual = res.nome;
-  colaboradorAtivo = true;
-  nomeMostrado.innerText = "Nome: " + nomeAtual;
+  colaborador = c;
+  nomeMostrado.innerText = "Nome: " + c.nome;
+  horarioMostrado.innerText = "Horário previsto: " + horarioTxt(c);
+
+  const jornada = await obterJornadaAtivaDoRe(re);
+  const st = getEstadoEAcaoPermitida(jornada);
+
+  faseAtualEl.innerText = "Fase atual: " + st.fase;
+  faseHintEl.innerText = st.hint;
+  montarSelectAcoes(st.acoes);
 }
 
-reInput.addEventListener("blur", atualizarNomeNaTela);
+reInput.addEventListener("blur", atualizarTela);
 reInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter"){
     e.preventDefault();
-    atualizarNomeNaTela();
+    atualizarTela();
   }
 });
 
@@ -288,94 +451,94 @@ registrarBtn.addEventListener("click", async () => {
   const re = reInput.value.trim();
   if (!re) return alert("Digite o RE.");
 
-  if (!nomeAtual || !colaboradorAtivo){
-    await atualizarNomeNaTela();
-    if (!nomeAtual || !colaboradorAtivo){
-      return alert("Colaborador não cadastrado ou INATIVO. Procure o administrador.");
-    }
+  if (!colaborador){
+    await atualizarTela();
+    if (!colaborador) return alert("Colaborador não cadastrado ou INATIVO.");
   }
 
-  // foto
-  const foto = canvas.toDataURL("image/jpeg", 0.4);
+  const acao = acaoSelect.value;
+  if (!acao) return alert("Selecione qual marcação deseja registrar.");
 
-  // ✅ BLOQUEIO REAL: sem local válido não registra
+  // localização + posto obrigatório
   const loc = await getLocationStrict();
   if (!loc.ok) return alert(loc.message);
   const location = loc.locationStr;
 
-  // buscar jornadas do RE
-  const q = query(collection(db, "jornadas"), where("re", "==", re));
-  const snap = await getDocs(q);
-  let jornadas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  // foto
+  const foto = canvas.toDataURL("image/jpeg", 0.4);
 
-  // mais recente primeiro
-  jornadas.sort((a,b) => {
-    const ta = toDateAny(a.updatedAt) || toDateAny(a.entrada?.ts) || new Date(0);
-    const tb = toDateAny(b.updatedAt) || toDateAny(b.entrada?.ts) || new Date(0);
-    return tb - ta;
-  });
-
-  // jornada ativa = primeira incompleta
-  let jornadaAtiva = null;
-  for (const j of jornadas){
-    if (getNextStepFromJornada(j)) { jornadaAtiva = j; break; }
+  // pega jornada ativa e recalcula ações permitidas (pra não burlar)
+  const jornadaAtiva = await obterJornadaAtivaDoRe(re);
+  const st = getEstadoEAcaoPermitida(jornadaAtiva);
+  if (!st.acoes.includes(acao)){
+    await atualizarTela();
+    return alert("Ação não permitida na fase atual. Atualizei sua fase; selecione novamente.");
   }
 
+  // confirmação
+  const msg = etapaConfirms[acao] || "Confirmar registro?";
+  if (!confirm(msg)) return;
+
+  // anti duplicidade (último registro)
   const now = new Date();
+  const lastTs = pickLastTs(jornadaAtiva);
+  if (lastTs && (now - lastTs) < TEMPO_MINIMO){
+    return alert("Registro duplicado detectado. Aguarde 5 minutos para registrar novamente.");
+  }
 
-  // se não tem jornada ativa: cria nova com ENTRADA
-  if (!jornadaAtiva){
-    const etapa = etapas[0];
-    if (!confirm(etapa.confirm)) return;
-
+  // ação = ENTRADA cria jornada nova (sempre)
+  if (acao === ETAPAS.ENTRADA){
     await addDoc(collection(db, "jornadas"), {
       re,
-      nome: nomeAtual,
+      nome: colaborador.nome,
       status: "aberta",
       entrada: { ts: now.toISOString(), foto, location },
       updatedAt: now.toISOString()
     });
-
     alert("ENTRADA registrada com sucesso!");
     limparForm();
     return;
   }
 
-  // próxima etapa
-  const etapa = getNextStepFromJornada(jornadaAtiva);
-  if (!etapa){
-    alert("Jornada já completa. Inicie uma nova ENTRADA.");
-    limparForm();
-    return;
+  // demais ações precisam ter jornada
+  if (!jornadaAtiva || !jornadaAtiva.id){
+    await atualizarTela();
+    return alert("Não foi encontrada jornada ativa. Tente novamente.");
   }
 
-  if (!confirm(etapa.confirm)) return;
-
-  // anti duplicidade (último ponto)
-  const lastTs =
-    toDateAny(jornadaAtiva.saida_he?.ts) ||
-    toDateAny(jornadaAtiva.entrada_he?.ts) ||
-    toDateAny(jornadaAtiva.saida?.ts) ||
-    toDateAny(jornadaAtiva.retorno_intervalo?.ts) ||
-    toDateAny(jornadaAtiva.saida_intervalo?.ts) ||
-    toDateAny(jornadaAtiva.entrada?.ts);
-
-  if (lastTs && (now - lastTs) < TEMPO_MINIMO){
-    return alert("Registro duplicado detectado. Aguarde 5 minutos para registrar novamente.");
-  }
-
-  // merge da jornada
   const ref = doc(db, "jornadas", jornadaAtiva.id);
-  const payload = { ...jornadaAtiva };
+  const payload = {};
 
-  payload[etapa.key] = { ts: now.toISOString(), foto, location };
+  payload[acao] = { ts: now.toISOString(), foto, location };
   payload.updatedAt = now.toISOString();
 
-  if (!getNextStepFromJornada(payload)) payload.status = "fechada";
+  // regras de status e flags
+  const temEntrada = !!jornadaAtiva?.entrada?.ts;
+  const temSaiInt = !!jornadaAtiva?.saida_intervalo?.ts;
+  const temRetInt = !!jornadaAtiva?.retorno_intervalo?.ts;
 
-  await setDoc(ref, payload, { merge: true });
+  // se registrar SAÍDA sem ter feito intrajornada: marca flag
+  if (acao === ETAPAS.SAIDA && temEntrada && !temSaiInt && !temRetInt){
+    payload.flags = { ...(jornadaAtiva.flags || {}) };
+    payload.flags.intrajornada_nao_realizada = true;
+    payload.flags.intrajornada_registrado_em = now.toISOString();
+  }
 
-  alert(etapa.label + " registrada com sucesso!");
+  // status
+  // - se SAÍDA registrada: pode ficar "fechada" (mas ainda aceita HE como opção, pelo estado)
+  if (acao === ETAPAS.SAIDA){
+    payload.status = "fechada";
+  }
+  if (acao === ETAPAS.ENTRADA_HE){
+    payload.status = "he_aberta";
+  }
+  if (acao === ETAPAS.SAIDA_HE){
+    payload.status = "fechada";
+  }
+
+  await setDoc(ref, payload, { merge:true });
+
+  alert((etapaLabels[acao] || acao) + " registrada com sucesso!");
   limparForm();
 });
 </script>
