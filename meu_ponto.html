@@ -85,8 +85,8 @@
           <th>Data</th>
           <th>Dia</th>
           <th>Entrada</th>
-          <th>Saída Intervalo</th>
-          <th>Retorno</th>
+          <th>Início Intraj.</th>
+          <th>Fim Intraj.</th>
           <th>Saída</th>
           <th>Entrada HE</th>
           <th>Saída HE</th>
@@ -142,7 +142,7 @@ document.getElementById("btnVoltar1").onclick = voltar;
 document.getElementById("btnVoltar2").onclick = voltar;
 
 // estado
-let user = null;                // {re,nome,cpf,escala}
+let user = null;                // {re,nome,cpf,escala,horaEntrada,horaSaida}
 let cacheLocais = [];
 let jornadasMes = [];
 let linhasMes = [];
@@ -161,6 +161,10 @@ function ymd(d){
   if (!d || isNaN(d)) return "";
   return d.toISOString().slice(0,10);
 }
+function brDate(d){
+  if (!d || isNaN(d)) return "";
+  return d.toLocaleDateString("pt-BR");
+}
 function hm(d){
   if (!d || isNaN(d)) return "";
   return d.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"});
@@ -171,6 +175,13 @@ function weekday(d){
 }
 function daysInMonth(year, month1to12){
   return new Date(year, month1to12, 0).getDate();
+}
+function horarioTxt(c){
+  const he = (c?.horaEntrada||"").trim();
+  const hs = (c?.horaSaida||"").trim();
+  if (he && hs) return `${he}–${hs}`;
+  if (he || hs) return `${he||"—"}–${hs||"—"}`;
+  return "—";
 }
 
 // escala
@@ -225,7 +236,7 @@ async function carregarLocais(){
     .filter(l => Number.isFinite(l.lat) && Number.isFinite(l.lng) && Number.isFinite(l.raio));
 }
 
-// ocorrências por DocId
+// ocorrências
 function ocDocId(re, ymd){ return `${re}_${ymd}`; }
 async function carregarOcorrenciasMesPorDocId(re, ano, mes, last){
   const map = {};
@@ -243,7 +254,6 @@ async function carregarOcorrenciasMesPorDocId(re, ano, mes, last){
   }
   return map;
 }
-
 function labelOc(o){
   if (!o || !o.tipo) return "";
   const t = (o.tipo || "").toString().toLowerCase();
@@ -294,6 +304,8 @@ async function entrar(){
   const cpf  = (data.cpf  || "").toString().trim();
   const ativo = (data.ativo !== false);
   const escala = (data.escala || "5x2");
+  const horaEntrada = (data.horaEntrada || "").toString().trim();
+  const horaSaida = (data.horaSaida || "").toString().trim();
 
   if (!ativo) return alert("Seu cadastro está INATIVO. Procure o administrador.");
   if (!cpf || cpf.replace(/\D/g,"").length < 4) return alert("CPF não cadastrado corretamente. Procure o administrador.");
@@ -301,11 +313,11 @@ async function entrar(){
   const senhaCorreta = cpf.replace(/\D/g,"").slice(0,4);
   if (senha !== senhaCorreta) return alert("Senha incorreta.");
 
-  user = { re, nome, cpf, escala };
+  user = { re, nome, cpf, escala, horaEntrada, horaSaida };
 
   await carregarLocais();
 
-  infoUser.textContent = `${user.nome} — RE ${user.re} — Escala ${user.escala}`;
+  infoUser.textContent = `${user.nome} — RE ${user.re} — Escala ${user.escala} — Horário ${horarioTxt(user)}`;
   loginBox.style.display = "none";
   conteudo.style.display = "block";
 
@@ -318,7 +330,7 @@ async function carregar(){
   const mes = Number(mesSel.value);
   const ano = Number(anoSel.value);
 
-  // 1) jornadas
+  // jornadas
   let jornadas = [];
   try{
     const qJ = query(collection(db, "jornadas"), where("re", "==", user.re));
@@ -337,7 +349,7 @@ async function carregar(){
 
   const last = daysInMonth(ano, mes);
 
-  // 2) ocorrências (por docId)
+  // ocorrências
   mapOcorrencias = await carregarOcorrenciasMesPorDocId(user.re, ano, mes, last);
 
   // map dia -> jornadas
@@ -364,10 +376,11 @@ function obsJornada(j){
   const dSai = toDateAny(j.saida?.ts);
   let obs = [];
 
+  if (j?.flags?.intrajornada_nao_realizada) obs.push("Intrajornada não realizada");
   if (dEnt && dSai && ymd(dEnt) !== ymd(dSai)) obs.push("Virou o dia");
   if (!j.saida?.ts) obs.push("Sem saída");
   if ((j.saida_intervalo?.ts && !j.retorno_intervalo?.ts) || (!j.saida_intervalo?.ts && j.retorno_intervalo?.ts)) {
-    obs.push("Intervalo incompleto");
+    obs.push("Intrajornada incompleta");
   }
   const posto = reconhecerLocal(getBestLocationFromJornada(j));
   if (posto === "Não reconhecido") obs.push("Fora do posto");
@@ -389,11 +402,9 @@ function renderTabela(){
 
     let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="-", obs="";
 
-    // ✅ prioridade absoluta: ocorrência manda
     if (oc){
       obs = labelOc(oc) + (oc.motivo ? ` | ${oc.motivo}` : "");
       if (ehFolga) obs += " (dia de folga)";
-      // horários ficam em branco por prioridade
     } else if (j1){
       const dEnt = toDateAny(j1.entrada?.ts);
       const dSai = toDateAny(j1.saida?.ts);
@@ -411,14 +422,13 @@ function renderTabela(){
         obs = (obs ? (obs + " | ") : "") + `2+ jornadas no dia (${linha.jornadas.length})`;
       }
     } else {
-      posto = "-";
       if (ehFolga) obs = "FOLGA (escala)";
       else obs = "FALTA";
     }
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${String(linha.dia).padStart(2,"0")}/${String(mes).padStart(2,"0")}/${ano}</td>
+      <td>${brDate(linha.dateObj)}</td>
       <td class="${(j1 || ehFolga || oc) ? "" : "muted"}">${weekday(linha.dateObj)}</td>
       <td>${entrada}</td>
       <td>${saiInt}</td>
@@ -497,6 +507,7 @@ async function exportarPdf(){
     docPdf.text(`Nome: ${user.nome}`, marginX, y); y += 12;
     docPdf.text(`RE: ${user.re}`, marginX, y); y += 12;
     docPdf.text(`Escala: ${user.escala}`, marginX, y); y += 12;
+    docPdf.text(`Horário: ${horarioTxt(user)}`, marginX, y); y += 12;
     docPdf.text(`Competência: ${mesTxt}/${ano}`, marginX, y); y += 12;
   }
   function drawFooter(){
@@ -504,7 +515,7 @@ async function exportarPdf(){
     docPdf.text("Sistema desenvolvido por Gabriel Wandele, todos direitos reservados", marginX, pageH - 10);
   }
 
-  const head = [[ "Data","Dia","Ent","Sai Int","Ret","Sai","HE Ent","HE Sai","Posto","Obs" ]];
+  const head = [[ "Data","Dia","Ent","Ini Intraj","Fim Intraj","Sai","HE Ent","HE Sai","Posto","Obs" ]];
 
   const body = linhasMes.map(linha => {
     const dataKey = `${ano}-${pad2(mes)}-${pad2(linha.dia)}`;
@@ -535,7 +546,7 @@ async function exportarPdf(){
     }
 
     return [
-      `${String(linha.dia).padStart(2,"0")}/${String(mes).padStart(2,"0")}/${ano}`,
+      brDate(linha.dateObj),
       weekday(linha.dateObj),
       entrada, saiInt, retInt, saida, entHe, saiHe,
       posto, obs
@@ -551,11 +562,11 @@ async function exportarPdf(){
     styles: { fontSize: 8, cellPadding: 3, overflow:"linebreak", valign:"middle", halign:"center" },
     headStyles: { fillColor: [240,240,240], textColor: [0,0,0] },
     columnStyles: {
-      0: { cellWidth: 70 },
+      0: { cellWidth: 72 },
       1: { cellWidth: 38 },
       2: { cellWidth: 38 },
-      3: { cellWidth: 48 },
-      4: { cellWidth: 38 },
+      3: { cellWidth: 52 },
+      4: { cellWidth: 52 },
       5: { cellWidth: 44 },
       6: { cellWidth: 44 },
       7: { cellWidth: 44 },
