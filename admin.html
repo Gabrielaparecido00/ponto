@@ -5,35 +5,100 @@
 <title>Painel Admin</title>
 
 <style>
-body { font-family: Arial; background:#f5f5f5; text-align:center; }
-
-.container {
-    background:white;
-    padding:20px;
-    margin:20px auto;
-    max-width:1000px;
-    border-radius:10px;
+body {
+    font-family: Arial;
+    background: #f5f5f5;
+    text-align: center;
 }
 
-.logo { width:280px; }
+.container {
+    background: white;
+    padding: 20px;
+    margin: 20px auto;
+    max-width: 1000px;
+    border-radius: 10px;
+}
+
+.logo {
+    width: 260px;
+    margin-bottom: 20px;
+}
+
+input, button {
+    padding: 10px;
+    margin: 5px;
+}
+
+button {
+    cursor: pointer;
+}
 
 table {
-    width:100%;
+    width: 100%;
     border-collapse: collapse;
-    margin-top:20px;
+    margin-top: 20px;
 }
 
 th, td {
-    border:1px solid #ccc;
-    padding:8px;
+    border: 1px solid #ccc;
+    padding: 8px;
 }
 </style>
+
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginDiv" class="container">
+    <img src="GW.png" class="logo">
+    <h2>Login Admin</h2>
+
+    <input id="email" placeholder="Email"><br>
+    <input id="senha" type="password" placeholder="Senha"><br>
+
+    <button onclick="login()">Entrar</button>
+</div>
+
+<!-- PAINEL -->
+<div id="painelDiv" class="container" style="display:none;">
+
+    <img src="GW.png" class="logo">
+
+    <h2>Painel de Ponto</h2>
+
+    <label>De:</label>
+    <input type="date" id="inicio">
+
+    <label>Até:</label>
+    <input type="date" id="fim">
+
+    <br>
+
+    <button onclick="buscar()">Buscar</button>
+    <button onclick="exportar()">Exportar Excel</button>
+    <button onclick="logout()">Sair</button>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>RE</th>
+                <th>Entrada</th>
+                <th>Saída Intervalo</th>
+                <th>Retorno</th>
+                <th>Saída Final</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+</div>
 
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 // 🔥 SUA CONFIG
 const firebaseConfig = {
@@ -50,35 +115,50 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-// login
-window.login = async () => {
+const loginDiv = document.getElementById("loginDiv");
+const painelDiv = document.getElementById("painelDiv");
+
+// 🔐 LOGIN
+window.login = async function() {
+
     const email = document.getElementById("email").value;
     const senha = document.getElementById("senha").value;
 
     try {
         await signInWithEmailAndPassword(auth, email, senha);
-    } catch {
-        alert("Erro login");
+    } catch (err) {
+        alert("Erro no login");
+        console.error(err);
     }
 };
 
-// logout
-window.logout = () => signOut(auth);
+// 🔐 LOGOUT
+window.logout = function() {
+    signOut(auth);
+};
 
-// proteção
+// 🔐 PROTEÇÃO
 onAuthStateChanged(auth, user => {
-    document.getElementById("login").style.display = user ? "none" : "block";
-    document.getElementById("painel").style.display = user ? "block" : "none";
+
+    if (user) {
+        loginDiv.style.display = "none";
+        painelDiv.style.display = "block";
+    } else {
+        loginDiv.style.display = "block";
+        painelDiv.style.display = "none";
+    }
 });
 
-// buscar dados
-window.buscar = async () => {
+// 🔍 BUSCAR DADOS
+window.buscar = async function() {
 
-    const snap = await getDocs(collection(db, "pontos"));
-    console.log("TOTAL DOCUMENTOS:", snap.size);
-    
-    const ini = new Date(document.getElementById("inicio").value);
-    const fim = new Date(document.getElementById("fim").value);
+    let ini = document.getElementById("inicio").value;
+    let fim = document.getElementById("fim").value;
+
+    ini = ini ? new Date(ini) : new Date("2000-01-01");
+    fim = fim ? new Date(fim) : new Date();
+
+    fim.setHours(23,59,59,999);
 
     const snap = await getDocs(collection(db, "pontos"));
 
@@ -86,16 +166,23 @@ window.buscar = async () => {
 
     snap.forEach(doc => {
         const d = doc.data();
+
+        if (!d.timestamp) return;
+
         const t = new Date(d.timestamp);
 
-        if (t >= ini && t <= fim) dados.push(d);
+        if (t >= ini && t <= fim) {
+            dados.push(d);
+        }
     });
 
-    montar(dados);
+    console.log("dados encontrados:", dados);
+
+    montarTabela(dados);
 };
 
-// montar tabela
-function montar(dados){
+// 📊 ORGANIZAR REGISTROS
+function montarTabela(dados) {
 
     const tbody = document.querySelector("tbody");
     tbody.innerHTML = "";
@@ -103,44 +190,57 @@ function montar(dados){
     const grupos = {};
 
     dados.forEach(d => {
-        const key = d.re + d.fullName;
-        if(!grupos[key]) grupos[key] = [];
-        grupos[key].push(d);
+
+        const chave = d.re + "_" + new Date(d.timestamp).toLocaleDateString();
+
+        if (!grupos[chave]) grupos[chave] = [];
+
+        grupos[chave].push(d);
     });
 
-    for(const k in grupos){
+    for (const chave in grupos) {
 
-        const r = grupos[k].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+        const registros = grupos[chave]
+            .sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
 
-        const tr = `
-        <tr>
-            <td>${r[0]?.fullName||""}</td>
-            <td>${r[0]?.re||""}</td>
-            <td>${f(r[0])}</td>
-            <td>${f(r[1])}</td>
-            <td>${f(r[2])}</td>
-            <td>${f(r[3])}</td>
-        </tr>`;
+        const linha = document.createElement("tr");
 
-        tbody.innerHTML += tr;
+        linha.innerHTML = `
+            <td>${registros[0]?.fullName || ""}</td>
+            <td>${registros[0]?.re || ""}</td>
+            <td>${formatar(registros[0])}</td>
+            <td>${formatar(registros[1])}</td>
+            <td>${formatar(registros[2])}</td>
+            <td>${formatar(registros[3])}</td>
+        `;
+
+        tbody.appendChild(linha);
     }
 }
 
-function f(d){
-    return d ? new Date(d.timestamp).toLocaleString() : "";
+// ⏰ FORMATAR DATA
+function formatar(dado) {
+    if (!dado) return "";
+    return new Date(dado.timestamp).toLocaleString();
 }
 
-// exportar CSV
-window.exportar = () => {
+// 📥 EXPORTAR CSV
+window.exportar = function() {
 
     let csv = "Nome,RE,Entrada,Saida Intervalo,Retorno,Saida Final\n";
 
     document.querySelectorAll("tbody tr").forEach(tr => {
-        const tds = tr.querySelectorAll("td");
-        csv += Array.from(tds).map(td=>td.innerText).join(",")+"\n";
+
+        const cols = tr.querySelectorAll("td");
+
+        const linha = Array.from(cols)
+            .map(td => `"${td.innerText}"`)
+            .join(",");
+
+        csv += linha + "\n";
     });
 
-    const blob = new Blob([csv]);
+    const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
 
     const a = document.createElement("a");
@@ -150,46 +250,6 @@ window.exportar = () => {
 };
 
 </script>
-
-</head>
-
-<body>
-
-<div id="login" class="container">
-    <img src="GW.png" class="logo">
-    <h2>Login Admin</h2>
-    <input id="email" placeholder="Email"><br>
-    <input id="senha" type="password" placeholder="Senha"><br>
-    <button onclick="login()">Entrar</button>
-</div>
-
-<div id="painel" class="container" style="display:none;">
-    <img src="GW.png" class="logo">
-    <h2>Painel</h2>
-
-    <input type="date" id="inicio">
-    <input type="date" id="fim">
-
-    <br><br>
-
-    <button onclick="buscar()">Buscar</button>
-    <button onclick="exportar()">Exportar CSV</button>
-    <button onclick="logout()">Sair</button>
-
-    <table>
-        <thead>
-            <tr>
-                <th>Nome</th>
-                <th>RE</th>
-                <th>Entrada</th>
-                <th>Saída Intervalo</th>
-                <th>Retorno</th>
-                <th>Saída Final</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-</div>
 
 </body>
 </html>
