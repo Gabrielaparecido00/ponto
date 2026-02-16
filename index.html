@@ -18,13 +18,20 @@
             max-width: 500px;
             margin: auto;
             background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .logo {
+            display: block;
+            margin: 0 auto 15px;
+            width: 120px;
         }
 
         h2 {
             text-align: center;
+            margin-bottom: 20px;
         }
 
         .form-group {
@@ -36,6 +43,7 @@
             padding: 10px;
             border-radius: 6px;
             border: 1px solid #ccc;
+            font-size: 14px;
         }
 
         button {
@@ -53,18 +61,24 @@
             width: 100%;
             border: 1px solid #ccc;
             border-radius: 6px;
+            margin-bottom: 10px;
         }
 
         #timestamp {
             text-align: center;
             margin-top: 15px;
             font-weight: bold;
+            color: #333;
         }
     </style>
 </head>
 <body>
 
 <div class="container">
+
+    <!-- 🔥 LOGO -->
+    <img src="GW.png" alt="Logo" class="logo">
+
     <h2>Registro de Ponto</h2>
 
     <form id="punchForm">
@@ -90,21 +104,19 @@
     <div id="timestamp"></div>
 </div>
 
-<!-- SCRIPT FIREBASE -->
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, addDoc, collection } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// 🔥 SUA CONFIG
+// 🔥 CONFIG FIREBASE
 const firebaseConfig = {
-  apiKey: "AIzaSyD--zpWLbLg5X82oGTyz6SuPFQV0sd7NWc",
-  authDomain: "controle-ponto-f539b.firebaseapp.com",
-  projectId: "controle-ponto-f539b",
-  storageBucket: "controle-ponto-f539b.firebasestorage.app",
-  messagingSenderId: "324716100257",
-  appId: "1:324716100257:web:32d49a9ab4916182dd4ee0",
-  measurementId: "G-P81H3C4SFK"
+  apiKey: "SUA_API_KEY",
+  authDomain: "SEU_PROJETO.firebaseapp.com",
+  projectId: "SEU_PROJETO",
+  storageBucket: "SEU_PROJETO.appspot.com",
+  messagingSenderId: "XXXX",
+  appId: "XXXX"
 };
 
 // Inicializa Firebase
@@ -171,7 +183,6 @@ form.addEventListener('submit', async (e) => {
         const fullName = document.getElementById('fullName').value;
         const re = document.getElementById('re').value;
 
-        // 📸 IMAGEM COMPRIMIDA
         const photoData = photo.toDataURL('image/jpeg', 0.4);
 
         if (!fullName || !re) {
@@ -180,7 +191,6 @@ form.addEventListener('submit', async (e) => {
             return;
         }
 
-        // 📍 LOCALIZAÇÃO
         let location = "Não disponível";
 
         try {
@@ -191,7 +201,6 @@ form.addEventListener('submit', async (e) => {
             location = pos.coords.latitude + ", " + pos.coords.longitude;
         } catch {}
 
-        // 🔥 SALVAR NO FIRESTORE
         await addDoc(collection(db, "pontos"), {
             fullName,
             re,
