@@ -30,6 +30,7 @@
   th,td{ border:1px solid #ddd; padding:8px; text-align:center; }
   th{ background:#fafafa; }
   .footer{ text-align:center; margin-top:14px; font-size:12px; color:#666; }
+  .muted{ color:#999; }
 </style>
 </head>
 
@@ -74,12 +75,14 @@
       <button class="secondary" onclick="voltar()">Voltar ao Registro</button>
     </div>
 
-    <div class="small" id="hintMes">Mostrando jornadas pelo dia da ENTRADA.</div>
+    <div class="small" id="hintMes">
+      A jornada pertence ao dia da <b>ENTRADA</b>. Se virar o dia, a saída aparece com <b>(+1)</b>.
+    </div>
 
     <table>
       <thead>
         <tr>
-          <th>Data (Entrada)</th>
+          <th>Data</th>
           <th>Dia</th>
           <th>Entrada</th>
           <th>Saída Intervalo</th>
@@ -135,8 +138,9 @@ const btnCarregar = document.getElementById("btnCarregar");
 const btnPdf = document.getElementById("btnPdf");
 
 let user = null;          // {re,nome,cpf}
-let jornadasMes = [];     // jornadas filtradas
 let cacheLocais = [];     // [{nome,lat,lng,raio}]
+let jornadasMes = [];     // jornadas do mês (somente as que entrada está no mês)
+let linhasMes = [];       // linhas 01..ultimoDia com dados ou vazias
 
 function voltar(){ window.location.href = "index.html"; }
 window.voltar = voltar;
@@ -159,6 +163,9 @@ function hm(d){
 function weekday(d){
   if (!d || isNaN(d)) return "";
   return d.toLocaleDateString("pt-BR", { weekday:"short" });
+}
+function daysInMonth(year, month1to12){
+  return new Date(year, month1to12, 0).getDate(); // mês 1..12
 }
 
 // Distância (Haversine) p/ reconhecer local
@@ -230,7 +237,6 @@ async function entrar(){
   const senha = senhaEl.value.trim();
   if (!re || !senha) return alert("Digite RE e senha.");
 
-  // Busca colaborador
   const ref = doc(db, "colaboradores", re);
   const snap = await getDoc(ref);
   if (!snap.exists()) return alert("RE não cadastrado.");
@@ -241,7 +247,7 @@ async function entrar(){
   const ativo = (data.ativo !== false);
 
   if (!ativo) return alert("Seu cadastro está INATIVO. Procure o administrador.");
-  if (!cpf || cpf.length < 4) return alert("CPF não cadastrado corretamente. Procure o administrador.");
+  if (!cpf || cpf.replace(/\D/g,"").length < 4) return alert("CPF não cadastrado corretamente. Procure o administrador.");
 
   const senhaCorreta = cpf.replace(/\D/g,"").slice(0,4);
   if (senha !== senhaCorreta) return alert("Senha incorreta.");
@@ -266,18 +272,34 @@ async function carregar(){
   const mes = Number(mesSel.value);
   const ano = Number(anoSel.value);
 
-  // Busca jornadas por RE e filtra no JS pelo mês/ano da ENTRADA
+  // pega jornadas do RE e filtra pelo mês/ano da ENTRADA
   const q = query(collection(db, "jornadas"), where("re", "==", user.re));
   const snap = await getDocs(q);
   const jornadas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
 
-  const filtradas = jornadas.filter(j => {
+  jornadasMes = jornadas.filter(j => {
     const dEnt = toDateAny(j.entrada?.ts);
     if (!dEnt || isNaN(dEnt)) return false;
     return (dEnt.getFullYear() === ano) && ((dEnt.getMonth()+1) === mes);
   }).sort((a,b) => (toDateAny(a.entrada?.ts)||0) - (toDateAny(b.entrada?.ts)||0));
 
-  jornadasMes = filtradas;
+  // monta linhas 01..último dia com vazios
+  const last = daysInMonth(ano, mes);
+  const mapDia = {}; // dia -> array de jornadas
+  for (const j of jornadasMes){
+    const dEnt = toDateAny(j.entrada?.ts);
+    const dia = dEnt.getDate();
+    if (!mapDia[dia]) mapDia[dia] = [];
+    mapDia[dia].push(j);
+  }
+
+  linhasMes = [];
+  for (let dia=1; dia<=last; dia++){
+    const dateObj = new Date(ano, mes-1, dia, 12, 0, 0); // meio-dia para evitar bug TZ
+    const js = mapDia[dia] || [];
+    linhasMes.push({ dia, dateObj, jornadas: js });
+  }
+
   renderTabela();
 }
 
@@ -291,37 +313,64 @@ function obsJornada(j){
   if ((j.saida_intervalo?.ts && !j.retorno_intervalo?.ts) || (!j.saida_intervalo?.ts && j.retorno_intervalo?.ts)) {
     obs.push("Intervalo incompleto");
   }
+
   const posto = reconhecerLocal(getBestLocationFromJornada(j));
   if (posto === "Não reconhecido") obs.push("Fora do posto");
 
   return obs.join(" | ");
 }
 
+function firstOrEmpty(arr){ return arr && arr.length ? arr[0] : null; }
+
 function renderTabela(){
   tbody.innerHTML = "";
 
-  if (!jornadasMes.length){
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td colspan="10">Nenhuma jornada encontrada no mês selecionado.</td>`;
-    tbody.appendChild(tr);
-    return;
-  }
+  const mes = Number(mesSel.value);
+  const ano = Number(anoSel.value);
+  const last = daysInMonth(ano, mes);
 
-  for (const j of jornadasMes){
-    const dEnt = toDateAny(j.entrada?.ts);
-    const posto = reconhecerLocal(getBestLocationFromJornada(j));
+  // sempre renderiza 01..last
+  for (let i=0; i<linhasMes.length; i++){
+    const linha = linhasMes[i];
+    const dateObj = linha.dateObj;
+    const j1 = firstOrEmpty(linha.jornadas);
+
+    let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="", obs="";
+    if (j1){
+      const dEnt = toDateAny(j1.entrada?.ts);
+      const dSai = toDateAny(j1.saida?.ts);
+
+      entrada = hm(toDateAny(j1.entrada?.ts));
+      saiInt  = hm(toDateAny(j1.saida_intervalo?.ts));
+      retInt  = hm(toDateAny(j1.retorno_intervalo?.ts));
+      saida   = hm(dSai) + ((dSai && dEnt && ymd(dSai) !== ymd(dEnt)) ? " (+1)" : "");
+      entHe   = hm(toDateAny(j1.entrada_he?.ts));
+      saiHe   = hm(toDateAny(j1.saida_he?.ts));
+      posto   = reconhecerLocal(getBestLocationFromJornada(j1));
+      obs     = obsJornada(j1);
+
+      // se houver mais de 1 jornada no mesmo dia, registra na obs
+      if (linha.jornadas.length > 1){
+        obs = (obs ? (obs + " | ") : "") + `2+ jornadas no dia (${linha.jornadas.length})`;
+      }
+    } else {
+      // linha vazia
+      posto = "";
+      obs = "";
+    }
+
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${dEnt ? dEnt.toLocaleDateString("pt-BR") : ""}</td>
-      <td>${weekday(dEnt)}</td>
-      <td>${hm(toDateAny(j.entrada?.ts))}</td>
-      <td>${hm(toDateAny(j.saida_intervalo?.ts))}</td>
-      <td>${hm(toDateAny(j.retorno_intervalo?.ts))}</td>
-      <td>${hm(toDateAny(j.saida?.ts))}${(toDateAny(j.saida?.ts) && dEnt && ymd(toDateAny(j.saida?.ts)) !== ymd(dEnt)) ? " (+1)" : ""}</td>
-      <td>${hm(toDateAny(j.entrada_he?.ts))}</td>
-      <td>${hm(toDateAny(j.saida_he?.ts))}</td>
+      <td>${String(linha.dia).padStart(2,"0")}/${String(mes).padStart(2,"0")}/${ano}</td>
+      <td class="${j1 ? "" : "muted"}">${weekday(dateObj)}</td>
+      <td>${entrada}</td>
+      <td>${saiInt}</td>
+      <td>${retInt}</td>
+      <td>${saida}</td>
+      <td>${entHe}</td>
+      <td>${saiHe}</td>
       <td>${posto}</td>
-      <td>${obsJornada(j)}</td>
+      <td>${obs}</td>
     `;
     tbody.appendChild(tr);
   }
@@ -331,10 +380,10 @@ btnPdf.addEventListener("click", exportarPdf);
 
 function exportarPdf(){
   if (!user) return;
-  if (!jornadasMes.length) return alert("Sem dados para exportar.");
 
-  const mes = pad2(Number(mesSel.value));
-  const ano = anoSel.value;
+  const mes = Number(mesSel.value);
+  const ano = Number(anoSel.value);
+  const mesTxt = pad2(mes);
 
   const { jsPDF } = window.jspdf;
   const docPdf = new jsPDF({ orientation:"landscape", unit:"pt", format:"a4" });
@@ -345,28 +394,39 @@ function exportarPdf(){
   docPdf.setFontSize(11);
   docPdf.text(`Nome: ${user.nome}`, 40, 62);
   docPdf.text(`RE: ${user.re}`, 40, 80);
-  docPdf.text(`Competência: ${mes}/${ano}`, 40, 98);
+  docPdf.text(`Competência: ${mesTxt}/${ano}`, 40, 98);
   docPdf.text(`Emissão: ${new Date().toLocaleString("pt-BR")}`, 40, 116);
 
   const head = [[
-    "Data (Entrada)","Dia","Entrada","Saída Int.","Retorno","Saída","Ent. HE","Saída HE","Posto","Obs"
+    "Data","Dia","Entrada","Saída Int.","Retorno","Saída","Ent. HE","Saída HE","Posto","Obs"
   ]];
 
-  const body = jornadasMes.map(j => {
-    const dEnt = toDateAny(j.entrada?.ts);
-    const dSai = toDateAny(j.saida?.ts);
-    const posto = reconhecerLocal(getBestLocationFromJornada(j));
+  const body = linhasMes.map(linha => {
+    const j1 = (linha.jornadas && linha.jornadas.length) ? linha.jornadas[0] : null;
+
+    let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="", obs="";
+    if (j1){
+      const dEnt = toDateAny(j1.entrada?.ts);
+      const dSai = toDateAny(j1.saida?.ts);
+
+      entrada = hm(toDateAny(j1.entrada?.ts));
+      saiInt  = hm(toDateAny(j1.saida_intervalo?.ts));
+      retInt  = hm(toDateAny(j1.retorno_intervalo?.ts));
+      saida   = hm(dSai) + ((dSai && dEnt && ymd(dSai) !== ymd(dEnt)) ? " (+1)" : "");
+      entHe   = hm(toDateAny(j1.entrada_he?.ts));
+      saiHe   = hm(toDateAny(j1.saida_he?.ts));
+      posto   = reconhecerLocal(getBestLocationFromJornada(j1));
+      obs     = obsJornada(j1);
+
+      if (linha.jornadas.length > 1){
+        obs = (obs ? (obs + " | ") : "") + `2+ jornadas no dia (${linha.jornadas.length})`;
+      }
+    }
+
     return [
-      dEnt ? dEnt.toLocaleDateString("pt-BR") : "",
-      weekday(dEnt),
-      hm(toDateAny(j.entrada?.ts)),
-      hm(toDateAny(j.saida_intervalo?.ts)),
-      hm(toDateAny(j.retorno_intervalo?.ts)),
-      `${hm(dSai)}${(dSai && dEnt && ymd(dSai) !== ymd(dEnt)) ? " (+1)" : ""}`,
-      hm(toDateAny(j.entrada_he?.ts)),
-      hm(toDateAny(j.saida_he?.ts)),
-      posto,
-      obsJornada(j)
+      `${String(linha.dia).padStart(2,"0")}/${String(mes).padStart(2,"0")}/${ano}`,
+      weekday(linha.dateObj),
+      entrada, saiInt, retInt, saida, entHe, saiHe, posto, obs
     ];
   });
 
@@ -378,7 +438,7 @@ function exportarPdf(){
     headStyles: { fillColor: [240,240,240], textColor: [0,0,0] }
   });
 
-  docPdf.save(`espelho_${user.re}_${mes}-${ano}.pdf`);
+  docPdf.save(`espelho_${user.re}_${mesTxt}-${ano}.pdf`);
 }
 </script>
 
