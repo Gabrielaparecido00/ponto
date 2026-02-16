@@ -107,6 +107,32 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
+async function loadImageAsDataURL(url){
+  const res = await fetch(url);
+  const blob = await res.blob();
+  return await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+}
+
+function shortObsForPdf(text){
+  const t = (text || "").replace(/\s+/g, " ").trim();
+  // evita quebrar linha -> mantém 1 página
+  const max = 26;
+  if (t.length <= max) return t;
+  return t.slice(0, max - 1) + "…";
+}
+
+function shortPostoForPdf(text){
+  const t = (text || "").trim();
+  const max = 18;
+  if (t.length <= max) return t;
+  return t.slice(0, max - 1) + "…";
+}
+    
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, doc, getDoc, getDocs, collection, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -378,7 +404,7 @@ function renderTabela(){
 
 btnPdf.addEventListener("click", exportarPdf);
 
-function exportarPdf(){
+async function exportarPdf(){
   if (!user) return;
 
   const mes = Number(mesSel.value);
@@ -386,42 +412,151 @@ function exportarPdf(){
   const mesTxt = pad2(mes);
 
   const { jsPDF } = window.jspdf;
-  const docPdf = new jsPDF({ orientation:"landscape", unit:"pt", format:"a4" });
 
-  docPdf.setFontSize(14);
-  docPdf.text("Espelho de Ponto (Colaborador)", 40, 40);
+  // A4 VERTICAL
+  const docPdf = new jsPDF({ orientation:"portrait", unit:"pt", format:"a4" });
+  const pageW = docPdf.internal.pageSize.getWidth();
+  const pageH = docPdf.internal.pageSize.getHeight();
 
-  docPdf.setFontSize(11);
-  docPdf.text(`Nome: ${user.nome}`, 40, 62);
-  docPdf.text(`RE: ${user.re}`, 40, 80);
-  docPdf.text(`Competência: ${mesTxt}/${ano}`, 40, 98);
-  docPdf.text(`Emissão: ${new Date().toLocaleString("pt-BR")}`, 40, 116);
+  // LOGO (GW.png)
+  let logoDataUrl = null;
+  try {
+    logoDataUrl = await loadImageAsDataURL("GW.png");
+  } catch {
+    // se falhar, segue sem logo
+    logoDataUrl = null;
+  }
 
-  const head = [[
-    "Data","Dia","Entrada","Saída Int.","Retorno","Saída","Ent. HE","Saída HE","Posto","Obs"
-  ]];
+  function buildBody(){
+    return linhasMes.map(linha => {
+      const j1 = (linha.jornadas && linha.jornadas.length) ? linha.jornadas[0] : null;
 
-  const body = linhasMes.map(linha => {
-    const j1 = (linha.jornadas && linha.jornadas.length) ? linha.jornadas[0] : null;
+      let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="", obs="";
+      if (j1){
+        const dEnt = toDateAny(j1.entrada?.ts);
+        const dSai = toDateAny(j1.saida?.ts);
 
-    let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="", obs="";
-    if (j1){
-      const dEnt = toDateAny(j1.entrada?.ts);
-      const dSai = toDateAny(j1.saida?.ts);
+        entrada = hm(toDateAny(j1.entrada?.ts));
+        saiInt  = hm(toDateAny(j1.saida_intervalo?.ts));
+        retInt  = hm(toDateAny(j1.retorno_intervalo?.ts));
+        saida   = hm(dSai) + ((dSai && dEnt && ymd(dSai) !== ymd(dEnt)) ? " (+1)" : "");
+        entHe   = hm(toDateAny(j1.entrada_he?.ts));
+        saiHe   = hm(toDateAny(j1.saida_he?.ts));
 
-      entrada = hm(toDateAny(j1.entrada?.ts));
-      saiInt  = hm(toDateAny(j1.saida_intervalo?.ts));
-      retInt  = hm(toDateAny(j1.retorno_intervalo?.ts));
-      saida   = hm(dSai) + ((dSai && dEnt && ymd(dSai) !== ymd(dEnt)) ? " (+1)" : "");
-      entHe   = hm(toDateAny(j1.entrada_he?.ts));
-      saiHe   = hm(toDateAny(j1.saida_he?.ts));
-      posto   = reconhecerLocal(getBestLocationFromJornada(j1));
-      obs     = obsJornada(j1);
+        posto   = shortPostoForPdf(reconhecerLocal(getBestLocationFromJornada(j1)));
+        obs     = shortObsForPdf(obsJornada(j1));
 
-      if (linha.jornadas.length > 1){
-        obs = (obs ? (obs + " | ") : "") + `2+ jornadas no dia (${linha.jornadas.length})`;
+        if (linha.jornadas.length > 1){
+          const extra = `2+ (${linha.jornadas.length})`;
+          obs = shortObsForPdf((obs ? (obs + " | ") : "") + extra);
+        }
       }
+
+      return [
+        `${String(linha.dia).padStart(2,"0")}/${String(mes).padStart(2,"0")}/${ano}`,
+        weekday(linha.dateObj),
+        entrada, saiInt, retInt, saida, entHe, saiHe,
+        posto,
+        obs
+      ];
+    });
+  }
+
+  // Cabeçalhos curtos pra caber na vertical
+  const head = [[ "Data","Dia","Ent","Sai Int","Ret","Sai","HE Ent","HE Sai","Posto","Obs" ]];
+  const body = buildBody();
+
+  // Vamos tentar renderizar com fontes diferentes até garantir 1 página
+  const tries = [
+    { font:7, pad:2 },
+    { font:6, pad:2 },
+    { font:5, pad:1 }
+  ];
+
+  for (let i=0;i<tries.length;i++){
+    const { font, pad } = tries[i];
+
+    // limpa e recria PDF a cada tentativa
+    docPdf.deletePage(1);
+    docPdf.addPage("a4","portrait");
+    docPdf.setPage(1);
+
+    // topo com logo + título
+    const marginX = 30;
+
+    let y = 26;
+
+    if (logoDataUrl){
+      // logo pequeno pra não comer altura
+      const logoW = 90;
+      const logoH = 45;
+      docPdf.addImage(logoDataUrl, "PNG", marginX, y, logoW, logoH);
+      y += logoH + 6;
+    } else {
+      y += 30;
     }
+
+    docPdf.setFontSize(12);
+    docPdf.text("Espelho de Ponto (Colaborador)", marginX, y);
+    y += 14;
+
+    docPdf.setFontSize(9);
+    docPdf.text(`Nome: ${user.nome}`, marginX, y); y += 12;
+    docPdf.text(`RE: ${user.re}`, marginX, y); y += 12;
+    docPdf.text(`Competência: ${mesTxt}/${ano}`, marginX, y); y += 12;
+
+    // tabela
+    docPdf.autoTable({
+      startY: y + 6,
+      head,
+      body,
+      theme: "grid",
+      styles: {
+        fontSize: font,
+        cellPadding: pad,
+        overflow: "hidden",
+        valign: "middle",
+        halign: "center"
+      },
+      headStyles: {
+        fillColor: [240,240,240],
+        textColor: [0,0,0]
+      },
+      // controla largura por coluna (pra caber em portrait)
+      columnStyles: {
+        0: { cellWidth: 64 },  // Data
+        1: { cellWidth: 34 },  // Dia
+        2: { cellWidth: 34 },  // Ent
+        3: { cellWidth: 40 },  // Sai Int
+        4: { cellWidth: 34 },  // Ret
+        5: { cellWidth: 38 },  // Sai
+        6: { cellWidth: 38 },  // HE Ent
+        7: { cellWidth: 38 },  // HE Sai
+        8: { cellWidth: 70 },  // Posto
+        9: { cellWidth: 70 }   // Obs
+      },
+      margin: { left: marginX, right: marginX, top: 0, bottom: 18 },
+      pageBreak: "avoid"
+    });
+
+    // garante 1 página
+    if (docPdf.getNumberOfPages() === 1){
+      // rodapé discreto
+      docPdf.setFontSize(8);
+      docPdf.text(
+        "Sistema desenvolvido por Gabriel Wandele, todos direitos reservados",
+        marginX,
+        pageH - 10
+      );
+
+      docPdf.save(`espelho_${user.re}_${mesTxt}-${ano}.pdf`);
+      return;
+    }
+  }
+
+  // Se ainda assim gerar mais de 1 página (raríssimo), avisa
+  alert("Não foi possível gerar em 1 página. Reduza observações ou simplifique colunas.");
+}
 
     return [
       `${String(linha.dia).padStart(2,"0")}/${String(mes).padStart(2,"0")}/${ano}`,
