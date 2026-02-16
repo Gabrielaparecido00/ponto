@@ -227,6 +227,27 @@ async function carregarLocais(){
     .filter(l => Number.isFinite(l.lat) && Number.isFinite(l.lng) && Number.isFinite(l.raio));
 }
 
+// ===== ocorrências (por DocId) =====
+function ocDocId(re, ymd){ return `${re}_${ymd}`; }
+
+async function carregarOcorrenciasMesPorDocId(re, ano, mes, last){
+  const map = {};
+  for (let dia = 1; dia <= last; dia++){
+    const dataKey = `${ano}-${pad2(mes)}-${pad2(dia)}`;
+    try{
+      const ref = doc(db, "ocorrencias", ocDocId(re, dataKey));
+      const snap = await getDoc(ref);
+      if (snap.exists()){
+        const o = snap.data() || {};
+        map[dataKey] = { id: snap.id, ...o };
+      }
+    }catch(e){
+      console.error("Erro ao ler ocorrência do dia:", dataKey, e);
+    }
+  }
+  return map;
+}
+
 // ===== PDF helpers =====
 async function loadImageAsDataURL(url){
   const res = await fetch(url);
@@ -327,7 +348,7 @@ async function carregar(){
   const mes = Number(mesSel.value);
   const ano = Number(anoSel.value);
 
-  // ✅ 1) Jornadas (não pode quebrar se ocorrer erro depois)
+  // 1) Jornadas
   let jornadas = [];
   try{
     const qJ = query(collection(db, "jornadas"), where("re", "==", user.re));
@@ -346,24 +367,13 @@ async function carregar(){
 
   const last = daysInMonth(ano, mes);
 
-  // ✅ 2) Ocorrências (NUNCA pode travar o espelho)
-  const start = `${ano}-${pad2(mes)}-01`;
-  const end   = `${ano}-${pad2(mes)}-${pad2(last)}`;
+  // 2) Ocorrências por DocId (sem índice)
   mapOcorrencias = {};
   try{
-    const qO = query(
-      collection(db, "ocorrencias"),
-      where("re", "==", user.re),
-      where("data", ">=", start),
-      where("data", "<=", end)
-    );
-    const snapO = await getDocs(qO);
-    for (const d of snapO.docs){
-      const o = d.data() || {};
-      if (o.data) mapOcorrencias[o.data] = { id: d.id, ...o };
-    }
+    mapOcorrencias = await carregarOcorrenciasMesPorDocId(user.re, ano, mes, last);
+    console.log("Ocorrências carregadas:", Object.keys(mapOcorrencias).length, mapOcorrencias);
   }catch(e){
-    console.error("Falha ao carregar ocorrências:", e);
+    console.error("Falha geral ao carregar ocorrências:", e);
     mapOcorrencias = {};
   }
 
@@ -472,7 +482,6 @@ function renderTabela(){
 async function exportarPdf(){
   if (!user) return;
 
-  // ✅ tenta recarregar, mas não pode travar o PDF
   try{ await carregar(); }catch(e){ console.error("Falha ao recarregar antes do PDF:", e); }
 
   const mes = Number(mesSel.value);
