@@ -74,6 +74,9 @@ onAuthStateChanged(auth, user => {
 // buscar dados
 window.buscar = async () => {
 
+    const snap = await getDocs(collection(db, "pontos"));
+    console.log("TOTAL DOCUMENTOS:", snap.size);
+    
     const ini = new Date(document.getElementById("inicio").value);
     const fim = new Date(document.getElementById("fim").value);
 
