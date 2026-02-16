@@ -2,125 +2,98 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Painel Admin</title>
 
 <style>
-body {
-    font-family: Arial;
-    background: #f5f5f5;
-    text-align: center;
-}
-
-.container {
-    background: white;
-    padding: 20px;
-    margin: 20px auto;
-    max-width: 1100px;
-    border-radius: 10px;
-}
-
-.logo {
-    width: 260px;
-    margin-bottom: 20px;
-}
-
-input, button {
-    padding: 10px;
-    margin: 5px;
-}
-
-button {
-    cursor: pointer;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-    font-size: 13px;
-}
-
-th, td {
-    border: 1px solid #ccc;
-    padding: 8px;
-}
-
-.filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: center;
-    align-items: center;
-    margin-top: 10px;
-}
-
-.filters input {
-    width: 180px;
-}
+body { font-family: Arial; background:#f5f5f5; text-align:center; }
+.container { background:white; padding:20px; margin:20px auto; max-width:1200px; border-radius:10px; }
+.logo { width:260px; margin-bottom: 10px; }
+input, button { padding:10px; margin:5px; }
+button { cursor:pointer; }
+.row { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center; margin-top:10px; }
+table { width:100%; border-collapse:collapse; margin-top:18px; font-size:13px; }
+th, td { border:1px solid #ccc; padding:8px; }
+th { background:#fafafa; }
+.editBtn { border:none; background:transparent; cursor:pointer; font-size:14px; }
+.small { font-size: 12px; color:#666; }
+.hr { height:1px; background:#eee; margin:18px 0; border:0; }
+.sectionTitle { margin: 10px 0 0; }
 </style>
 </head>
 <body>
 
 <!-- LOGIN -->
 <div id="loginDiv" class="container">
-    <img src="GW.png" class="logo">
-    <h2>Login Admin</h2>
-
-    <input id="email" placeholder="Email"><br>
-    <input id="senha" type="password" placeholder="Senha"><br>
-
-    <button onclick="login()">Entrar</button>
+  <img src="GW.png" class="logo">
+  <h2>Login Admin</h2>
+  <input id="email" placeholder="Email"><br>
+  <input id="senha" type="password" placeholder="Senha"><br>
+  <button onclick="login()">Entrar</button>
 </div>
 
 <!-- PAINEL -->
 <div id="painelDiv" class="container" style="display:none;">
-    <img src="GW.png" class="logo">
+  <img src="GW.png" class="logo">
 
-    <h2>Painel de Ponto</h2>
+  <h2>Painel Admin</h2>
+  <div class="small">Cadastro de colaboradores + correção de registros</div>
 
-    <div class="filters">
-        <label>De:</label>
-        <input type="date" id="inicio">
+  <hr class="hr">
 
-        <label>Até:</label>
-        <input type="date" id="fim">
+  <!-- ✅ CADASTRADOR DE FUNCIONÁRIO -->
+  <h3 class="sectionTitle">Cadastro de Funcionário</h3>
+  <div class="small">Coleção: <b>colaboradores</b> (docId = RE)</div>
 
-        <label>RE:</label>
-        <input type="text" id="filtroRe" placeholder="(opcional)">
+  <div class="row">
+    <input id="cadRe" placeholder="RE (ex: 12345)" inputmode="numeric">
+    <input id="cadNome" placeholder="Nome completo">
+    <button onclick="salvarColaborador()">Salvar / Atualizar</button>
+  </div>
 
-        <label>Nome:</label>
-        <input type="text" id="filtroNome" placeholder="(opcional)">
+  <hr class="hr">
 
-        <button onclick="buscar()">Buscar</button>
-        <button onclick="exportar()">Exportar CSV</button>
-        <button onclick="logout()">Sair</button>
-    </div>
+  <!-- FILTROS -->
+  <h3 class="sectionTitle">Jornadas (Turnos)</h3>
+  <div class="row">
+    <label>De:</label>
+    <input type="date" id="inicio">
+    <label>Até:</label>
+    <input type="date" id="fim">
+    <input id="filtroRe" placeholder="Filtrar por RE (opcional)" inputmode="numeric">
+    <input id="filtroNome" placeholder="Filtrar por Nome (opcional)">
+    <button onclick="buscar()">Buscar</button>
+    <button onclick="exportar()">Exportar CSV</button>
+    <button onclick="logout()">Sair</button>
+  </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Data</th>
-                <th>Nome</th>
-                <th>RE</th>
-                <th>Entrada</th>
-                <th>Saída Intervalo</th>
-                <th>Retorno Intervalo</th>
-                <th>Saída</th>
-                <th>Entrada HE</th>
-                <th>Saída HE</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
+  <div class="small">
+    ✏️ Para editar um campo, clique no lápis e informe: <b>AAAA-MM-DD HH:MM</b> (ex: 2026-02-16 07:10)
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Data (Entrada)</th>
+        <th>Nome</th>
+        <th>RE</th>
+        <th>ENTRADA</th>
+        <th>SAÍDA INTERVALO</th>
+        <th>RETORNO INTERVALO</th>
+        <th>SAÍDA</th>
+        <th>ENTRADA HE</th>
+        <th>SAÍDA HE</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 </div>
 
 <script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDocs, collection, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-// 🔥 SUA CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyD--zpWLbLg5X82oGTyz6SuPFQV0sd7NWc",
   authDomain: "controle-ponto-f539b.firebaseapp.com",
@@ -138,182 +111,203 @@ const auth = getAuth(app);
 const loginDiv = document.getElementById("loginDiv");
 const painelDiv = document.getElementById("painelDiv");
 
-// 🔐 LOGIN
 window.login = async function() {
-    const email = document.getElementById("email").value;
-    const senha = document.getElementById("senha").value;
-
-    try {
-        await signInWithEmailAndPassword(auth, email, senha);
-    } catch (err) {
-        alert("Erro no login");
-        console.error(err);
-    }
+  const email = document.getElementById("email").value;
+  const senha = document.getElementById("senha").value;
+  try {
+    await signInWithEmailAndPassword(auth, email, senha);
+  } catch (e) {
+    alert("Erro no login");
+    console.error(e);
+  }
 };
 
-// 🔐 LOGOUT
 window.logout = function() {
-    signOut(auth);
+  signOut(auth);
 };
 
-// 🔐 PROTEÇÃO
 onAuthStateChanged(auth, user => {
-    loginDiv.style.display = user ? "none" : "block";
-    painelDiv.style.display = user ? "block" : "none";
+  loginDiv.style.display = user ? "none" : "block";
+  painelDiv.style.display = user ? "block" : "none";
 });
 
-// helpers
-function norm(s) {
-    return (s || "").toString().trim().toLowerCase();
+// ===== Helpers =====
+function norm(s){ return (s||"").toString().trim().toLowerCase(); }
+function toDateAny(ts){
+  if (!ts) return null;
+  if (ts.toDate) return ts.toDate();
+  if (ts instanceof Date) return ts;
+  return new Date(ts);
+}
+function formatHHMM(ts){
+  const d = toDateAny(ts);
+  if (!d || isNaN(d)) return "";
+  return d.toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit" });
+}
+function formatYYYYMMDD(ts){
+  const d = toDateAny(ts);
+  if (!d || isNaN(d)) return "";
+  return d.toISOString().slice(0,10);
+}
+function formatISOFromYYYYMMDD_HHMM(str){
+  // "2026-02-16 07:10"
+  const m = (str||"").trim().match(/^(\d{4})-(\d{2})-(\d{2})\s+([01]\d|2[0-3]):([0-5]\d)$/);
+  if (!m) return null;
+  // cria Date em horário local e converte para ISO
+  const dt = new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:00`);
+  if (isNaN(dt)) return null;
+  return dt.toISOString();
 }
 
-// Converte timestamp (ISO/string/Date/Timestamp do Firestore) para Date
-function toDateAny(ts) {
-    if (!ts) return null;
-    if (ts.toDate) return ts.toDate();           // Firestore Timestamp
-    if (ts instanceof Date) return ts;           // Date
-    return new Date(ts);                         // ISO string
-}
+// ===== ✅ Cadastro de Funcionário (colaboradores) =====
+window.salvarColaborador = async function(){
+  const re = document.getElementById("cadRe").value.trim();
+  const nome = document.getElementById("cadNome").value.trim();
+  if (!re || !nome) return alert("Preencha RE e Nome.");
 
-// ✅ BUSCAR DADOS (SEM INDEX) — filtra por "data" (YYYY-MM-DD)
-window.buscar = async function() {
+  if (!confirm(`Salvar/Atualizar funcionário?\nRE: ${re}\nNome: ${nome}`)) return;
 
-    const iniStr = document.getElementById("inicio").value || "2000-01-01";
-    const fimStr = document.getElementById("fim").value || "2999-12-31";
+  const ref = doc(db, "colaboradores", re);
+  await setDoc(ref, {
+    re,
+    nome,
+    ativo: true,
+    updatedAt: new Date().toISOString()
+  }, { merge: true });
 
-    const filtroRe = norm(document.getElementById("filtroRe").value);
-    const filtroNome = norm(document.getElementById("filtroNome").value);
-
-    const snap = await getDocs(collection(db, "pontos"));
-    let docs = snap.docs.map(doc => doc.data());
-
-    // Filtrar período pelo campo "data" (mais confiável que new Date(timestamp))
-    docs = docs.filter(d => {
-        const dData = (d.data || "");
-        return dData >= iniStr && dData <= fimStr;
-    });
-
-    // Filtro RE
-    if (filtroRe) {
-        docs = docs.filter(d => norm(d.re) === filtroRe);
-    }
-
-    // Filtro Nome (contém)
-    if (filtroNome) {
-        docs = docs.filter(d => norm(d.nome).includes(filtroNome));
-    }
-
-    console.log("docs filtrados:", docs.length);
-    montarTabela(docs);
+  alert("Funcionário salvo!");
+  document.getElementById("cadRe").value = "";
+  document.getElementById("cadNome").value = "";
 };
 
-// 📊 ORGANIZAR EM 6 COLUNAS USANDO "tipo"
-function montarTabela(dados) {
+// ===== Buscar Jornadas =====
+let ultimaTabela = [];
 
-    const tbody = document.querySelector("tbody");
-    tbody.innerHTML = "";
+window.buscar = async function(){
+  const iniStr = document.getElementById("inicio").value || "2000-01-01";
+  const fimStr = document.getElementById("fim").value || "2999-12-31";
+  const filtroRe = norm(document.getElementById("filtroRe").value);
+  const filtroNome = norm(document.getElementById("filtroNome").value);
 
-    // Agrupa por DIA + RE + NOME
-    const grupos = {};
+  const snap = await getDocs(collection(db, "jornadas"));
+  let jornadas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-    for (const d of dados) {
+  // filtra por data de ENTRADA (pela ts da entrada)
+  jornadas = jornadas.filter(j => {
+    const entradaDate = formatYYYYMMDD(j.entrada?.ts);
+    if (!entradaDate) return false;
+    return entradaDate >= iniStr && entradaDate <= fimStr;
+  });
 
-        const data = d.data || ""; // YYYY-MM-DD
-        const nome = d.nome || "";
-        const re = d.re || "";
+  if (filtroRe) jornadas = jornadas.filter(j => norm(j.re) === filtroRe);
+  if (filtroNome) jornadas = jornadas.filter(j => norm(j.nome).includes(filtroNome));
 
-        const chave = `${data}__${re}__${nome}`;
+  // ordena por entrada desc
+  jornadas.sort((a,b) => (toDateAny(b.entrada?.ts) || new Date(0)) - (toDateAny(a.entrada?.ts) || new Date(0)));
 
-        if (!grupos[chave]) {
-            grupos[chave] = {
-                data,
-                nome,
-                re,
-                entrada: "",
-                saida_intervalo: "",
-                retorno_intervalo: "",
-                saida: "",
-                entrada_he: "",
-                saida_he: "",
-                _ordenacao: [] // para ordenar e preencher caso venha sem tipo (fallback)
-            };
-        }
-
-        // Preferência: usar tipo do index
-        if (d.tipo && grupos[chave][d.tipo] !== undefined) {
-            grupos[chave][d.tipo] = formatHora(d);
-        } else {
-            // fallback: guarda para ordenação
-            grupos[chave]._ordenacao.push(d);
-        }
-    }
-
-    // Se tiver registros sem tipo (dados antigos), tenta preencher por ordem
-    const ordemTipos = ["entrada","saida_intervalo","retorno_intervalo","saida","entrada_he","saida_he"];
-
-    for (const chave in grupos) {
-
-        const g = grupos[chave];
-
-        if (g._ordenacao.length > 0) {
-            g._ordenacao.sort((a,b) => (toDateAny(a.timestamp) - toDateAny(b.timestamp)));
-
-            // Preenche em ordem só os que estiverem vazios
-            let idx = 0;
-            for (const tipo of ordemTipos) {
-                if (!g[tipo] && g._ordenacao[idx]) {
-                    g[tipo] = formatHora(g._ordenacao[idx]);
-                    idx++;
-                }
-            }
-        }
-
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-            <td>${g.data}</td>
-            <td>${g.nome}</td>
-            <td>${g.re}</td>
-            <td>${g.entrada}</td>
-            <td>${g.saida_intervalo}</td>
-            <td>${g.retorno_intervalo}</td>
-            <td>${g.saida}</td>
-            <td>${g.entrada_he}</td>
-            <td>${g.saida_he}</td>
-        `;
-        tbody.appendChild(tr);
-    }
-}
-
-// Formata “hora” preferindo campo hora, senão usa timestamp
-function formatHora(d) {
-    if (d.hora) return d.hora; // já vem "HH:MM"
-    const dt = toDateAny(d.timestamp);
-    if (!dt || isNaN(dt)) return "";
-    return dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-}
-
-// 📥 EXPORTAR CSV (9 colunas)
-window.exportar = function() {
-
-    let csv = "Data,Nome,RE,Entrada,Saida Intervalo,Retorno Intervalo,Saida,Entrada HE,Saida HE\n";
-
-    document.querySelectorAll("tbody tr").forEach(tr => {
-        const cols = tr.querySelectorAll("td");
-        const linha = Array.from(cols)
-            .map(td => `"${td.innerText.replaceAll('"','""')}"`)
-            .join(",");
-        csv += linha + "\n";
-    });
-
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "pontos.csv";
-    a.click();
+  ultimaTabela = jornadas;
+  montarTabela(jornadas);
 };
 
+function montarTabela(jornadas){
+  const tbody = document.querySelector("tbody");
+  tbody.innerHTML = "";
+
+  for (const j of jornadas){
+    const dataEntrada = formatYYYYMMDD(j.entrada?.ts);
+
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${dataEntrada}</td>
+      <td>${j.nome || ""}</td>
+      <td>${j.re || ""}</td>
+
+      ${cellEdit(j.id, "entrada.ts", j.entrada?.ts)}
+      ${cellEdit(j.id, "saida_intervalo.ts", j.saida_intervalo?.ts)}
+      ${cellEdit(j.id, "retorno_intervalo.ts", j.retorno_intervalo?.ts)}
+      ${cellEdit(j.id, "saida.ts", j.saida?.ts)}
+      ${cellEdit(j.id, "entrada_he.ts", j.entrada_he?.ts)}
+      ${cellEdit(j.id, "saida_he.ts", j.saida_he?.ts)}
+    `;
+    tbody.appendChild(row);
+  }
+}
+
+function cellEdit(docId, path, ts){
+  const v = formatHHMM(ts);
+  const full = (() => {
+    const d = toDateAny(ts);
+    if (!d || isNaN(d)) return "";
+    const ymd = d.toISOString().slice(0,10);
+    const hhmm = d.toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit" });
+    return `${ymd} ${hhmm}`;
+  })();
+
+  return `
+    <td>
+      <span title="${full}">${v}</span>
+      <button class="editBtn" onclick="editar('${docId}','${path}')">✏️</button>
+    </td>
+  `;
+}
+
+// ===== ✅ Editar campo: pede AAAA-MM-DD HH:MM =====
+window.editar = async function(docId, path){
+  const j = ultimaTabela.find(x => x.id === docId);
+  if (!j) return alert("Jornada não encontrada.");
+
+  // valor atual
+  const bloco = path.split(".")[0]; // ex "saida"
+  const atualISO = j[bloco]?.ts || "";
+  const atualDate = toDateAny(atualISO);
+  const sugestao = atualDate && !isNaN(atualDate)
+    ? `${atualDate.toISOString().slice(0,10)} ${atualDate.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`
+    : "";
+
+  const novo = prompt(`Editar ${path}\nDigite: AAAA-MM-DD HH:MM\nEx: 2026-02-16 07:10`, sugestao);
+  if (novo === null) return;
+
+  const iso = formatISOFromYYYYMMDD_HHMM(novo);
+  if (!iso) return alert("Formato inválido. Use AAAA-MM-DD HH:MM (ex: 2026-02-16 07:10).");
+
+  if (!confirm(`Confirmar alteração?\n${path} = ${novo}`)) return;
+
+  const ref = doc(db, "jornadas", docId);
+  await updateDoc(ref, {
+    [path]: iso,
+    updatedAt: new Date().toISOString()
+  });
+
+  alert("Atualizado!");
+  buscar();
+};
+
+// ===== Exportar CSV =====
+window.exportar = function(){
+  let csv = "DataEntrada,Nome,RE,Entrada,SaidaIntervalo,RetornoIntervalo,Saida,EntradaHE,SaidaHE\n";
+
+  for (const j of ultimaTabela){
+    const linha = [
+      formatYYYYMMDD(j.entrada?.ts),
+      j.nome || "",
+      j.re || "",
+      formatHHMM(j.entrada?.ts),
+      formatHHMM(j.saida_intervalo?.ts),
+      formatHHMM(j.retorno_intervalo?.ts),
+      formatHHMM(j.saida?.ts),
+      formatHHMM(j.entrada_he?.ts),
+      formatHHMM(j.saida_he?.ts),
+    ].map(v => `"${String(v).replaceAll('"','""')}"`).join(",");
+    csv += linha + "\n";
+  }
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "jornadas.csv";
+  a.click();
+};
 </script>
 
 </body>
