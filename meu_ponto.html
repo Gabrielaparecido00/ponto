@@ -177,14 +177,8 @@ function daysInMonth(year, month1to12){
 function isFolgaByEscala(dateObj, escala){
   const dow = dateObj.getDay(); // 0=Dom,1=Seg,...6=Sab
   const e = (escala || "5x2").toLowerCase();
-
-  // 5x2: folga sábado e domingo
   if (e === "5x2") return (dow === 0 || dow === 6);
-
-  // 6x1: folga domingo
   if (e === "6x1") return (dow === 0);
-
-  // padrão seguro
   return false;
 }
 
@@ -243,8 +237,6 @@ async function loadImageAsDataURL(url){
     r.readAsDataURL(blob);
   });
 }
-
-// pega dimensões reais da imagem (pra manter proporção sem distorcer)
 async function getImageNaturalSize(dataUrl){
   return await new Promise((resolve, reject) => {
     const img = new Image();
@@ -253,16 +245,15 @@ async function getImageNaturalSize(dataUrl){
     img.src = dataUrl;
   });
 }
-
 function shortObsForPdf(text){
   const t = (text || "").replace(/\s+/g, " ").trim();
-  const max = 42; // agora pode ser maior, pois não forçamos 1 página
+  const max = 60;
   if (t.length <= max) return t;
   return t.slice(0, max - 1) + "…";
 }
 function shortPostoForPdf(text){
   const t = (text || "").trim();
-  const max = 24;
+  const max = 28;
   if (t.length <= max) return t;
   return t.slice(0, max - 1) + "…";
 }
@@ -331,7 +322,6 @@ async function carregar(){
   const mes = Number(mesSel.value);
   const ano = Number(anoSel.value);
 
-  // pega jornadas do RE e filtra pelo mês/ano da ENTRADA
   const q = query(collection(db, "jornadas"), where("re", "==", user.re));
   const snap = await getDocs(q);
   const jornadas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
@@ -342,9 +332,8 @@ async function carregar(){
     return (dEnt.getFullYear() === ano) && ((dEnt.getMonth()+1) === mes);
   }).sort((a,b) => (toDateAny(a.entrada?.ts)||0) - (toDateAny(b.entrada?.ts)||0));
 
-  // monta linhas 01..último dia com vazios
   const last = daysInMonth(ano, mes);
-  const mapDia = {}; // dia -> array de jornadas
+  const mapDia = {};
   for (const j of jornadasMes){
     const dEnt = toDateAny(j.entrada?.ts);
     const dia = dEnt.getDate();
@@ -407,7 +396,6 @@ function renderTabela(){
         obs = (obs ? (obs + " | ") : "") + `2+ jornadas no dia (${linha.jornadas.length})`;
       }
     } else {
-      // Sem jornada no dia
       if (ehFolga){
         posto = "-";
         obs = "FOLGA (escala)";
@@ -433,7 +421,7 @@ function renderTabela(){
   }
 }
 
-// ===== PDF (A4 vertical, múltiplas páginas, logo sem distorcer) =====
+// ===== PDF (múltiplas páginas, sem texto por cima) =====
 async function exportarPdf(){
   if (!user) return;
 
@@ -446,7 +434,7 @@ async function exportarPdf(){
   const pageW = docPdf.internal.pageSize.getWidth();
   const pageH = docPdf.internal.pageSize.getHeight();
 
-  // LOGO (GW.png) - carrega e mantém proporção (sem distorcer)
+  // logo sem distorcer
   let logoDataUrl = null;
   let logoNat = null;
   try {
@@ -457,7 +445,44 @@ async function exportarPdf(){
     logoNat = null;
   }
 
-  // Monta tabela
+  const marginX = 30;
+  const headerTop = 22;
+
+  // tamanho do logo no PDF (largura fixa; altura proporcional)
+  const logoW = 110;
+  let logoH = 0;
+  if (logoNat && logoNat.w && logoNat.h){
+    logoH = Math.round(logoW * (logoNat.h / logoNat.w));
+  } else {
+    logoH = 45;
+  }
+
+  // calcula altura real do header pra reservar espaço (sem sobrepor)
+  const headerH = (logoDataUrl ? (logoH + 10) : 0) + 14 + 12 + 12 + 12 + 12 + 6; // título + 4 linhas + respiro
+
+  function drawHeader(){
+    let y = headerTop;
+
+    if (logoDataUrl){
+      docPdf.addImage(logoDataUrl, "PNG", marginX, y, logoW, logoH);
+      y += logoH + 10;
+    }
+
+    docPdf.setFontSize(12);
+    docPdf.text("Espelho de Ponto (Colaborador)", marginX, y); y += 14;
+
+    docPdf.setFontSize(9);
+    docPdf.text(`Nome: ${user.nome}`, marginX, y); y += 12;
+    docPdf.text(`RE: ${user.re}`, marginX, y); y += 12;
+    docPdf.text(`Escala: ${user.escala}`, marginX, y); y += 12;
+    docPdf.text(`Competência: ${mesTxt}/${ano}`, marginX, y); y += 12;
+  }
+
+  function drawFooter(){
+    docPdf.setFontSize(8);
+    docPdf.text("Sistema desenvolvido por Gabriel Wandele, todos direitos reservados", marginX, pageH - 10);
+  }
+
   const head = [[ "Data","Dia","Ent","Sai Int","Ret","Sai","HE Ent","HE Sai","Posto","Obs" ]];
 
   const body = linhasMes.map(linha => {
@@ -495,74 +520,38 @@ async function exportarPdf(){
     ];
   });
 
-  // Layout do cabeçalho/rodapé
-  const marginX = 30;
-  const headerTop = 22;
-
-  // define tamanho do logo no PDF SEM distorcer: usa largura fixa e altura proporcional
-  // (PDF não tem "pixels reais", mas isso garante proporção e boa leitura)
-  const logoW = 110; // tamanho confortável no A4
-  let logoH = 0;
-  if (logoNat && logoNat.w && logoNat.h){
-    logoH = Math.round(logoW * (logoNat.h / logoNat.w));
-  } else {
-    logoH = 45; // fallback
-  }
-
-  // altura do header (logo + textos)
-  const headerH = logoDataUrl ? (logoH + 52) : 62;
-
-  // desenha cabeçalho e rodapé em todas as páginas
-  function drawHeaderFooter(){
-    // Header
-    let y = headerTop;
-
-    if (logoDataUrl){
-      docPdf.addImage(logoDataUrl, "PNG", marginX, y, logoW, logoH); // sem distorcer (proporção mantida)
-      y += logoH + 10;
-    } else {
-      y += 10;
-    }
-
-    docPdf.setFontSize(12);
-    docPdf.text("Espelho de Ponto (Colaborador)", marginX, y);
-    y += 14;
-
-    docPdf.setFontSize(9);
-    docPdf.text(`Nome: ${user.nome}`, marginX, y); y += 12;
-    docPdf.text(`RE: ${user.re}`, marginX, y); y += 12;
-    docPdf.text(`Escala: ${user.escala}`, marginX, y); y += 12;
-    docPdf.text(`Competência: ${mesTxt}/${ano}`, marginX, y); y += 10;
-
-    // Footer
-    docPdf.setFontSize(8);
-    docPdf.text("Sistema desenvolvido por Gabriel Wandele, todos direitos reservados", marginX, pageH - 10);
-  }
-
-  // cria a tabela com paginação automática
   docPdf.autoTable({
     head,
     body,
     theme: "grid",
-    startY: headerTop + headerH,
-    margin: { left: marginX, right: marginX, top: headerTop, bottom: 22 },
+
+    // reserva espaço real pro header (evita sobreposição)
+    startY: headerTop + headerH + 8,
+    margin: { left: marginX, right: marginX, top: headerTop + headerH + 8, bottom: 22 },
+
     styles: { fontSize: 8, cellPadding: 3, overflow:"linebreak", valign:"middle", halign:"center" },
     headStyles: { fillColor: [240,240,240], textColor: [0,0,0] },
-    // colunas mais “normais” agora (sem esmagar)
     columnStyles: {
-      0: { cellWidth: 70 },  // Data
-      1: { cellWidth: 38 },  // Dia
-      2: { cellWidth: 38 },  // Ent
-      3: { cellWidth: 48 },  // Sai Int
-      4: { cellWidth: 38 },  // Ret
-      5: { cellWidth: 44 },  // Sai
-      6: { cellWidth: 44 },  // HE Ent
-      7: { cellWidth: 44 },  // HE Sai
-      8: { cellWidth: 86 },  // Posto
-      9: { cellWidth: "auto" } // Obs (sobra)
+      0: { cellWidth: 70 },
+      1: { cellWidth: 38 },
+      2: { cellWidth: 38 },
+      3: { cellWidth: 48 },
+      4: { cellWidth: 38 },
+      5: { cellWidth: 44 },
+      6: { cellWidth: 44 },
+      7: { cellWidth: 44 },
+      8: { cellWidth: 86 },
+      9: { cellWidth: "auto" }
     },
+
+    // ✅ header ANTES da tabela (resolve o “por cima”)
+    willDrawPage: () => {
+      drawHeader();
+    },
+
+    // footer depois (ok)
     didDrawPage: () => {
-      drawHeaderFooter();
+      drawFooter();
     }
   });
 
