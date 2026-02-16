@@ -147,9 +147,11 @@ let cacheLocais = [];
 let jornadasMes = [];
 let linhasMes = [];
 let mapOcorrencias = {};        // { "YYYY-MM-DD": {tipo,motivo,...} }
+let feriasList = [];            // [{inicio,fim,aplicarSomenteDiasTrabalho,motivo}]
 
 function voltar(){ window.location.href = "index.html"; }
 
+// helpers
 function pad2(n){ return String(n).padStart(2,"0"); }
 function toDateAny(ts){
   if (!ts) return null;
@@ -191,6 +193,9 @@ function isFolgaByEscala(dateObj, escala){
   if (e === "5x2") return (dow === 0 || dow === 6);
   if (e === "6x1") return (dow === 0);
   return false;
+}
+function isDiaTrabalho(dateObj, escala){
+  return !isFolgaByEscala(dateObj, escala);
 }
 
 // locais
@@ -261,6 +266,32 @@ function labelOc(o){
   if (t === "atestado") return "ATESTADO";
   if (t === "abono") return "ABONO";
   return (o.tipo || "").toString().toUpperCase();
+}
+
+// férias (afastamentos por período)
+async function carregarFeriasDoRe(re){
+  const qA = query(collection(db,"afastamentos"), where("re","==",re));
+  const snap = await getDocs(qA);
+  return snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }))
+    .filter(a => String(a.tipo||"").toLowerCase() === "ferias");
+}
+function isWithinRange(ymd, ini, fim){
+  return !!(ymd && ini && fim && ymd >= ini && ymd <= fim);
+}
+function aplicaNoDia(ferias, dateObj, escala){
+  const onlyWork = (ferias?.aplicarSomenteDiasTrabalho === true);
+  if (onlyWork && !isDiaTrabalho(dateObj, escala)) return false;
+  return true;
+}
+function getFeriasNoDia(ymdKey, dateObj, escala){
+  for (const f of feriasList){
+    const ini = String(f.inicio||"").slice(0,10);
+    const fim = String(f.fim||"").slice(0,10);
+    if (isWithinRange(ymdKey, ini, fim) && aplicaNoDia(f, dateObj, escala)){
+      return f;
+    }
+  }
+  return null;
 }
 
 // selects mês/ano
@@ -352,6 +383,9 @@ async function carregar(){
   // ocorrências
   mapOcorrencias = await carregarOcorrenciasMesPorDocId(user.re, ano, mes, last);
 
+  // férias (períodos)
+  feriasList = await carregarFeriasDoRe(user.re);
+
   // map dia -> jornadas
   const mapDia = {};
   for (const j of jornadasMes){
@@ -396,15 +430,22 @@ function renderTabela(){
   for (const linha of linhasMes){
     const dataKey = `${ano}-${pad2(mes)}-${pad2(linha.dia)}`;
     const oc = mapOcorrencias[dataKey] || null;
-
     const ehFolga = isFolgaByEscala(linha.dateObj, user?.escala);
+    const ferias = getFeriasNoDia(dataKey, linha.dateObj, user?.escala);
+
     const j1 = (linha.jornadas && linha.jornadas.length) ? linha.jornadas[0] : null;
 
     let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="-", obs="";
 
-    if (oc){
+    // ✅ prioridade: FÉRIAS > ocorrência > folga > jornada > falta
+    if (ferias){
+      obs = "FÉRIAS" + (ferias.motivo ? ` | ${ferias.motivo}` : "");
+      if (ehFolga) obs += " (folga)";
+    } else if (oc){
       obs = labelOc(oc) + (oc.motivo ? ` | ${oc.motivo}` : "");
-      if (ehFolga) obs += " (dia de folga)";
+      if (ehFolga) obs += " (folga)";
+    } else if (ehFolga){
+      obs = "FOLGA (escala)";
     } else if (j1){
       const dEnt = toDateAny(j1.entrada?.ts);
       const dSai = toDateAny(j1.saida?.ts);
@@ -422,14 +463,13 @@ function renderTabela(){
         obs = (obs ? (obs + " | ") : "") + `2+ jornadas no dia (${linha.jornadas.length})`;
       }
     } else {
-      if (ehFolga) obs = "FOLGA (escala)";
-      else obs = "FALTA";
+      obs = "FALTA";
     }
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${brDate(linha.dateObj)}</td>
-      <td class="${(j1 || ehFolga || oc) ? "" : "muted"}">${weekday(linha.dateObj)}</td>
+      <td class="${(j1 || ehFolga || oc || ferias) ? "" : "muted"}">${weekday(linha.dateObj)}</td>
       <td>${entrada}</td>
       <td>${saiInt}</td>
       <td>${retInt}</td>
@@ -521,13 +561,19 @@ async function exportarPdf(){
     const dataKey = `${ano}-${pad2(mes)}-${pad2(linha.dia)}`;
     const oc = mapOcorrencias[dataKey] || null;
     const ehFolga = isFolgaByEscala(linha.dateObj, user?.escala);
+    const ferias = getFeriasNoDia(dataKey, linha.dateObj, user?.escala);
     const j1 = (linha.jornadas && linha.jornadas.length) ? linha.jornadas[0] : null;
 
     let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="-", obs="";
 
-    if (oc){
+    if (ferias){
+      obs = "FÉRIAS" + (ferias.motivo ? ` | ${ferias.motivo}` : "");
+      if (ehFolga) obs += " (folga)";
+    } else if (oc){
       obs = labelOc(oc) + (oc.motivo ? ` | ${oc.motivo}` : "");
       if (ehFolga) obs += " (folga)";
+    } else if (ehFolga){
+      obs = "FOLGA";
     } else if (j1){
       const dEnt = toDateAny(j1.entrada?.ts);
       const dSai = toDateAny(j1.saida?.ts);
@@ -541,8 +587,7 @@ async function exportarPdf(){
       posto   = reconhecerLocal(getBestLocationFromJornada(j1));
       obs     = obsJornada(j1);
     } else {
-      if (ehFolga) obs = "FOLGA";
-      else obs = "FALTA";
+      obs = "FALTA";
     }
 
     return [
