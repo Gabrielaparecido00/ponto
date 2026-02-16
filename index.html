@@ -23,6 +23,7 @@
   button:hover{ background:#45a049; }
   button.secondary{ background:#1f6feb; }
   button.secondary:hover{ background:#1a5dd6; }
+  button:disabled{ opacity:.6; cursor:not-allowed; }
   canvas{ width:100%; border:1px solid #ccc; border-radius:8px; }
   #timestamp{ text-align:center; margin-top:10px; font-weight:700; }
   #nomeMostrado{ font-weight:700; text-align:center; margin:8px 0 6px; }
@@ -34,6 +35,17 @@
   }
   .phaseTitle{ font-weight:700; margin-bottom:6px; text-align:center; }
   .phaseLine{ font-size:12px; color:#444; text-align:center; }
+  .blocked{
+    background:#fff0f0;
+    border:1px solid #f2b8b5;
+    color:#8a0000;
+    padding:10px;
+    border-radius:10px;
+    font-size:12px;
+    text-align:center;
+    margin:10px 0;
+    display:none;
+  }
   .footer{ text-align:center; margin-top:16px; font-size:12px; color:#666; }
 </style>
 </head>
@@ -51,6 +63,8 @@
     <div class="phaseTitle" id="faseAtual">Fase atual: —</div>
     <div class="phaseLine" id="faseHint">Digite seu RE para carregar suas opções.</div>
   </div>
+
+  <div id="blockedBox" class="blocked"></div>
 
   <select id="acaoSelect" disabled>
     <option value="">Selecione a marcação...</option>
@@ -100,11 +114,22 @@ const ctx = canvas.getContext("2d");
 const faseAtualEl = document.getElementById("faseAtual");
 const faseHintEl = document.getElementById("faseHint");
 const acaoSelect = document.getElementById("acaoSelect");
+const blockedBox = document.getElementById("blockedBox");
 
 // estado
-let colaborador = null; // {re,nome,ativo,horaEntrada,horaSaida}
+let colaborador = null; // {re,nome,ativo,escala,horaEntrada,horaSaida}
 let stream = null;
 let clickLock = false;
+
+function showBlocked(msg){
+  blockedBox.style.display = msg ? "block" : "none";
+  blockedBox.textContent = msg || "";
+}
+function setInputsEnabled(enabled){
+  acaoSelect.disabled = !enabled || (acaoSelect.options.length <= 1);
+  registrarBtn.disabled = !enabled;
+  captureBtn.disabled = !enabled;
+}
 
 // relógio
 setInterval(() => {
@@ -127,6 +152,29 @@ captureBtn.addEventListener("click", async () => {
     alert("Erro ao capturar foto");
   }
 });
+
+// ===== helpers data/escala =====
+function pad2(n){ return String(n).padStart(2,"0"); }
+function todayYmd(){
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+}
+function brDateFromYmd(ymd){
+  if (!ymd) return "";
+  const [y,m,d] = ymd.split("-");
+  if (!y || !m || !d) return ymd;
+  return `${d}/${m}/${y}`;
+}
+function isFolgaByEscala(dateObj, escala){
+  const dow = dateObj.getDay(); // 0 dom, 6 sab
+  const e = (escala || "5x2").toLowerCase();
+  if (e === "5x2") return (dow === 0 || dow === 6);
+  if (e === "6x1") return (dow === 0);
+  return false;
+}
+function isDiaTrabalho(dateObj, escala){
+  return !isFolgaByEscala(dateObj, escala);
+}
 
 // ===== locais (cache) =====
 let cacheLocais = []; // [{nome,lat,lng,raio}]
@@ -201,6 +249,36 @@ async function getLocationStrict(){
   return { ok:true, locationStr:`${lat},${lng}`, posto:best.nome };
 }
 
+// ===== férias (afastamentos) =====
+async function carregarAfastamentosDoRe(re){
+  const qA = query(collection(db,"afastamentos"), where("re","==",re));
+  const snap = await getDocs(qA);
+  return snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }));
+}
+function isWithinRange(ymd, ini, fim){
+  return !!(ymd && ini && fim && ymd >= ini && ymd <= fim);
+}
+function aplicaNoDia(afast, dateObj, escala){
+  // aplicarSomenteDiasTrabalho: true => só dias de trabalho
+  const onlyWork = (afast?.aplicarSomenteDiasTrabalho === true);
+  if (onlyWork && !isDiaTrabalho(dateObj, escala)) return false;
+  return true;
+}
+async function checarBloqueioFerias(re, escala){
+  const hoje = todayYmd();
+  const dateObj = new Date();
+  const afast = await carregarAfastamentosDoRe(re);
+  const ferias = afast.filter(a => (String(a.tipo||"").toLowerCase() === "ferias"));
+  for (const f of ferias){
+    const ini = String(f.inicio||"").slice(0,10);
+    const fim = String(f.fim||"").slice(0,10);
+    if (isWithinRange(hoje, ini, fim) && aplicaNoDia(f, dateObj, escala)){
+      return { bloqueado:true, ferias:f };
+    }
+  }
+  return { bloqueado:false, ferias:null };
+}
+
 // ===== regras / etapas =====
 const TEMPO_MINIMO = 5 * 60 * 1000; // 5 min
 
@@ -247,6 +325,8 @@ function limparForm(){
   faseHintEl.innerText = "Digite seu RE para carregar suas opções.";
   acaoSelect.innerHTML = `<option value="">Selecione a marcação...</option>`;
   acaoSelect.disabled = true;
+  showBlocked("");
+  setInputsEnabled(true);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
@@ -267,6 +347,7 @@ async function buscarColaborador(re){
     re,
     nome: (data.nome || "").trim(),
     ativo: (data.ativo !== false),
+    escala: (data.escala || "5x2"),
     horaEntrada: (data.horaEntrada || "").toString().trim(),
     horaSaida: (data.horaSaida || "").toString().trim()
   };
@@ -285,7 +366,6 @@ function pickLastTs(j){
 
 // define estado e ações permitidas
 function getEstadoEAcaoPermitida(j){
-  // sem jornada: só ENTRADA
   if (!j) {
     return {
       fase: "Sem jornada aberta",
@@ -301,15 +381,12 @@ function getEstadoEAcaoPermitida(j){
   const temEntHe = !!j?.entrada_he?.ts;
   const temSaiHe = !!j?.saida_he?.ts;
 
-  // 1) precisa ter entrada
   if (!temEntrada){
     return { fase:"Jornada inválida", hint:"Falta ENTRADA. Procure o admin.", acoes:[ETAPAS.ENTRADA] };
   }
 
-  // 2) ainda dentro do expediente (sem saída final)
   if (!temSaida){
     if (!temSaiInt && !temRetInt){
-      // intrajornada opcional: pode iniciar intrajornada OU encerrar direto
       return {
         fase: "Após ENTRADA",
         hint: "Escolha: iniciar intrajornada (intervalo) OU encerrar (SAÍDA).",
@@ -330,11 +407,9 @@ function getEstadoEAcaoPermitida(j){
         acoes: [ETAPAS.SAIDA]
       };
     }
-    // qualquer outro caso estranho
     return { fase:"Estado incomum", hint:"Procure o admin.", acoes:[] };
   }
 
-  // 3) saída registrada: não pode voltar intrajornada, só HE opcional ou nova entrada
   if (temSaida && !temEntHe && !temSaiHe){
     return {
       fase: "Expediente encerrado",
@@ -374,7 +449,6 @@ function montarSelectAcoes(acoes){
 }
 
 async function obterJornadaAtivaDoRe(re){
-  // pega todas jornadas do RE e escolhe a última que NÃO está completa (ou a mais recente)
   const q = query(collection(db, "jornadas"), where("re", "==", re));
   const snap = await getDocs(q);
   const jornadas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
@@ -385,17 +459,13 @@ async function obterJornadaAtivaDoRe(re){
     return tb - ta;
   });
 
-  // considera ativa: aquela que ainda não tem saida_he se entrada_he existe, ou que não tem saida.
   for (const j of jornadas){
     const temSaida = !!j?.saida?.ts;
     const temEntHe = !!j?.entrada_he?.ts;
     const temSaiHe = !!j?.saida_he?.ts;
 
-    // jornada em andamento (sem saida) OU está na HE (entrada_he sem saida_he)
     if (!temSaida) return j;
     if (temEntHe && !temSaiHe) return j;
-
-    // se só tem saida e você permite entrada_he depois, ainda é "meio aberta"
     if (temSaida && !temEntHe && !temSaiHe) return j;
   }
 
@@ -410,6 +480,9 @@ async function atualizarTela(){
   faseAtualEl.innerText = "Fase atual: —";
   faseHintEl.innerText = "Digite seu RE para carregar suas opções.";
   montarSelectAcoes([]);
+  showBlocked("");
+  setInputsEnabled(true);
+
   if (!re) return;
 
   const c = await buscarColaborador(re);
@@ -419,6 +492,7 @@ async function atualizarTela(){
   }
   if (!c.ativo){
     nomeMostrado.innerText = `Nome: ${c.nome} (INATIVO)`;
+    setInputsEnabled(false);
     return;
   }
 
@@ -426,12 +500,28 @@ async function atualizarTela(){
   nomeMostrado.innerText = "Nome: " + c.nome;
   horarioMostrado.innerText = "Horário previsto: " + horarioTxt(c);
 
+  // ✅ bloqueio por férias (somente dias de trabalho)
+  const chk = await checarBloqueioFerias(re, c.escala);
+  if (chk.bloqueado){
+    const f = chk.ferias;
+    const ini = String(f.inicio||"").slice(0,10);
+    const fim = String(f.fim||"").slice(0,10);
+    const motivo = (f.motivo || "").toString().trim();
+    showBlocked(`🚫 BLOQUEADO: Você está de FÉRIAS hoje.\nPeríodo: ${brDateFromYmd(ini)} até ${brDateFromYmd(fim)}${motivo ? "\nMotivo: "+motivo : ""}`);
+    faseAtualEl.innerText = "Fase atual: FÉRIAS";
+    faseHintEl.innerText = "Registro não permitido durante férias.";
+    montarSelectAcoes([]);
+    setInputsEnabled(false);
+    return;
+  }
+
   const jornada = await obterJornadaAtivaDoRe(re);
   const st = getEstadoEAcaoPermitida(jornada);
 
   faseAtualEl.innerText = "Fase atual: " + st.fase;
   faseHintEl.innerText = st.hint;
   montarSelectAcoes(st.acoes);
+  setInputsEnabled(true);
 }
 
 reInput.addEventListener("blur", atualizarTela);
@@ -454,6 +544,13 @@ registrarBtn.addEventListener("click", async () => {
   if (!colaborador){
     await atualizarTela();
     if (!colaborador) return alert("Colaborador não cadastrado ou INATIVO.");
+  }
+
+  // ✅ checa férias de novo (antiburlar)
+  const chk = await checarBloqueioFerias(re, colaborador.escala);
+  if (chk.bloqueado){
+    await atualizarTela();
+    return;
   }
 
   const acao = acaoSelect.value;
@@ -479,14 +576,14 @@ registrarBtn.addEventListener("click", async () => {
   const msg = etapaConfirms[acao] || "Confirmar registro?";
   if (!confirm(msg)) return;
 
-  // anti duplicidade (último registro)
+  // anti duplicidade
   const now = new Date();
   const lastTs = pickLastTs(jornadaAtiva);
   if (lastTs && (now - lastTs) < TEMPO_MINIMO){
     return alert("Registro duplicado detectado. Aguarde 5 minutos para registrar novamente.");
   }
 
-  // ação = ENTRADA cria jornada nova (sempre)
+  // ENTRADA cria jornada nova
   if (acao === ETAPAS.ENTRADA){
     await addDoc(collection(db, "jornadas"), {
       re,
@@ -512,29 +609,19 @@ registrarBtn.addEventListener("click", async () => {
   payload[acao] = { ts: now.toISOString(), foto, location };
   payload.updatedAt = now.toISOString();
 
-  // regras de status e flags
+  // flag intrajornada não realizada se sair direto
   const temEntrada = !!jornadaAtiva?.entrada?.ts;
   const temSaiInt = !!jornadaAtiva?.saida_intervalo?.ts;
   const temRetInt = !!jornadaAtiva?.retorno_intervalo?.ts;
-
-  // se registrar SAÍDA sem ter feito intrajornada: marca flag
   if (acao === ETAPAS.SAIDA && temEntrada && !temSaiInt && !temRetInt){
     payload.flags = { ...(jornadaAtiva.flags || {}) };
     payload.flags.intrajornada_nao_realizada = true;
     payload.flags.intrajornada_registrado_em = now.toISOString();
   }
 
-  // status
-  // - se SAÍDA registrada: pode ficar "fechada" (mas ainda aceita HE como opção, pelo estado)
-  if (acao === ETAPAS.SAIDA){
-    payload.status = "fechada";
-  }
-  if (acao === ETAPAS.ENTRADA_HE){
-    payload.status = "he_aberta";
-  }
-  if (acao === ETAPAS.SAIDA_HE){
-    payload.status = "fechada";
-  }
+  if (acao === ETAPAS.SAIDA) payload.status = "fechada";
+  if (acao === ETAPAS.ENTRADA_HE) payload.status = "he_aberta";
+  if (acao === ETAPAS.SAIDA_HE) payload.status = "fechada";
 
   await setDoc(ref, payload, { merge:true });
 
