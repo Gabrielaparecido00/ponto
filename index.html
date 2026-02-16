@@ -6,7 +6,6 @@
 <title>Sistema de Ponto</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
-
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
 <style>
@@ -27,8 +26,8 @@ body {
 
 .logo {
     display: block;
-    margin: 0 auto 15px;
-    width: 120px;
+    margin: 0 auto 20px;
+    width: 220px;
 }
 
 h2 {
@@ -51,6 +50,7 @@ button {
     color: white;
     font-weight: bold;
     cursor: pointer;
+    margin-top: 5px;
 }
 
 button:hover {
@@ -79,10 +79,6 @@ canvas {
     border-radius: 10px;
 }
 
-.admin-area h3 {
-    text-align: center;
-}
-
 .login-area {
     margin-top: 20px;
 }
@@ -97,46 +93,46 @@ canvas {
 
 <div class="container">
 
-    <img src="GW.png" class="logo">
+<img src="GW.png" class="logo">
 
-    <h2>Registro de Ponto</h2>
+<h2>Registro de Ponto</h2>
 
-    <form id="punchForm">
-        <div class="form-group">
-            <label>Nome Completo</label>
-            <input type="text" id="fullName" required>
-        </div>
-
-        <div class="form-group">
-            <label>RE</label>
-            <input type="text" id="re" required>
-        </div>
-
-        <div class="form-group">
-            <label>Foto</label>
-            <canvas id="photo" width="240" height="320"></canvas>
-            <button type="button" id="captureBtn">Capturar Foto</button>
-        </div>
-
-        <button type="submit">Registrar Ponto</button>
-    </form>
-
-    <div id="timestamp"></div>
-
-    <!-- 🔐 LOGIN ADMIN -->
-    <div class="login-area">
-        <h3>Área Administrativa</h3>
-        <input type="text" id="user" placeholder="Usuário">
-        <input type="password" id="pass" placeholder="Senha">
-        <button id="loginBtn">Entrar</button>
+<form id="punchForm">
+    <div class="form-group">
+        <label>Nome Completo</label>
+        <input type="text" id="fullName" required>
     </div>
 
-    <!-- 🔥 AREA ADMIN -->
-    <div class="admin-area" id="adminArea">
-        <h3>Painel Admin</h3>
-        <button id="exportBtn">📊 Exportar Excel</button>
-        <button id="logoutBtn" class="logout">Sair</button>
+    <div class="form-group">
+        <label>RE</label>
+        <input type="text" id="re" required>
     </div>
+
+    <div class="form-group">
+        <label>Foto</label>
+        <canvas id="photo" width="240" height="320"></canvas>
+        <button type="button" id="captureBtn">Capturar Foto</button>
+    </div>
+
+    <button type="submit">Registrar Ponto</button>
+</form>
+
+<div id="timestamp"></div>
+
+<!-- LOGIN ADMIN -->
+<div class="login-area">
+    <h3>Área Administrativa</h3>
+    <input type="text" id="user" placeholder="Usuário">
+    <input type="password" id="pass" placeholder="Senha">
+    <button id="loginBtn">Entrar</button>
+</div>
+
+<!-- ADMIN -->
+<div class="admin-area" id="adminArea">
+    <h3>Painel Admin</h3>
+    <button id="exportBtn">📊 Exportar Excel</button>
+    <button id="logoutBtn" class="logout">Sair</button>
+</div>
 
 </div>
 
@@ -145,11 +141,15 @@ canvas {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, addDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// 🔥 SUA CONFIG FIREBASE
+// 🔥 CONFIG CORRETA
 const firebaseConfig = {
-  apiKey: "SUA_API_KEY",
-  authDomain: "SEU_PROJETO.firebaseapp.com",
-  projectId: "SEU_PROJETO",
+  apiKey: "AIzaSyD--zpWLbLg5X82oGTyz6SuPFQV0sd7NWc",
+  authDomain: "controle-ponto-f539b.firebaseapp.com",
+  projectId: "controle-ponto-f539b",
+  storageBucket: "controle-ponto-f539b.firebasestorage.app",
+  messagingSenderId: "324716100257",
+  appId: "1:324716100257:web:32d49a9ab4916182dd4ee0",
+  measurementId: "G-P81H3C4SFK"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -169,7 +169,7 @@ const logoutBtn = document.getElementById('logoutBtn');
 let videoStream;
 let isSubmitting = false;
 
-// 🔐 LOGIN
+// 🔐 LOGIN ADMIN
 loginBtn.addEventListener('click', () => {
 
     const user = document.getElementById('user').value;
@@ -196,14 +196,21 @@ navigator.mediaDevices.getUserMedia({ video: true })
 // 📸 FOTO
 captureBtn.addEventListener('click', async () => {
 
-    if (!videoStream) return alert("Câmera não iniciada");
+    if (!videoStream) {
+        alert("Câmera não iniciada");
+        return;
+    }
 
     const track = videoStream.getVideoTracks()[0];
     const imageCapture = new ImageCapture(track);
 
-    const bitmap = await imageCapture.grabFrame();
-    const ctx = photo.getContext('2d');
-    ctx.drawImage(bitmap, 0, 0, photo.width, photo.height);
+    try {
+        const bitmap = await imageCapture.grabFrame();
+        const ctx = photo.getContext('2d');
+        ctx.drawImage(bitmap, 0, 0, photo.width, photo.height);
+    } catch {
+        alert("Erro ao capturar foto");
+    }
 });
 
 // ⏰ RELÓGIO
@@ -211,7 +218,7 @@ setInterval(() => {
     timestampDiv.textContent = "Data/Hora: " + new Date().toLocaleString();
 }, 1000);
 
-// 🚀 REGISTRAR
+// 🚀 REGISTRAR PONTO
 form.addEventListener('submit', async (e) => {
 
     e.preventDefault();
@@ -244,42 +251,57 @@ form.addEventListener('submit', async (e) => {
             location
         });
 
-        alert("Ponto registrado!");
+        alert("Ponto registrado com sucesso!");
 
         form.reset();
         photo.getContext('2d').clearRect(0, 0, photo.width, photo.height);
 
-    } catch {
+    } catch (err) {
+        console.error(err);
         alert("Erro ao salvar");
     }
 
     isSubmitting = false;
 });
 
-// 📊 EXPORTAR EXCEL
+// 📊 EXPORTAR EXCEL (CORRIGIDO)
 exportBtn.addEventListener('click', async () => {
 
-    const querySnapshot = await getDocs(collection(db, "pontos"));
+    try {
 
-    let dados = [];
+        const querySnapshot = await getDocs(collection(db, "pontos"));
 
-    querySnapshot.forEach((doc) => {
-        const d = doc.data();
+        let dados = [];
 
-        dados.push({
-            Nome: d.fullName,
-            RE: d.re,
-            Data: new Date(d.timestamp).toLocaleString(),
-            Localizacao: d.location
+        querySnapshot.forEach((doc) => {
+            const d = doc.data();
+
+            dados.push({
+                Nome: d.fullName || "",
+                RE: d.re || "",
+                DataHora: d.timestamp ? new Date(d.timestamp).toLocaleString() : "",
+                Localizacao: d.location || ""
+            });
         });
-    });
 
-    const ws = XLSX.utils.json_to_sheet(dados);
-    const wb = XLSX.utils.book_new();
+        console.log("Dados encontrados:", dados.length);
 
-    XLSX.utils.book_append_sheet(wb, ws, "Pontos");
+        if (dados.length === 0) {
+            alert("Nenhum dado encontrado!");
+            return;
+        }
 
-    XLSX.writeFile(wb, "pontos.xlsx");
+        const ws = XLSX.utils.json_to_sheet(dados);
+        const wb = XLSX.utils.book_new();
+
+        XLSX.utils.book_append_sheet(wb, ws, "Pontos");
+
+        XLSX.writeFile(wb, "pontos.xlsx");
+
+    } catch (err) {
+        console.error(err);
+        alert("Erro ao exportar");
+    }
 });
 
 </script>
