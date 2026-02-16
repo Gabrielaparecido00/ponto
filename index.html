@@ -27,6 +27,7 @@
   #timestamp{ text-align:center; margin-top:10px; font-weight:700; }
   #nomeMostrado{ font-weight:700; text-align:center; margin:8px 0 14px; }
   .footer{ text-align:center; margin-top:16px; font-size:12px; color:#666; }
+  .smallInfo{ text-align:center; font-size:12px; color:#666; margin:8px 0 0; }
 </style>
 </head>
 
@@ -45,6 +46,7 @@
   <button type="button" class="secondary" onclick="window.location.href='meu_ponto.html'">Área do colaborador</button>
 
   <div id="timestamp"></div>
+  <div class="smallInfo">⚠️ Registro só é permitido dentro de um posto cadastrado.</div>
 </div>
 
 <div class="footer">
@@ -80,9 +82,104 @@ const ctx = canvas.getContext("2d");
 // estado
 let nomeAtual = "";
 let colaboradorAtivo = false;
-let escalaAtual = "5x2";
 let stream = null;
 let clickLock = false;
+
+// ===== locais (cache) =====
+let cacheLocais = []; // [{nome,lat,lng,raio}]
+
+function haversineMeters(lat1, lon1, lat2, lon2){
+  const R=6371000; const toRad=x=>x*Math.PI/180;
+  const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
+  const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return 2*R*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+async function carregarLocaisSafe(){
+  try{
+    const snap = await getDocs(collection(db,"locais"));
+    cacheLocais = snap.docs
+      .map(d => ({ id:d.id, ...d.data() }))
+      .filter(l => Number.isFinite(l.lat) && Number.isFinite(l.lng) && Number.isFinite(l.raio));
+
+    return { ok:true, total: cacheLocais.length };
+  }catch(e){
+    console.error("ERRO ao carregar locais:", e);
+    cacheLocais = [];
+    return { ok:false, error: e };
+  }
+}
+
+// tenta carregar ao abrir (a validação recarrega também)
+carregarLocaisSafe();
+
+// ✅ localização obrigatória + precisa estar dentro de um local cadastrado
+async function getLocationStrict(){
+  // 1) sempre tenta ler locais
+  const resLocais = await carregarLocaisSafe();
+
+  // 2) se falhou ler locais -> BLOQUEIA
+  if (!resLocais.ok){
+    return {
+      ok:false,
+      message:"Não foi possível validar o posto (erro ao ler locais).\nVerifique as regras do Firestore para a coleção 'locais' e tente novamente."
+    };
+  }
+
+  // 3) se não tem local cadastrado -> BLOQUEIA
+  if (!cacheLocais.length){
+    return {
+      ok:false,
+      message:"Nenhum local (posto) está cadastrado no sistema.\nRegistro de ponto BLOQUEADO. Procure o administrador."
+    };
+  }
+
+  // 4) GPS obrigatório
+  let pos;
+  try{
+    pos = await new Promise((res, rej) =>
+      navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy:true, timeout:12000 })
+    );
+  }catch{
+    return { ok:false, message:"Localização é obrigatória.\nAtive o GPS e permita o acesso à localização." };
+  }
+
+  const lat = pos.coords.latitude;
+  const lng = pos.coords.longitude;
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)){
+    return { ok:false, message:"Não foi possível obter coordenadas válidas." };
+  }
+
+  // 5) precisa cair dentro do raio de algum posto
+  let best = null;
+  for (const l of cacheLocais){
+    const d = haversineMeters(lat, lng, l.lat, l.lng);
+    if (d <= l.raio){
+      if (!best || d < best.d) best = { nome:l.nome, d };
+    }
+  }
+
+  if (!best){
+    // calcula o posto mais próximo só para informar
+    let nearest = null;
+    for (const l of cacheLocais){
+      const d = haversineMeters(lat, lng, l.lat, l.lng);
+      if (!nearest || d < nearest.d) nearest = { nome:l.nome, d, raio:l.raio };
+    }
+
+    const dTxt = nearest
+      ? `Posto mais próximo: ${nearest.nome}\nDistância aprox.: ${Math.round(nearest.d)}m\nRaio do posto: ${Math.round(nearest.raio)}m`
+      : "";
+
+    return {
+      ok:false,
+      message:`Fora do posto cadastrado.\n${dTxt}\n\nNão é permitido registrar ponto fora do local.`
+    };
+  }
+
+  return { ok:true, locationStr: `${lat},${lng}`, posto: best.nome };
+}
 
 // relógio
 setInterval(() => {
@@ -129,21 +226,11 @@ function getNextStepFromJornada(j){
   }
   return null;
 }
-async function getLocationString(){
-  let location = "Não disponível";
-  try{
-    const pos = await new Promise((res, rej) =>
-      navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy:true, timeout:8000 })
-    );
-    location = pos.coords.latitude + "," + pos.coords.longitude;
-  }catch{}
-  return location;
-}
+
 function limparForm(){
   reInput.value = "";
   nomeAtual = "";
   colaboradorAtivo = false;
-  escalaAtual = "5x2";
   nomeMostrado.innerText = "Nome: —";
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
@@ -152,20 +239,18 @@ function limparForm(){
 async function buscarColaborador(re){
   const ref = doc(db, "colaboradores", re);
   const snap = await getDoc(ref);
-  if (!snap.exists()) return { nome:"", ativo:false, escala:"5x2" };
+  if (!snap.exists()) return { nome:"", ativo:false };
 
   const data = snap.data() || {};
   const nome = (data.nome || "").trim();
-  const ativo = (data.ativo !== false); // default true
-  const escala = (data.escala || "5x2");
-  return { nome, ativo, escala };
+  const ativo = (data.ativo !== false);
+  return { nome, ativo };
 }
 
 async function atualizarNomeNaTela(){
   const re = reInput.value.trim();
   nomeAtual = "";
   colaboradorAtivo = false;
-  escalaAtual = "5x2";
   nomeMostrado.innerText = "Nome: —";
   if (!re) return;
 
@@ -183,8 +268,7 @@ async function atualizarNomeNaTela(){
 
   nomeAtual = res.nome;
   colaboradorAtivo = true;
-  escalaAtual = res.escala || "5x2";
-  nomeMostrado.innerText = `Nome: ${nomeAtual} — Escala: ${escalaAtual}`;
+  nomeMostrado.innerText = "Nome: " + nomeAtual;
 }
 
 reInput.addEventListener("blur", atualizarNomeNaTela);
@@ -211,8 +295,13 @@ registrarBtn.addEventListener("click", async () => {
     }
   }
 
+  // foto
   const foto = canvas.toDataURL("image/jpeg", 0.4);
-  const location = await getLocationString();
+
+  // ✅ BLOQUEIO REAL: sem local válido não registra
+  const loc = await getLocationStrict();
+  if (!loc.ok) return alert(loc.message);
+  const location = loc.locationStr;
 
   // buscar jornadas do RE
   const q = query(collection(db, "jornadas"), where("re", "==", re));
