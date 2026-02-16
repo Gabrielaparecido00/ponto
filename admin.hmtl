@@ -1,156 +1,8 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Painel Administrativo</title>
-
-<script type="module">
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-// 🔥 CONFIG FIREBASE (COLE A SUA)
-const firebaseConfig = {
-  apiKey: "SUA_KEY",
-  authDomain: "SEU_DOMINIO",
-  projectId: "SEU_PROJECT_ID",
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-
-// 🔐 LOGIN
-window.login = async function() {
-    const email = document.getElementById("email").value;
-    const senha = document.getElementById("senha").value;
-
-    try {
-        await signInWithEmailAndPassword(auth, email, senha);
-    } catch (e) {
-        alert("Erro no login");
-    }
-};
-
-// 🚪 LOGOUT
-window.logout = async function() {
-    await signOut(auth);
-};
-
-// 🔐 PROTEÇÃO
-onAuthStateChanged(auth, user => {
-    if (user) {
-        document.getElementById("login").style.display = "none";
-        document.getElementById("painel").style.display = "block";
-    } else {
-        document.getElementById("login").style.display = "block";
-        document.getElementById("painel").style.display = "none";
-    }
-});
-
-// 📊 BUSCAR DADOS
-let dadosGlobais = [];
-
-window.buscar = async function() {
-
-    const inicio = new Date(document.getElementById("inicio").value);
-    const fim = new Date(document.getElementById("fim").value);
-
-    const querySnapshot = await getDocs(collection(db, "pontos"));
-
-    let dados = [];
-
-    querySnapshot.forEach(doc => {
-        const d = doc.data();
-
-        if (!d.timestamp) return;
-
-        const data = new Date(d.timestamp);
-
-        if (data >= inicio && data <= fim) {
-            dados.push(d);
-        }
-    });
-
-    dadosGlobais = dados;
-
-    montarTabela(dados);
-};
-
-// 🧠 ORGANIZAR PONTO
-function montarTabela(dados) {
-
-    const tbody = document.querySelector("tbody");
-    tbody.innerHTML = "";
-
-    const agrupado = {};
-
-    dados.forEach(d => {
-        const key = d.re + "_" + d.fullName;
-
-        if (!agrupado[key]) agrupado[key] = [];
-        agrupado[key].push(d);
-    });
-
-    Object.keys(agrupado).forEach(key => {
-
-        const registros = agrupado[key].sort((a,b)=> new Date(a.timestamp) - new Date(b.timestamp));
-
-        let entrada = "";
-        let saidaIntervalo = "";
-        let retorno = "";
-        let saidaFinal = "";
-
-        if (registros[0]) entrada = formatar(registros[0].timestamp);
-        if (registros[1]) saidaIntervalo = formatar(registros[1].timestamp);
-        if (registros[2]) retorno = formatar(registros[2].timestamp);
-        if (registros[3]) saidaFinal = formatar(registros[3].timestamp);
-
-        const tr = `
-        <tr>
-            <td>${registros[0].fullName}</td>
-            <td>${registros[0].re}</td>
-            <td>${entrada}</td>
-            <td>${saidaIntervalo}</td>
-            <td>${retorno}</td>
-            <td>${saidaFinal}</td>
-        </tr>
-        `;
-
-        tbody.innerHTML += tr;
-    });
-}
-
-// 📅 FORMATAR DATA
-function formatar(data) {
-    const d = new Date(data);
-    return d.toLocaleString();
-}
-
-// 📥 EXPORTAR CSV
-window.exportar = function() {
-
-    let csv = "Nome,RE,Entrada,Saida Intervalo,Retorno,Saida Final\n";
-
-    const linhas = document.querySelectorAll("tbody tr");
-
-    linhas.forEach(tr => {
-        const cols = tr.querySelectorAll("td");
-        const linha = Array.from(cols).map(td => td.innerText).join(",");
-        csv += linha + "\n";
-    });
-
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "pontos.csv";
-    a.click();
-};
-
-</script>
+<title>Painel Admin</title>
 
 <style>
 body { font-family: Arial; background:#f5f5f5; text-align:center; }
@@ -163,7 +15,7 @@ body { font-family: Arial; background:#f5f5f5; text-align:center; }
     border-radius:10px;
 }
 
-.logo { width:220px; }
+.logo { width:280px; }
 
 table {
     width:100%;
@@ -171,11 +23,130 @@ table {
     margin-top:20px;
 }
 
-th,td {
+th, td {
     border:1px solid #ccc;
     padding:8px;
 }
 </style>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+// 🔥 SUA CONFIG
+const firebaseConfig = {
+  apiKey: "AIzaSyD--zpWLbLg5X82oGTyz6SuPFQV0sd7NWc",
+  authDomain: "controle-ponto-f539b.firebaseapp.com",
+  projectId: "controle-ponto-f539b",
+  storageBucket: "controle-ponto-f539b.firebasestorage.app",
+  messagingSenderId: "324716100257",
+  appId: "1:324716100257:web:32d49a9ab4916182dd4ee0",
+  measurementId: "G-P81H3C4SFK"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+
+// login
+window.login = async () => {
+    const email = document.getElementById("email").value;
+    const senha = document.getElementById("senha").value;
+
+    try {
+        await signInWithEmailAndPassword(auth, email, senha);
+    } catch {
+        alert("Erro login");
+    }
+};
+
+// logout
+window.logout = () => signOut(auth);
+
+// proteção
+onAuthStateChanged(auth, user => {
+    document.getElementById("login").style.display = user ? "none" : "block";
+    document.getElementById("painel").style.display = user ? "block" : "none";
+});
+
+// buscar dados
+window.buscar = async () => {
+
+    const ini = new Date(document.getElementById("inicio").value);
+    const fim = new Date(document.getElementById("fim").value);
+
+    const snap = await getDocs(collection(db, "pontos"));
+
+    let dados = [];
+
+    snap.forEach(doc => {
+        const d = doc.data();
+        const t = new Date(d.timestamp);
+
+        if (t >= ini && t <= fim) dados.push(d);
+    });
+
+    montar(dados);
+};
+
+// montar tabela
+function montar(dados){
+
+    const tbody = document.querySelector("tbody");
+    tbody.innerHTML = "";
+
+    const grupos = {};
+
+    dados.forEach(d => {
+        const key = d.re + d.fullName;
+        if(!grupos[key]) grupos[key] = [];
+        grupos[key].push(d);
+    });
+
+    for(const k in grupos){
+
+        const r = grupos[k].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+
+        const tr = `
+        <tr>
+            <td>${r[0]?.fullName||""}</td>
+            <td>${r[0]?.re||""}</td>
+            <td>${f(r[0])}</td>
+            <td>${f(r[1])}</td>
+            <td>${f(r[2])}</td>
+            <td>${f(r[3])}</td>
+        </tr>`;
+
+        tbody.innerHTML += tr;
+    }
+}
+
+function f(d){
+    return d ? new Date(d.timestamp).toLocaleString() : "";
+}
+
+// exportar CSV
+window.exportar = () => {
+
+    let csv = "Nome,RE,Entrada,Saida Intervalo,Retorno,Saida Final\n";
+
+    document.querySelectorAll("tbody tr").forEach(tr => {
+        const tds = tr.querySelectorAll("td");
+        csv += Array.from(tds).map(td=>td.innerText).join(",")+"\n";
+    });
+
+    const blob = new Blob([csv]);
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "pontos.csv";
+    a.click();
+};
+
+</script>
 
 </head>
 
@@ -183,7 +154,7 @@ th,td {
 
 <div id="login" class="container">
     <img src="GW.png" class="logo">
-    <h2>Admin</h2>
+    <h2>Login Admin</h2>
     <input id="email" placeholder="Email"><br>
     <input id="senha" type="password" placeholder="Senha"><br>
     <button onclick="login()">Entrar</button>
@@ -191,13 +162,15 @@ th,td {
 
 <div id="painel" class="container" style="display:none;">
     <img src="GW.png" class="logo">
-    <h2>Painel de Controle</h2>
+    <h2>Painel</h2>
 
     <input type="date" id="inicio">
     <input type="date" id="fim">
 
+    <br><br>
+
     <button onclick="buscar()">Buscar</button>
-    <button onclick="exportar()">Exportar Excel</button>
+    <button onclick="exportar()">Exportar CSV</button>
     <button onclick="logout()">Sair</button>
 
     <table>
