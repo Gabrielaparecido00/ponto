@@ -7,9 +7,9 @@
 
 <style>
 body { font-family: Arial; background:#f5f5f5; text-align:center; }
-.container { background:white; padding:20px; margin:20px auto; max-width:1200px; border-radius:10px; }
+.container { background:white; padding:20px; margin:20px auto; max-width:1250px; border-radius:10px; }
 .logo { width:260px; margin-bottom: 10px; }
-input, button { padding:10px; margin:5px; }
+input, button, select { padding:10px; margin:5px; }
 button { cursor:pointer; }
 .row { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center; margin-top:10px; }
 table { width:100%; border-collapse:collapse; margin-top:18px; font-size:13px; }
@@ -18,7 +18,11 @@ th { background:#fafafa; }
 .editBtn { border:none; background:transparent; cursor:pointer; font-size:14px; }
 .small { font-size: 12px; color:#666; }
 .hr { height:1px; background:#eee; margin:18px 0; border:0; }
-.sectionTitle { margin: 10px 0 0; }
+.menu { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:10px; }
+.menu button { background:#1f6feb; color:#fff; border:none; border-radius:8px; }
+.menu button.secondary { background:#6c757d; }
+.section { display:none; }
+.section.active { display:block; }
 </style>
 </head>
 <body>
@@ -37,62 +41,102 @@ th { background:#fafafa; }
   <img src="GW.png" class="logo">
 
   <h2>Painel Admin</h2>
-  <div class="small">Cadastro de colaboradores + correção de registros</div>
+  <div class="small">Use o menu para navegar. ✏️ edita com: <b>AAAA-MM-DD HH:MM</b></div>
 
-  <hr class="hr">
-
-  <!-- ✅ CADASTRADOR DE FUNCIONÁRIO -->
-  <h3 class="sectionTitle">Cadastro de Funcionário</h3>
-  <div class="small">Coleção: <b>colaboradores</b> (docId = RE)</div>
-
-  <div class="row">
-    <input id="cadRe" placeholder="RE (ex: 12345)" inputmode="numeric">
-    <input id="cadNome" placeholder="Nome completo">
-    <button onclick="salvarColaborador()">Salvar / Atualizar</button>
+  <div class="menu">
+    <button onclick="showSection('secJornadas')">Jornadas</button>
+    <button onclick="showSection('secColab')">Cadastro de colaborador</button>
+    <button onclick="showSection('secLocal')">Cadastro de local</button>
+    <button class="secondary" onclick="logout()">Sair</button>
   </div>
 
   <hr class="hr">
 
-  <!-- FILTROS -->
-  <h3 class="sectionTitle">Jornadas (Turnos)</h3>
-  <div class="row">
-    <label>De:</label>
-    <input type="date" id="inicio">
-    <label>Até:</label>
-    <input type="date" id="fim">
-    <input id="filtroRe" placeholder="Filtrar por RE (opcional)" inputmode="numeric">
-    <input id="filtroNome" placeholder="Filtrar por Nome (opcional)">
-    <button onclick="buscar()">Buscar</button>
-    <button onclick="exportar()">Exportar CSV</button>
-    <button onclick="logout()">Sair</button>
+  <!-- ====== SEÇÃO JORNADAS ====== -->
+  <div id="secJornadas" class="section active">
+    <h3>Jornadas (Turnos)</h3>
+
+    <div class="row">
+      <label>De:</label><input type="date" id="inicio">
+      <label>Até:</label><input type="date" id="fim">
+      <input id="filtroRe" placeholder="Filtrar por RE (opcional)" inputmode="numeric">
+      <input id="filtroNome" placeholder="Filtrar por Nome (opcional)">
+      <button onclick="buscar()">Buscar</button>
+      <button onclick="exportar()">Exportar CSV</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Data (Entrada)</th>
+          <th>Nome</th>
+          <th>RE</th>
+
+          <th>ENTRADA</th>
+          <th>SAÍDA INTERVALO</th>
+          <th>RETORNO INTERVALO</th>
+          <th>SAÍDA</th>
+          <th>ENTRADA HE</th>
+          <th>SAÍDA HE</th>
+
+          <th>Localização (coords)</th>
+          <th>Local reconhecido</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
   </div>
 
-  <div class="small">
-    ✏️ Para editar um campo, clique no lápis e informe: <b>AAAA-MM-DD HH:MM</b> (ex: 2026-02-16 07:10)
+  <!-- ====== SEÇÃO COLABORADOR ====== -->
+  <div id="secColab" class="section">
+    <h3>Cadastro de colaborador</h3>
+    <div class="small">Coleção: <b>colaboradores</b> (docId = RE)</div>
+
+    <div class="row">
+      <input id="cadRe" placeholder="RE (docId)" inputmode="numeric">
+      <input id="cadNome" placeholder="Nome completo">
+      <button onclick="salvarColaborador()">Salvar / Atualizar</button>
+    </div>
   </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Data (Entrada)</th>
-        <th>Nome</th>
-        <th>RE</th>
-        <th>ENTRADA</th>
-        <th>SAÍDA INTERVALO</th>
-        <th>RETORNO INTERVALO</th>
-        <th>SAÍDA</th>
-        <th>ENTRADA HE</th>
-        <th>SAÍDA HE</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <!-- ====== SEÇÃO LOCAL ====== -->
+  <div id="secLocal" class="section">
+    <h3>Cadastro de local</h3>
+    <div class="small">Coleção: <b>locais</b> (auto-id) • margem = raio em metros</div>
+
+    <div class="row">
+      <input id="locNome" placeholder="Nome do posto (ex: Posto A)">
+      <input id="locLat" placeholder="Latitude (X) ex: -12.3456">
+      <input id="locLng" placeholder="Longitude (Y) ex: -38.1234">
+      <input id="locRaio" placeholder="Margem (metros) ex: 150" inputmode="numeric">
+      <button onclick="salvarLocal()">Salvar local</button>
+      <button onclick="carregarLocais()">Atualizar lista</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Latitude</th>
+          <th>Longitude</th>
+          <th>Raio (m)</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tbodyLocais"></tbody>
+    </table>
+  </div>
+
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDocs, collection, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  getFirestore, doc, setDoc, getDocs, collection, updateDoc, addDoc, deleteDoc
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {
+  getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD--zpWLbLg5X82oGTyz6SuPFQV0sd7NWc",
@@ -111,6 +155,19 @@ const auth = getAuth(app);
 const loginDiv = document.getElementById("loginDiv");
 const painelDiv = document.getElementById("painelDiv");
 
+let ultimaTabela = [];
+let cacheLocais = []; // [{id,nome,lat,lng,raio}]
+
+// ===== MENU =====
+window.showSection = function(id){
+  document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+
+  // quando entrar na tela de locais, já atualiza
+  if (id === "secLocal") carregarLocais();
+};
+
+// ===== AUTH =====
 window.login = async function() {
   const email = document.getElementById("email").value;
   const senha = document.getElementById("senha").value;
@@ -129,9 +186,10 @@ window.logout = function() {
 onAuthStateChanged(auth, user => {
   loginDiv.style.display = user ? "none" : "block";
   painelDiv.style.display = user ? "block" : "none";
+  if (user) carregarLocais(); // já carrega locais pra reconhecimento
 });
 
-// ===== Helpers =====
+// ===== HELPERS =====
 function norm(s){ return (s||"").toString().trim().toLowerCase(); }
 function toDateAny(ts){
   if (!ts) return null;
@@ -150,39 +208,132 @@ function formatYYYYMMDD(ts){
   return d.toISOString().slice(0,10);
 }
 function formatISOFromYYYYMMDD_HHMM(str){
-  // "2026-02-16 07:10"
   const m = (str||"").trim().match(/^(\d{4})-(\d{2})-(\d{2})\s+([01]\d|2[0-3]):([0-5]\d)$/);
   if (!m) return null;
-  // cria Date em horário local e converte para ISO
   const dt = new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:00`);
   if (isNaN(dt)) return null;
   return dt.toISOString();
 }
 
-// ===== ✅ Cadastro de Funcionário (colaboradores) =====
+// Haversine (metros)
+function haversineMeters(lat1, lon1, lat2, lon2){
+  const R = 6371000;
+  const toRad = (x)=> x * Math.PI / 180;
+  const dLat = toRad(lat2-lat1);
+  const dLon = toRad(lon2-lon1);
+  const a =
+    Math.sin(dLat/2)*Math.sin(dLat/2) +
+    Math.cos(toRad(lat1))*Math.cos(toRad(lat2)) *
+    Math.sin(dLon/2)*Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R*c;
+}
+
+function parseLocation(str){
+  if (!str) return null;
+  const parts = str.split(",").map(s=>s.trim());
+  if (parts.length !== 2) return null;
+  const lat = Number(parts[0]);
+  const lng = Number(parts[1]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { lat, lng };
+}
+
+// pega “melhor” location da jornada (último registro existente)
+function getBestLocationFromJornada(j){
+  const steps = ["saida_he","entrada_he","saida","retorno_intervalo","saida_intervalo","entrada"];
+  for (const s of steps){
+    const loc = j?.[s]?.location;
+    if (loc) return loc;
+  }
+  return "";
+}
+
+function reconhecerLocal(locationStr){
+  const p = parseLocation(locationStr);
+  if (!p) return "Não disponível";
+
+  let melhor = null;
+  for (const l of cacheLocais){
+    const d = haversineMeters(p.lat, p.lng, l.lat, l.lng);
+    if (d <= l.raio){
+      if (!melhor || d < melhor.dist) melhor = { nome: l.nome, dist: d, raio: l.raio };
+    }
+  }
+  return melhor ? `${melhor.nome}` : "Não reconhecido";
+}
+
+// ===== CADASTRO COLABORADOR =====
 window.salvarColaborador = async function(){
   const re = document.getElementById("cadRe").value.trim();
   const nome = document.getElementById("cadNome").value.trim();
   if (!re || !nome) return alert("Preencha RE e Nome.");
 
-  if (!confirm(`Salvar/Atualizar funcionário?\nRE: ${re}\nNome: ${nome}`)) return;
+  if (!confirm(`Salvar/Atualizar colaborador?\nRE: ${re}\nNome: ${nome}`)) return;
 
   const ref = doc(db, "colaboradores", re);
-  await setDoc(ref, {
-    re,
-    nome,
-    ativo: true,
-    updatedAt: new Date().toISOString()
-  }, { merge: true });
+  await setDoc(ref, { re, nome, ativo:true, updatedAt: new Date().toISOString() }, { merge:true });
 
-  alert("Funcionário salvo!");
+  alert("Colaborador salvo!");
   document.getElementById("cadRe").value = "";
   document.getElementById("cadNome").value = "";
 };
 
-// ===== Buscar Jornadas =====
-let ultimaTabela = [];
+// ===== CADASTRO LOCAL =====
+window.salvarLocal = async function(){
+  const nome = document.getElementById("locNome").value.trim();
+  const lat = Number(document.getElementById("locLat").value.trim());
+  const lng = Number(document.getElementById("locLng").value.trim());
+  const raio = Number(document.getElementById("locRaio").value.trim());
 
+  if (!nome || !Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(raio)) {
+    return alert("Preencha Nome, Latitude, Longitude e Raio (metros).");
+  }
+
+  if (!confirm(`Salvar local?\n${nome}\n(${lat}, ${lng})\nRaio: ${raio}m`)) return;
+
+  await addDoc(collection(db, "locais"), {
+    nome, lat, lng, raio, updatedAt: new Date().toISOString()
+  });
+
+  alert("Local cadastrado!");
+  document.getElementById("locNome").value = "";
+  document.getElementById("locLat").value = "";
+  document.getElementById("locLng").value = "";
+  document.getElementById("locRaio").value = "";
+  carregarLocais();
+};
+
+window.carregarLocais = async function(){
+  const snap = await getDocs(collection(db, "locais"));
+  cacheLocais = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .filter(l => Number.isFinite(l.lat) && Number.isFinite(l.lng) && Number.isFinite(l.raio));
+
+  // render lista
+  const tbody = document.getElementById("tbodyLocais");
+  tbody.innerHTML = "";
+  for (const l of cacheLocais){
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${l.nome || ""}</td>
+      <td>${l.lat}</td>
+      <td>${l.lng}</td>
+      <td>${l.raio}</td>
+      <td>
+        <button onclick="removerLocal('${l.id}')">Excluir</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  }
+};
+
+window.removerLocal = async function(id){
+  if (!confirm("Excluir este local?")) return;
+  await deleteDoc(doc(db, "locais", id));
+  carregarLocais();
+};
+
+// ===== JORNADAS =====
 window.buscar = async function(){
   const iniStr = document.getElementById("inicio").value || "2000-01-01";
   const fimStr = document.getElementById("fim").value || "2999-12-31";
@@ -192,22 +343,33 @@ window.buscar = async function(){
   const snap = await getDocs(collection(db, "jornadas"));
   let jornadas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-  // filtra por data de ENTRADA (pela ts da entrada)
+  // filtra por data da entrada (pra pesquisa)
   jornadas = jornadas.filter(j => {
-    const entradaDate = formatYYYYMMDD(j.entrada?.ts);
-    if (!entradaDate) return false;
-    return entradaDate >= iniStr && entradaDate <= fimStr;
+    const d = formatYYYYMMDD(j.entrada?.ts);
+    if (!d) return false;
+    return d >= iniStr && d <= fimStr;
   });
 
   if (filtroRe) jornadas = jornadas.filter(j => norm(j.re) === filtroRe);
   if (filtroNome) jornadas = jornadas.filter(j => norm(j.nome).includes(filtroNome));
 
-  // ordena por entrada desc
   jornadas.sort((a,b) => (toDateAny(b.entrada?.ts) || new Date(0)) - (toDateAny(a.entrada?.ts) || new Date(0)));
 
   ultimaTabela = jornadas;
   montarTabela(jornadas);
 };
+
+function cellEdit(docId, path, ts){
+  const v = formatHHMM(ts);
+  const d = toDateAny(ts);
+  const tooltip = d && !isNaN(d) ? `${d.toISOString().slice(0,10)} ${d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}` : "";
+  return `
+    <td>
+      <span title="${tooltip}">${v}</span>
+      <button class="editBtn" onclick="editar('${docId}','${path}')">✏️</button>
+    </td>
+  `;
+}
 
 function montarTabela(jornadas){
   const tbody = document.querySelector("tbody");
@@ -216,8 +378,11 @@ function montarTabela(jornadas){
   for (const j of jornadas){
     const dataEntrada = formatYYYYMMDD(j.entrada?.ts);
 
-    const row = document.createElement("tr");
-    row.innerHTML = `
+    const locationStr = getBestLocationFromJornada(j);
+    const reconhecido = reconhecerLocal(locationStr);
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
       <td>${dataEntrada}</td>
       <td>${j.nome || ""}</td>
       <td>${j.re || ""}</td>
@@ -228,39 +393,24 @@ function montarTabela(jornadas){
       ${cellEdit(j.id, "saida.ts", j.saida?.ts)}
       ${cellEdit(j.id, "entrada_he.ts", j.entrada_he?.ts)}
       ${cellEdit(j.id, "saida_he.ts", j.saida_he?.ts)}
+
+      <td>${locationStr || ""}</td>
+      <td>${reconhecido}</td>
     `;
-    tbody.appendChild(row);
+    tbody.appendChild(tr);
   }
 }
 
-function cellEdit(docId, path, ts){
-  const v = formatHHMM(ts);
-  const full = (() => {
-    const d = toDateAny(ts);
-    if (!d || isNaN(d)) return "";
-    const ymd = d.toISOString().slice(0,10);
-    const hhmm = d.toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit" });
-    return `${ymd} ${hhmm}`;
-  })();
-
-  return `
-    <td>
-      <span title="${full}">${v}</span>
-      <button class="editBtn" onclick="editar('${docId}','${path}')">✏️</button>
-    </td>
-  `;
-}
-
-// ===== ✅ Editar campo: pede AAAA-MM-DD HH:MM =====
+// Editar (Data + Hora)
 window.editar = async function(docId, path){
   const j = ultimaTabela.find(x => x.id === docId);
   if (!j) return alert("Jornada não encontrada.");
 
-  // valor atual
-  const bloco = path.split(".")[0]; // ex "saida"
+  const bloco = path.split(".")[0];
   const atualISO = j[bloco]?.ts || "";
   const atualDate = toDateAny(atualISO);
-  const sugestao = atualDate && !isNaN(atualDate)
+
+  const sugestao = (atualDate && !isNaN(atualDate))
     ? `${atualDate.toISOString().slice(0,10)} ${atualDate.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`
     : "";
 
@@ -272,8 +422,7 @@ window.editar = async function(docId, path){
 
   if (!confirm(`Confirmar alteração?\n${path} = ${novo}`)) return;
 
-  const ref = doc(db, "jornadas", docId);
-  await updateDoc(ref, {
+  await updateDoc(doc(db, "jornadas", docId), {
     [path]: iso,
     updatedAt: new Date().toISOString()
   });
@@ -282,11 +431,14 @@ window.editar = async function(docId, path){
   buscar();
 };
 
-// ===== Exportar CSV =====
+// Exportar
 window.exportar = function(){
-  let csv = "DataEntrada,Nome,RE,Entrada,SaidaIntervalo,RetornoIntervalo,Saida,EntradaHE,SaidaHE\n";
+  let csv = "DataEntrada,Nome,RE,Entrada,SaidaIntervalo,RetornoIntervalo,Saida,EntradaHE,SaidaHE,LocationCoords,LocalReconhecido\n";
 
   for (const j of ultimaTabela){
+    const loc = getBestLocationFromJornada(j);
+    const rec = reconhecerLocal(loc);
+
     const linha = [
       formatYYYYMMDD(j.entrada?.ts),
       j.nome || "",
@@ -297,7 +449,10 @@ window.exportar = function(){
       formatHHMM(j.saida?.ts),
       formatHHMM(j.entrada_he?.ts),
       formatHHMM(j.saida_he?.ts),
+      loc || "",
+      rec || ""
     ].map(v => `"${String(v).replaceAll('"','""')}"`).join(",");
+
     csv += linha + "\n";
   }
 
