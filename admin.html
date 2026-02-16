@@ -1,86 +1,97 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Painel Admin</title>
 
 <style>
-body { font-family: Arial; background:#f5f5f5; text-align:center; }
-.container { background:white; padding:20px; margin:20px auto; max-width:1300px; border-radius:10px; }
-.logo { width:260px; margin-bottom: 10px; }
-input, button, select { padding:10px; margin:5px; }
-button { cursor:pointer; }
-.row { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center; margin-top:10px; }
-table { width:100%; border-collapse:collapse; margin-top:18px; font-size:13px; }
-th, td { border:1px solid #ccc; padding:8px; }
-th { background:#fafafa; }
-.small { font-size: 12px; color:#666; }
-.hr { height:1px; background:#eee; margin:18px 0; border:0; }
-.menu { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:10px; }
-.menu button { background:#1f6feb; color:#fff; border:none; border-radius:8px; }
-.menu button.secondary { background:#6c757d; }
-.section { display:none; }
-.section.active { display:block; }
+  body { font-family: Arial; background:#f5f5f5; text-align:center; }
+  .container { background:#fff; padding:20px; margin:20px auto; max-width:1300px; border-radius:10px; }
+  .logo { width:260px; margin-bottom: 10px; }
+  input, button, select { padding:10px; margin:5px; }
+  button { cursor:pointer; }
+  .row { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:end; margin-top:10px; }
+  table { width:100%; border-collapse:collapse; margin-top:18px; font-size:13px; }
+  th, td { border:1px solid #ccc; padding:8px; }
+  th { background:#fafafa; }
+  .small { font-size:12px; color:#666; }
+  .hr { height:1px; background:#eee; margin:18px 0; border:0; }
+  .menu { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:10px; }
+  .menu button { background:#1f6feb; color:#fff; border:none; border-radius:8px; }
+  .menu button.secondary { background:#6c757d; }
+  .section { display:none; }
+  .section.active { display:block; }
 
-/* Botão minimalista */
-.minBtn{
-  border:1px solid #ddd;
-  background:#fff;
-  border-radius:10px;
-  padding:6px 10px;
-  font-size:12px;
-}
-.minBtn:hover{ background:#f3f3f3; }
+  .minBtn{
+    border:1px solid #ddd;
+    background:#fff;
+    border-radius:10px;
+    padding:6px 10px;
+    font-size:12px;
+  }
+  .minBtn:hover{ background:#f3f3f3; }
 
-/* Modal */
-.modalOverlay{
-  position:fixed; inset:0;
-  background:rgba(0,0,0,0.45);
-  display:none;
-  align-items:center;
-  justify-content:center;
-  z-index:9999;
-}
-.modal{
-  background:#fff;
-  width:min(720px, 94vw);
-  border-radius:12px;
-  padding:16px;
-  box-shadow:0 10px 30px rgba(0,0,0,0.2);
-  text-align:left;
-}
-.modal h3{ margin:0 0 10px; }
-.modal .grid{
-  display:grid;
-  grid-template-columns: 1fr 1fr;
-  gap:10px;
-}
-.modal label{ font-size:12px; color:#555; }
-.modal input, .modal select{
-  width:100%;
-  box-sizing:border-box;
-  margin:4px 0 0;
-}
-.modal .actions{
-  display:flex;
-  justify-content:flex-end;
-  gap:8px;
-  margin-top:14px;
-}
-.modal .actions button{
-  border:none;
-  border-radius:10px;
-}
-.btnPrimary{ background:#1f6feb; color:#fff; }
-.btnGhost{ background:#e9ecef; }
+  /* Modal */
+  .modalOverlay{
+    position:fixed; inset:0;
+    background:rgba(0,0,0,0.45);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:9999;
+  }
+  .modal{
+    background:#fff;
+    width:min(760px, 94vw);
+    border-radius:12px;
+    padding:16px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.2);
+    text-align:left;
+  }
+  .modal h3{ margin:0 0 10px; }
+  .modal .grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:10px;
+  }
+  .modal label{ font-size:12px; color:#555; }
+  .modal input, .modal select{
+    width:100%;
+    box-sizing:border-box;
+    margin:4px 0 0;
+  }
+  .modal .actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:8px;
+    margin-top:14px;
+  }
+  .modal .actions button{
+    border:none;
+    border-radius:10px;
+    padding:10px 14px;
+  }
+  .btnPrimary{ background:#1f6feb; color:#fff; }
+  .btnGhost{ background:#e9ecef; }
+  .btnDangerInline{
+    display:inline-block;
+    border:1px solid #f2b8b5;
+    background:#fff0f0;
+    border-radius:10px;
+    padding:8px 10px;
+    font-size:12px;
+    cursor:pointer;
+    color:#a10000;
+  }
 </style>
 </head>
+
 <body>
 
 <!-- LOGIN -->
 <div id="loginDiv" class="container">
-  <img src="GW.png" class="logo">
+  <img src="GW.png" class="logo" />
   <h2>Login Admin</h2>
   <input id="email" placeholder="Email"><br>
   <input id="senha" type="password" placeholder="Senha"><br>
@@ -89,7 +100,7 @@ th { background:#fafafa; }
 
 <!-- PAINEL -->
 <div id="painelDiv" class="container" style="display:none;">
-  <img src="GW.png" class="logo">
+  <img src="GW.png" class="logo" />
   <h2>Painel Admin</h2>
   <div class="small">Editar horários no formato: <b>AAAA-MM-DD HH:MM</b> (ex: 2026-02-16 07:10)</div>
 
@@ -102,10 +113,9 @@ th { background:#fafafa; }
 
   <hr class="hr">
 
-  <!-- ====== JORNADAS ====== -->
+  <!-- JORNADAS -->
   <div id="secJornadas" class="section active">
-    <h3>Jornadas (Turnos)</h3>
-
+    <h3>Jornadas</h3>
     <div class="row">
       <label>De:</label><input type="date" id="inicio">
       <label>Até:</label><input type="date" id="fim">
@@ -121,14 +131,12 @@ th { background:#fafafa; }
           <th>Data (Entrada)</th>
           <th>Nome</th>
           <th>RE</th>
-
-          <th>ENTRADA</th>
-          <th>SAÍDA INTERVALO</th>
-          <th>RETORNO</th>
-          <th>SAÍDA</th>
-          <th>ENTRADA HE</th>
-          <th>SAÍDA HE</th>
-
+          <th>Entrada</th>
+          <th>Saída Intervalo</th>
+          <th>Retorno</th>
+          <th>Saída</th>
+          <th>Entrada HE</th>
+          <th>Saída HE</th>
           <th>Coords</th>
           <th>Local</th>
           <th>Ações</th>
@@ -138,15 +146,15 @@ th { background:#fafafa; }
     </table>
   </div>
 
-  <!-- ====== COLABORADORES ====== -->
+  <!-- COLABORADORES -->
   <div id="secColab" class="section">
     <h3>Colaboradores</h3>
-    <div class="small">Coleção: <b>colaboradores</b> (docId = RE) • Sem excluir, apenas ativar/inativar</div>
+    <div class="small">CPF é obrigatório • Sem excluir colaborador (apenas ativar/inativar)</div>
 
     <div class="row">
       <input id="cadRe" placeholder="RE" inputmode="numeric">
       <input id="cadNome" placeholder="Nome completo">
-      <input id="cadCpf" placeholder="CPF (opcional)" inputmode="numeric">
+      <input id="cadCpf" placeholder="CPF (obrigatório)" inputmode="numeric">
       <button onclick="cadastrarColab()">Cadastrar</button>
       <button onclick="carregarColaboradores()">Atualizar lista</button>
     </div>
@@ -165,10 +173,10 @@ th { background:#fafafa; }
     </table>
   </div>
 
-  <!-- ====== LOCAIS ====== -->
+  <!-- LOCAIS -->
   <div id="secLocal" class="section">
     <h3>Locais</h3>
-    <div class="small">Coleção: <b>locais</b> • margem = raio em metros</div>
+    <div class="small">margem = raio (metros) • locais podem ser excluídos</div>
 
     <div class="row">
       <input id="locNome" placeholder="Nome do posto (ex: Posto A)">
@@ -192,7 +200,6 @@ th { background:#fafafa; }
       <tbody id="tbodyLocais"></tbody>
     </table>
   </div>
-
 </div>
 
 <!-- MODAL -->
@@ -209,8 +216,12 @@ th { background:#fafafa; }
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDocs, collection, updateDoc, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  getFirestore, doc, setDoc, getDocs, collection, updateDoc, addDoc, deleteDoc, deleteField
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {
+  getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD--zpWLbLg5X82oGTyz6SuPFQV0sd7NWc",
@@ -233,7 +244,7 @@ let ultimaTabela = [];
 let cacheLocais = [];
 let cacheColabs = [];
 
-// ===== MENU =====
+// menu
 window.showSection = function(id){
   document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
   document.getElementById(id).classList.add("active");
@@ -241,23 +252,22 @@ window.showSection = function(id){
   if (id === "secColab") carregarColaboradores();
 };
 
-// ===== AUTH =====
-window.login = async function() {
+// auth
+window.login = async function(){
   const email = document.getElementById("email").value;
   const senha = document.getElementById("senha").value;
   try { await signInWithEmailAndPassword(auth, email, senha); }
-  catch (e) { alert("Erro no login"); console.error(e); }
+  catch(e){ alert("Erro no login"); console.error(e); }
 };
-
-window.logout = function() { signOut(auth); };
+window.logout = function(){ signOut(auth); };
 
 onAuthStateChanged(auth, user => {
   loginDiv.style.display = user ? "none" : "block";
   painelDiv.style.display = user ? "block" : "none";
-  if (user) { carregarLocais(); carregarColaboradores(); }
+  if (user){ carregarLocais(); carregarColaboradores(); }
 });
 
-// ===== HELPERS =====
+// helpers
 function norm(s){ return (s||"").toString().trim().toLowerCase(); }
 function toDateAny(ts){
   if (!ts) return null;
@@ -283,68 +293,65 @@ function isoFromYmdHm(str){
   return dt.toISOString();
 }
 function haversineMeters(lat1, lon1, lat2, lon2){
-  const R = 6371000;
-  const toRad = (x)=> x * Math.PI / 180;
-  const dLat = toRad(lat2-lat1);
-  const dLon = toRad(lon2-lon1);
-  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  const R=6371000; const toRad=x=>x*Math.PI/180;
+  const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
+  const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
   return 2*R*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 function parseLocation(str){
   if (!str) return null;
-  const parts = str.split(",").map(s=>s.trim());
-  if (parts.length !== 2) return null;
-  const lat = Number(parts[0]), lng = Number(parts[1]);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  return { lat, lng };
+  const p=str.split(",").map(s=>s.trim());
+  if (p.length!==2) return null;
+  const lat=Number(p[0]), lng=Number(p[1]);
+  if (!Number.isFinite(lat)||!Number.isFinite(lng)) return null;
+  return {lat,lng};
 }
 function getBestLocationFromJornada(j){
-  const steps = ["saida_he","entrada_he","saida","retorno_intervalo","saida_intervalo","entrada"];
-  for (const s of steps){
-    const loc = j?.[s]?.location;
-    if (loc) return loc;
-  }
+  const steps=["saida_he","entrada_he","saida","retorno_intervalo","saida_intervalo","entrada"];
+  for (const s of steps){ const loc=j?.[s]?.location; if (loc) return loc; }
   return "";
 }
 function reconhecerLocal(locationStr){
-  const p = parseLocation(locationStr);
+  const p=parseLocation(locationStr);
   if (!p) return "Não disponível";
-  let melhor = null;
+  let best=null;
   for (const l of cacheLocais){
-    const d = haversineMeters(p.lat, p.lng, l.lat, l.lng);
-    if (d <= l.raio){
-      if (!melhor || d < melhor.dist) melhor = { nome:l.nome, dist:d };
-    }
+    const d=haversineMeters(p.lat,p.lng,l.lat,l.lng);
+    if (d<=l.raio){ if (!best || d<best.d) best={nome:l.nome,d}; }
   }
-  return melhor ? melhor.nome : "Não reconhecido";
+  return best ? best.nome : "Não reconhecido";
 }
 
-// ===== MODAL =====
-const overlay = document.getElementById("modalOverlay");
-const titleEl = document.getElementById("modalTitle");
-const bodyEl = document.getElementById("modalBody");
-const saveBtn = document.getElementById("modalSaveBtn");
+// modal
+const overlay=document.getElementById("modalOverlay");
+const titleEl=document.getElementById("modalTitle");
+const bodyEl=document.getElementById("modalBody");
+const saveBtn=document.getElementById("modalSaveBtn");
 
-window.closeModal = function(){ overlay.style.display="none"; bodyEl.innerHTML=""; saveBtn.onclick=null; };
-window.closeModalIfBackdrop = function(e){ if (e.target === overlay) closeModal(); };
+window.closeModal=function(){ overlay.style.display="none"; bodyEl.innerHTML=""; saveBtn.onclick=null; };
+window.closeModalIfBackdrop=function(e){ if (e.target===overlay) closeModal(); };
 
-function openModal({ title, bodyHtml, onSave }) {
-  titleEl.innerText = title;
-  bodyEl.innerHTML = bodyHtml;
-  overlay.style.display = "flex";
-  saveBtn.onclick = onSave || null;
+function openModal({title, bodyHtml, onSave}){
+  titleEl.innerText=title;
+  bodyEl.innerHTML=bodyHtml;
+  overlay.style.display="flex";
+  saveBtn.onclick=onSave || null;
 }
 
-// ===== COLABORADORES =====
+// ===== COLABORADORES (CPF obrigatório, sem excluir) =====
 window.cadastrarColab = async function(){
   const re = document.getElementById("cadRe").value.trim();
   const nome = document.getElementById("cadNome").value.trim();
-  const cpf = document.getElementById("cadCpf").value.trim();
+  let cpf = document.getElementById("cadCpf").value.trim();
+
   if (!re || !nome) return alert("Preencha RE e Nome.");
+  cpf = cpf.replace(/\D/g,"");
+  if (!cpf || cpf.length < 4) return alert("CPF é obrigatório (mínimo 4 dígitos).");
+
   if (!confirm(`Cadastrar?\nRE: ${re}\nNome: ${nome}`)) return;
 
-  await setDoc(doc(db, "colaboradores", re), {
-    re, nome, cpf: cpf || "", ativo: true, updatedAt: new Date().toISOString()
+  await setDoc(doc(db,"colaboradores",re), {
+    re, nome, cpf, ativo:true, updatedAt:new Date().toISOString()
   }, { merge:true });
 
   document.getElementById("cadRe").value="";
@@ -354,15 +361,16 @@ window.cadastrarColab = async function(){
 };
 
 window.carregarColaboradores = async function(){
-  const snap = await getDocs(collection(db, "colaboradores"));
-  cacheColabs = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-  cacheColabs.sort((a,b)=> (a.nome||"").localeCompare(b.nome||""));
+  const snap = await getDocs(collection(db,"colaboradores"));
+  cacheColabs = snap.docs.map(d => ({ id:d.id, ...d.data() }))
+    .sort((a,b)=> (a.nome||"").localeCompare(b.nome||""));
 
-  const tbody = document.getElementById("tbodyColab");
-  tbody.innerHTML = "";
+  const tbody=document.getElementById("tbodyColab");
+  tbody.innerHTML="";
+
   for (const c of cacheColabs){
     const status = (c.ativo === false) ? "Inativo" : "Ativo";
-    const tr = document.createElement("tr");
+    const tr=document.createElement("tr");
     tr.innerHTML = `
       <td>${c.re || c.id}</td>
       <td>${c.nome || ""}</td>
@@ -374,7 +382,6 @@ window.carregarColaboradores = async function(){
   }
 };
 
-// SEM EXCLUIR: só salvar / ativar / inativar
 window.editarColab = function(reDocId){
   const c = cacheColabs.find(x => x.id === reDocId);
   if (!c) return alert("Colaborador não encontrado.");
@@ -388,7 +395,7 @@ window.editarColab = function(reDocId){
           <input id="mRe" value="${c.re || c.id}" disabled>
         </div>
         <div>
-          <label>CPF</label>
+          <label>CPF (obrigatório)</label>
           <input id="mCpf" value="${c.cpf || ""}" placeholder="Somente números">
         </div>
         <div style="grid-column:1 / -1">
@@ -402,17 +409,23 @@ window.editarColab = function(reDocId){
             <option value="false" ${c.ativo === false ? "selected" : ""}>Inativo</option>
           </select>
         </div>
+        <div class="small" style="grid-column:1 / -1">
+          Colaborador inativo NÃO consegue registrar ponto no sistema.
+        </div>
       </div>
     `,
     onSave: async () => {
       const nome = document.getElementById("mNome").value.trim();
-      const cpf = document.getElementById("mCpf").value.trim();
+      let cpf = document.getElementById("mCpf").value.trim().replace(/\D/g,"");
       const ativo = document.getElementById("mAtivo").value === "true";
+
       if (!nome) return alert("Nome não pode ficar vazio.");
+      if (!cpf || cpf.length < 4) return alert("CPF é obrigatório (mínimo 4 dígitos).");
+
       if (!confirm("Salvar alteração do colaborador?")) return;
 
-      await setDoc(doc(db, "colaboradores", reDocId), {
-        nome, cpf: cpf || "", ativo, updatedAt: new Date().toISOString()
+      await setDoc(doc(db,"colaboradores",reDocId), {
+        nome, cpf, ativo, updatedAt:new Date().toISOString()
       }, { merge:true });
 
       closeModal();
@@ -421,18 +434,19 @@ window.editarColab = function(reDocId){
   });
 };
 
-// ===== LOCAIS =====
+// ===== LOCAIS (editar via modal, excluir dentro do modal) =====
 window.cadastrarLocal = async function(){
   const nome = document.getElementById("locNome").value.trim();
   const lat = Number(document.getElementById("locLat").value.trim());
   const lng = Number(document.getElementById("locLng").value.trim());
   const raio = Number(document.getElementById("locRaio").value.trim());
-  if (!nome || !Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(raio)) {
+
+  if (!nome || !Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(raio)){
     return alert("Preencha Nome, Latitude, Longitude e Raio.");
   }
   if (!confirm(`Cadastrar local?\n${nome}\n(${lat}, ${lng})\nRaio: ${raio}m`)) return;
 
-  await addDoc(collection(db, "locais"), { nome, lat, lng, raio, updatedAt: new Date().toISOString() });
+  await addDoc(collection(db,"locais"), { nome, lat, lng, raio, updatedAt:new Date().toISOString() });
 
   document.getElementById("locNome").value="";
   document.getElementById("locLat").value="";
@@ -442,15 +456,16 @@ window.cadastrarLocal = async function(){
 };
 
 window.carregarLocais = async function(){
-  const snap = await getDocs(collection(db, "locais"));
+  const snap = await getDocs(collection(db,"locais"));
   cacheLocais = snap.docs.map(d => ({ id:d.id, ...d.data() }))
-    .filter(l => Number.isFinite(l.lat) && Number.isFinite(l.lng) && Number.isFinite(l.raio));
-  cacheLocais.sort((a,b)=> (a.nome||"").localeCompare(b.nome||""));
+    .filter(l => Number.isFinite(l.lat) && Number.isFinite(l.lng) && Number.isFinite(l.raio))
+    .sort((a,b)=> (a.nome||"").localeCompare(b.nome||""));
 
-  const tbody = document.getElementById("tbodyLocais");
-  tbody.innerHTML = "";
+  const tbody=document.getElementById("tbodyLocais");
+  tbody.innerHTML="";
+
   for (const l of cacheLocais){
-    const tr = document.createElement("tr");
+    const tr=document.createElement("tr");
     tr.innerHTML = `
       <td>${l.nome || ""}</td>
       <td>${l.lat}</td>
@@ -487,9 +502,7 @@ window.editarLocal = function(id){
           <input id="mlRaio" value="${l.raio}">
         </div>
         <div class="small" style="grid-column:1 / -1">
-          Para excluir, apague o local (confirmação).
-          <br><br>
-          <button class="minBtn" id="btnExcluirLocal" style="border-color:#f2b8b5;">Excluir local</button>
+          <button class="btnDangerInline" id="btnExcluirLocal">Excluir local</button>
         </div>
       </div>
     `,
@@ -498,25 +511,26 @@ window.editarLocal = function(id){
       const lat = Number(document.getElementById("mlLat").value.trim());
       const lng = Number(document.getElementById("mlLng").value.trim());
       const raio = Number(document.getElementById("mlRaio").value.trim());
-      if (!nome || !Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(raio)) {
+
+      if (!nome || !Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(raio)){
         return alert("Preencha corretamente Nome, Latitude, Longitude e Raio.");
       }
       if (!confirm("Salvar alterações do local?")) return;
 
-      await updateDoc(doc(db, "locais", id), { nome, lat, lng, raio, updatedAt: new Date().toISOString() });
+      await updateDoc(doc(db,"locais",id), { nome, lat, lng, raio, updatedAt:new Date().toISOString() });
+
       closeModal();
       carregarLocais();
       buscar();
     }
   });
 
-  // botão excluir dentro do modal (permitido para local)
   setTimeout(() => {
     const btn = document.getElementById("btnExcluirLocal");
     if (!btn) return;
     btn.onclick = async () => {
       if (!confirm("Excluir este local?")) return;
-      await deleteDoc(doc(db, "locais", id));
+      await deleteDoc(doc(db,"locais",id));
       closeModal();
       carregarLocais();
       buscar();
@@ -524,16 +538,17 @@ window.editarLocal = function(id){
   }, 0);
 };
 
-// ===== JORNADAS =====
+// ===== JORNADAS (um único modificar por linha) =====
 window.buscar = async function(){
   const iniStr = document.getElementById("inicio").value || "2000-01-01";
   const fimStr = document.getElementById("fim").value || "2999-12-31";
   const filtroRe = norm(document.getElementById("filtroRe").value);
   const filtroNome = norm(document.getElementById("filtroNome").value);
 
-  const snap = await getDocs(collection(db, "jornadas"));
-  let jornadas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const snap = await getDocs(collection(db,"jornadas"));
+  let jornadas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
 
+  // filtra por data da ENTRADA (base)
   jornadas = jornadas.filter(j => {
     const d = formatYYYYMMDD(j.entrada?.ts);
     if (!d) return false;
@@ -550,27 +565,25 @@ window.buscar = async function(){
 };
 
 function montarJornadas(jornadas){
-  const tbody = document.getElementById("tbodyJornadas");
-  tbody.innerHTML = "";
+  const tbody=document.getElementById("tbodyJornadas");
+  tbody.innerHTML="";
 
   for (const j of jornadas){
     const dataEntrada = formatYYYYMMDD(j.entrada?.ts);
     const loc = getBestLocationFromJornada(j);
     const rec = reconhecerLocal(loc);
 
-    const tr = document.createElement("tr");
+    const tr=document.createElement("tr");
     tr.innerHTML = `
       <td>${dataEntrada}</td>
       <td>${j.nome || ""}</td>
       <td>${j.re || ""}</td>
-
       <td>${formatHHMM(j.entrada?.ts)}</td>
       <td>${formatHHMM(j.saida_intervalo?.ts)}</td>
       <td>${formatHHMM(j.retorno_intervalo?.ts)}</td>
       <td>${formatHHMM(j.saida?.ts)}</td>
       <td>${formatHHMM(j.entrada_he?.ts)}</td>
       <td>${formatHHMM(j.saida_he?.ts)}</td>
-
       <td>${loc || ""}</td>
       <td>${rec}</td>
       <td><button class="minBtn" onclick="editarJornada('${j.id}')">Modificar</button></td>
@@ -595,34 +608,14 @@ window.editarJornada = function(docId){
     title: `Modificar Jornada — RE ${j.re}`,
     bodyHtml: `
       <div class="grid">
-        <div>
-          <label>ENTRADA</label>
-          <input id="fEntrada" placeholder="AAAA-MM-DD HH:MM" value="${val(j.entrada?.ts)}">
-        </div>
-        <div>
-          <label>SAÍDA INTERVALO</label>
-          <input id="fSaiInt" placeholder="AAAA-MM-DD HH:MM" value="${val(j.saida_intervalo?.ts)}">
-        </div>
-        <div>
-          <label>RETORNO INTERVALO</label>
-          <input id="fRetInt" placeholder="AAAA-MM-DD HH:MM" value="${val(j.retorno_intervalo?.ts)}">
-        </div>
-        <div>
-          <label>SAÍDA</label>
-          <input id="fSaida" placeholder="AAAA-MM-DD HH:MM" value="${val(j.saida?.ts)}">
-        </div>
-        <div>
-          <label>ENTRADA HE</label>
-          <input id="fEntHe" placeholder="AAAA-MM-DD HH:MM" value="${val(j.entrada_he?.ts)}">
-        </div>
-        <div>
-          <label>SAÍDA HE</label>
-          <input id="fSaiHe" placeholder="AAAA-MM-DD HH:MM" value="${val(j.saida_he?.ts)}">
-        </div>
+        <div><label>ENTRADA</label><input id="fEntrada" placeholder="AAAA-MM-DD HH:MM" value="${val(j.entrada?.ts)}"></div>
+        <div><label>SAÍDA INTERVALO</label><input id="fSaiInt" placeholder="AAAA-MM-DD HH:MM" value="${val(j.saida_intervalo?.ts)}"></div>
+        <div><label>RETORNO INTERVALO</label><input id="fRetInt" placeholder="AAAA-MM-DD HH:MM" value="${val(j.retorno_intervalo?.ts)}"></div>
+        <div><label>SAÍDA</label><input id="fSaida" placeholder="AAAA-MM-DD HH:MM" value="${val(j.saida?.ts)}"></div>
+        <div><label>ENTRADA HE</label><input id="fEntHe" placeholder="AAAA-MM-DD HH:MM" value="${val(j.entrada_he?.ts)}"></div>
+        <div><label>SAÍDA HE</label><input id="fSaiHe" placeholder="AAAA-MM-DD HH:MM" value="${val(j.saida_he?.ts)}"></div>
       </div>
-      <div class="small" style="margin-top:8px">
-        Deixe em branco para apagar o campo (com confirmação).
-      </div>
+      <div class="small" style="margin-top:8px">Deixe em branco para remover o campo (vai apagar no banco).</div>
     `,
     onSave: async () => {
       const campos = [
@@ -638,9 +631,8 @@ window.editarJornada = function(docId){
 
       for (const [path, txt] of campos){
         const t = (txt || "").trim();
-        if (!t) {
-          // apagar campo
-          payload[path] = null;
+        if (!t){
+          payload[path] = deleteField(); // apaga de verdade
           continue;
         }
         const iso = isoFromYmdHm(t);
@@ -650,14 +642,14 @@ window.editarJornada = function(docId){
 
       if (!confirm("Salvar alterações desta jornada?")) return;
 
-      await updateDoc(doc(db, "jornadas", docId), payload);
+      await updateDoc(doc(db,"jornadas",docId), payload);
       closeModal();
       buscar();
     }
   });
 };
 
-// ===== EXPORT =====
+// export
 window.exportar = function(){
   let csv = "DataEntrada,Nome,RE,Entrada,SaidaIntervalo,RetornoIntervalo,Saida,EntradaHE,SaidaHE,Coords,Local\n";
   for (const j of ultimaTabela){
@@ -686,6 +678,5 @@ window.exportar = function(){
   a.click();
 };
 </script>
-
 </body>
 </html>
