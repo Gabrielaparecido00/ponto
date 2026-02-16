@@ -142,7 +142,7 @@ document.getElementById("btnVoltar1").onclick = voltar;
 document.getElementById("btnVoltar2").onclick = voltar;
 
 // estado
-let user = null;          // {re,nome,cpf}
+let user = null;          // {re,nome,cpf,escala}
 let cacheLocais = [];     // [{nome,lat,lng,raio}]
 let jornadasMes = [];     // jornadas do mês (entrada no mês)
 let linhasMes = [];       // linhas 01..ultimoDia com dados ou vazias
@@ -171,6 +171,21 @@ function weekday(d){
 }
 function daysInMonth(year, month1to12){
   return new Date(year, month1to12, 0).getDate(); // mês 1..12
+}
+
+// ===== escala (5x2 / 6x1) =====
+function isFolgaByEscala(dateObj, escala){
+  const dow = dateObj.getDay(); // 0=Dom,1=Seg,...6=Sab
+  const e = (escala || "5x2").toLowerCase();
+
+  // 5x2: folga sábado e domingo
+  if (e === "5x2") return (dow === 0 || dow === 6);
+
+  // 6x1: folga domingo
+  if (e === "6x1") return (dow === 0);
+
+  // padrão seguro
+  return false;
 }
 
 // ===== localização / posto =====
@@ -279,6 +294,7 @@ async function entrar(){
   const nome = (data.nome || "").trim();
   const cpf  = (data.cpf  || "").toString().trim();
   const ativo = (data.ativo !== false);
+  const escala = (data.escala || "5x2");
 
   if (!ativo) return alert("Seu cadastro está INATIVO. Procure o administrador.");
   if (!cpf || cpf.replace(/\D/g,"").length < 4) return alert("CPF não cadastrado corretamente. Procure o administrador.");
@@ -286,11 +302,11 @@ async function entrar(){
   const senhaCorreta = cpf.replace(/\D/g,"").slice(0,4);
   if (senha !== senhaCorreta) return alert("Senha incorreta.");
 
-  user = { re, nome, cpf };
+  user = { re, nome, cpf, escala };
 
   await carregarLocais();
 
-  infoUser.textContent = `${user.nome} — RE ${user.re}`;
+  infoUser.textContent = `${user.nome} — RE ${user.re} — Escala ${user.escala}`;
   loginBox.style.display = "none";
   conteudo.style.display = "block";
 
@@ -360,6 +376,7 @@ function renderTabela(){
   for (const linha of linhasMes){
     const dateObj = linha.dateObj;
     const j1 = (linha.jornadas && linha.jornadas.length) ? linha.jornadas[0] : null;
+    const ehFolga = isFolgaByEscala(dateObj, user?.escala);
 
     let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="", obs="";
     if (j1){
@@ -378,12 +395,20 @@ function renderTabela(){
       if (linha.jornadas.length > 1){
         obs = (obs ? (obs + " | ") : "") + `2+ jornadas no dia (${linha.jornadas.length})`;
       }
+    } else {
+      // Sem jornada no dia
+      if (ehFolga){
+        posto = "-";
+        obs = "FOLGA (escala)";
+      } else {
+        obs = "SEM REGISTRO";
+      }
     }
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${String(linha.dia).padStart(2,"0")}/${String(mes).padStart(2,"0")}/${ano}</td>
-      <td class="${j1 ? "" : "muted"}">${weekday(dateObj)}</td>
+      <td class="${(j1 || ehFolga) ? "" : "muted"}">${weekday(dateObj)}</td>
       <td>${entrada}</td>
       <td>${saiInt}</td>
       <td>${retInt}</td>
@@ -417,6 +442,7 @@ async function exportarPdf(){
 
   const body = linhasMes.map(linha => {
     const j1 = (linha.jornadas && linha.jornadas.length) ? linha.jornadas[0] : null;
+    const ehFolga = isFolgaByEscala(linha.dateObj, user?.escala);
 
     let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="", obs="";
     if (j1){
@@ -436,6 +462,9 @@ async function exportarPdf(){
         const extra = `2+ (${linha.jornadas.length})`;
         obs = shortObsForPdf((obs ? (obs + " | ") : "") + extra);
       }
+    } else {
+      posto = "-";
+      obs = ehFolga ? "FOLGA (escala)" : "SEM REGISTRO";
     }
 
     return [
@@ -473,6 +502,7 @@ async function exportarPdf(){
     docPdf.setFontSize(9);
     docPdf.text(`Nome: ${user.nome}`, marginX, y); y += 12;
     docPdf.text(`RE: ${user.re}`, marginX, y); y += 12;
+    docPdf.text(`Escala: ${user.escala}`, marginX, y); y += 12;
     docPdf.text(`Competência: ${mesTxt}/${ano}`, marginX, y); y += 12;
 
     docPdf.autoTable({
