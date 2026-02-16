@@ -1,19 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Ponto Eletrônico</title>
+
+<style>
+body {
+    font-family: Arial;
+    text-align: center;
+    background: #f5f5f5;
+    margin: 0;
+}
+
+.container {
+    margin-top: 80px;
+}
+
+input {
+    padding: 10px;
+    margin: 5px;
+    width: 250px;
+}
+
+button {
+    padding: 12px 20px;
+    margin: 10px;
+    cursor: pointer;
+    border: none;
+    background: #007bff;
+    color: white;
+    border-radius: 5px;
+}
+
+button:hover {
+    background: #0056b3;
+}
+
+.logo {
+    width: 200px;
+    margin-bottom: 20px;
+}
+
+.footer {
+    position: fixed;
+    bottom: 10px;
+    width: 100%;
+    font-size: 12px;
+}
+
+.admin-link {
+    color: gray;
+    text-decoration: none;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<img src="GW.png" class="logo">
+
+<div id="loginDiv">
+    <h2>Login</h2>
+    <input type="email" id="email" placeholder="Email"><br>
+    <input type="password" id="senha" placeholder="Senha"><br>
+    <button onclick="login()">Entrar</button>
+</div>
+
+<div id="appDiv" style="display:none;">
+    <h2>Registro de Ponto</h2>
+    <p id="status"></p>
+
+    <button onclick="registrarPonto()">Registrar Ponto</button><br>
+    <button onclick="logout()">Sair</button>
+</div>
+
+</div>
+
+<div class="footer">
+    <a href="admin.html" class="admin-link">.</a>
+</div>
+
+<script type="module">
+
+// FIREBASE
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, collection, addDoc, query, where, getDocs, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-const db = getFirestore();
+// SUA CONFIG
+const firebaseConfig = {
+  apiKey: "AIzaSyD--zpWLbLg5X82oGTyz6SuPFQV0sd7NWc",
+  authDomain: "controle-ponto-f539b.firebaseapp.com",
+  projectId: "controle-ponto-f539b",
+  storageBucket: "controle-ponto-f539b.appspot.com",
+  messagingSenderId: "324716100257",
+  appId: "1:324716100257:web:32d49a9ab4916182dd4ee0"
+};
 
-// CONFIG
-const TEMPO_MINIMO = 5 * 60 * 1000; // 5 minutos
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-function formatarData(data) {
-    return data.toISOString().split('T')[0];
-}
+// ================= LOGIN =================
 
-function formatarHora(data) {
-    return data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-}
+window.login = async function() {
+    const email = document.getElementById("email").value;
+    const senha = document.getElementById("senha").value;
 
-// DEFINIÇÃO DAS ETAPAS
+    try {
+        await signInWithEmailAndPassword(auth, email, senha);
+    } catch (e) {
+        alert("Erro ao logar: " + e.message);
+    }
+};
+
+window.logout = function() {
+    signOut(auth);
+};
+
+onAuthStateChanged(auth, user => {
+    if (user) {
+        document.getElementById("loginDiv").style.display = "none";
+        document.getElementById("appDiv").style.display = "block";
+        document.getElementById("status").innerText = "Logado como: " + user.email;
+    } else {
+        document.getElementById("loginDiv").style.display = "block";
+        document.getElementById("appDiv").style.display = "none";
+    }
+});
+
+// ================= PONTO =================
+
+const TEMPO_MINIMO = 5 * 60 * 1000;
+
+// ETAPAS
 const etapas = [
     { tipo: "entrada", label: "ENTRADA", confirm: "Você está entrando no serviço?" },
     { tipo: "saida_intervalo", label: "SAÍDA INTERVALO", confirm: "Você está saindo para intervalo?" },
@@ -23,21 +145,30 @@ const etapas = [
     { tipo: "saida_he", label: "SAÍDA HE", confirm: "Você está finalizando hora extra?" }
 ];
 
+function formatarData(data) {
+    return data.toISOString().split('T')[0];
+}
+
+function formatarHora(data) {
+    return data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+// ================= REGISTRAR =================
+
 window.registrarPonto = async function () {
 
-    const usuario = auth.currentUser;
-    if (!usuario) {
-        alert("Faça login primeiro!");
+    const user = auth.currentUser;
+    if (!user) {
+        alert("Faça login!");
         return;
     }
 
     const agora = new Date();
     const hoje = formatarData(agora);
 
-    // Buscar registros de hoje
     const q = query(
         collection(db, "pontos"),
-        where("uid", "==", usuario.uid),
+        where("uid", "==", user.uid),
         where("data", "==", hoje),
         orderBy("timestamp", "asc")
     );
@@ -45,7 +176,7 @@ window.registrarPonto = async function () {
     const snapshot = await getDocs(q);
     const registros = snapshot.docs.map(doc => doc.data());
 
-    // BLOQUEIO DE DUPLICIDADE (5 minutos)
+    // BLOQUEIO DUPLICIDADE
     if (registros.length > 0) {
         const ultimo = registros[registros.length - 1];
         const ultimoTimestamp = ultimo.timestamp?.toDate();
@@ -56,25 +187,22 @@ window.registrarPonto = async function () {
         }
     }
 
-    // DEFINIR PRÓXIMA ETAPA
     let etapaIndex = registros.length;
 
     if (etapaIndex >= etapas.length) {
-        alert("Todos os registros do dia já foram feitos.");
+        alert("Todos os pontos do dia já foram registrados.");
         return;
     }
 
     const etapa = etapas[etapaIndex];
 
     // CONFIRMAÇÃO
-    const confirmar = confirm(etapa.confirm);
+    if (!confirm(etapa.confirm)) return;
 
-    if (!confirmar) return;
-
-    // SALVAR NO FIREBASE
+    // SALVAR
     await addDoc(collection(db, "pontos"), {
-        uid: usuario.uid,
-        email: usuario.email,
+        uid: user.uid,
+        email: user.email,
         tipo: etapa.tipo,
         label: etapa.label,
         data: hoje,
@@ -82,5 +210,10 @@ window.registrarPonto = async function () {
         timestamp: agora
     });
 
-    alert(`${etapa.label} registrada com sucesso!`);
+    alert(etapa.label + " registrada!");
 };
+
+</script>
+
+</body>
+</html>
