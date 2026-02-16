@@ -3,311 +3,328 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Painel Admin</title>
+<title>Registro de Ponto</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
-body { font-family: Arial; background:#f5f5f5; text-align:center; }
-.container { background:white; padding:20px; margin:20px auto; max-width:1200px; border-radius:10px; }
-.logo { width:260px; margin-bottom: 10px; }
-input, button { padding:10px; margin:5px; }
-button { cursor:pointer; }
-.row { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center; margin-top:10px; }
-table { width:100%; border-collapse:collapse; margin-top:18px; font-size:13px; }
-th, td { border:1px solid #ccc; padding:8px; }
-th { background:#fafafa; }
-.editBtn { border:none; background:transparent; cursor:pointer; font-size:14px; }
-.small { font-size: 12px; color:#666; }
-.hr { height:1px; background:#eee; margin:18px 0; border:0; }
-.sectionTitle { margin: 10px 0 0; }
+body {
+  font-family: 'Montserrat', Arial, sans-serif;
+  background: #f0f0f0;
+  padding: 20px;
+}
+
+.container {
+  max-width: 500px;
+  margin: auto;
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.logo {
+  width: 220px;
+  display: block;
+  margin: 0 auto 15px;
+}
+
+h2 { text-align: center; }
+
+input, button {
+  width: 100%;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  margin-bottom: 10px;
+}
+
+button {
+  background: #4CAF50;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:hover { background: #45a049; }
+
+canvas {
+  width: 100%;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+#timestamp {
+  text-align: center;
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+#nomeMostrado {
+  font-weight: 700;
+  text-align: center;
+  margin: 8px 0 14px;
+}
+
+.footer {
+  text-align: center;
+  margin-top: 18px;
+  font-size: 12px;
+  color: #666;
+}
 </style>
 </head>
+
 <body>
 
-<!-- LOGIN -->
-<div id="loginDiv" class="container">
+<div class="container">
   <img src="GW.png" class="logo">
-  <h2>Login Admin</h2>
-  <input id="email" placeholder="Email"><br>
-  <input id="senha" type="password" placeholder="Senha"><br>
-  <button onclick="login()">Entrar</button>
+
+  <h2>Registro de Ponto</h2>
+
+  <input type="text" id="re" placeholder="Digite seu RE" inputmode="numeric" autocomplete="off">
+  <div id="nomeMostrado">Nome: —</div>
+
+  <canvas id="photo" width="240" height="320"></canvas>
+  <button type="button" id="captureBtn">Capturar Foto</button>
+
+  <button type="button" id="registrarBtn">Registrar Ponto</button>
+
+  <div id="timestamp"></div>
 </div>
 
-<!-- PAINEL -->
-<div id="painelDiv" class="container" style="display:none;">
-  <img src="GW.png" class="logo">
-
-  <h2>Painel Admin</h2>
-  <div class="small">Cadastro de colaboradores + correção de registros</div>
-
-  <hr class="hr">
-
-  <!-- ✅ CADASTRADOR DE FUNCIONÁRIO -->
-  <h3 class="sectionTitle">Cadastro de Funcionário</h3>
-  <div class="small">Coleção: <b>colaboradores</b> (docId = RE)</div>
-
-  <div class="row">
-    <input id="cadRe" placeholder="RE (ex: 12345)" inputmode="numeric">
-    <input id="cadNome" placeholder="Nome completo">
-    <button onclick="salvarColaborador()">Salvar / Atualizar</button>
-  </div>
-
-  <hr class="hr">
-
-  <!-- FILTROS -->
-  <h3 class="sectionTitle">Jornadas (Turnos)</h3>
-  <div class="row">
-    <label>De:</label>
-    <input type="date" id="inicio">
-    <label>Até:</label>
-    <input type="date" id="fim">
-    <input id="filtroRe" placeholder="Filtrar por RE (opcional)" inputmode="numeric">
-    <input id="filtroNome" placeholder="Filtrar por Nome (opcional)">
-    <button onclick="buscar()">Buscar</button>
-    <button onclick="exportar()">Exportar CSV</button>
-    <button onclick="logout()">Sair</button>
-  </div>
-
-  <div class="small">
-    ✏️ Para editar um campo, clique no lápis e informe: <b>AAAA-MM-DD HH:MM</b> (ex: 2026-02-16 07:10)
-  </div>
-
-  <table>
-    <thead>
-      <tr>
-        <th>Data (Entrada)</th>
-        <th>Nome</th>
-        <th>RE</th>
-        <th>ENTRADA</th>
-        <th>SAÍDA INTERVALO</th>
-        <th>RETORNO INTERVALO</th>
-        <th>SAÍDA</th>
-        <th>ENTRADA HE</th>
-        <th>SAÍDA HE</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+<div class="footer">
+  Sistema desenvolvido por Gabriel Wandele, todos direitos reservados
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDocs, collection, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, setDoc, addDoc, collection, getDocs, query, where
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD--zpWLbLg5X82oGTyz6SuPFQV0sd7NWc",
   authDomain: "controle-ponto-f539b.firebaseapp.com",
   projectId: "controle-ponto-f539b",
-  storageBucket: "controle-ponto-f539b.firebasestorage.app",
+  storageBucket: "controle-ponto-f539b.appspot.com",
   messagingSenderId: "324716100257",
-  appId: "1:324716100257:web:32d49a9ab4916182dd4ee0",
-  measurementId: "G-P81H3C4SFK"
+  appId: "1:324716100257:web:32d49a9ab4916182dd4ee0"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const auth = getAuth(app);
 
-const loginDiv = document.getElementById("loginDiv");
-const painelDiv = document.getElementById("painelDiv");
+// ==== UI/STATE ====
+const reInput = document.getElementById("re");
+const nomeMostrado = document.getElementById("nomeMostrado");
+const registrarBtn = document.getElementById("registrarBtn");
+const captureBtn = document.getElementById("captureBtn");
+const canvas = document.getElementById("photo");
+const ctx = canvas.getContext("2d");
 
-window.login = async function() {
-  const email = document.getElementById("email").value;
-  const senha = document.getElementById("senha").value;
+let nomeAtual = "";
+let stream = null;
+let clickLock = false;
+
+// ==== RELÓGIO ====
+setInterval(() => {
+  document.getElementById("timestamp").innerText = "Data/Hora: " + new Date().toLocaleString();
+}, 1000);
+
+// ==== CAMERA ====
+navigator.mediaDevices.getUserMedia({ video: true })
+  .then(s => stream = s)
+  .catch(() => alert("Erro ao acessar câmera"));
+
+captureBtn.addEventListener("click", async () => {
+  if (!stream) return alert("Câmera não iniciada");
+
+  const track = stream.getVideoTracks()[0];
+  const imageCapture = new ImageCapture(track);
+
   try {
-    await signInWithEmailAndPassword(auth, email, senha);
-  } catch (e) {
-    alert("Erro no login");
-    console.error(e);
+    const bitmap = await imageCapture.grabFrame();
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  } catch {
+    alert("Erro ao capturar foto");
   }
-};
-
-window.logout = function() {
-  signOut(auth);
-};
-
-onAuthStateChanged(auth, user => {
-  loginDiv.style.display = user ? "none" : "block";
-  painelDiv.style.display = user ? "block" : "none";
 });
 
-// ===== Helpers =====
-function norm(s){ return (s||"").toString().trim().toLowerCase(); }
-function toDateAny(ts){
+// ==== HELPERS ====
+const TEMPO_MINIMO = 5 * 60 * 1000; // 5 min
+
+const etapas = [
+  { key: "entrada",           label: "ENTRADA",           confirm: "Você está entrando no serviço?" },
+  { key: "saida_intervalo",   label: "SAÍDA INTERVALO",   confirm: "Você está saindo para intervalo?" },
+  { key: "retorno_intervalo", label: "RETORNO INTERVALO", confirm: "Você está retornando do intervalo?" },
+  { key: "saida",             label: "SAÍDA",             confirm: "Você está encerrando o expediente?" },
+  { key: "entrada_he",        label: "ENTRADA HE",        confirm: "Você está iniciando hora extra?" },
+  { key: "saida_he",          label: "SAÍDA HE",          confirm: "Você está finalizando hora extra?" }
+];
+
+function toDateAny(ts) {
   if (!ts) return null;
   if (ts.toDate) return ts.toDate();
   if (ts instanceof Date) return ts;
   return new Date(ts);
 }
-function formatHHMM(ts){
-  const d = toDateAny(ts);
-  if (!d || isNaN(d)) return "";
-  return d.toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit" });
-}
-function formatYYYYMMDD(ts){
-  const d = toDateAny(ts);
-  if (!d || isNaN(d)) return "";
-  return d.toISOString().slice(0,10);
-}
-function formatISOFromYYYYMMDD_HHMM(str){
-  // "2026-02-16 07:10"
-  const m = (str||"").trim().match(/^(\d{4})-(\d{2})-(\d{2})\s+([01]\d|2[0-3]):([0-5]\d)$/);
-  if (!m) return null;
-  // cria Date em horário local e converte para ISO
-  const dt = new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:00`);
-  if (isNaN(dt)) return null;
-  return dt.toISOString();
+
+function getNextStepFromJornada(j) {
+  for (const e of etapas) {
+    if (!j[e.key] || !j[e.key].ts) return e;
+  }
+  return null;
 }
 
-// ===== ✅ Cadastro de Funcionário (colaboradores) =====
-window.salvarColaborador = async function(){
-  const re = document.getElementById("cadRe").value.trim();
-  const nome = document.getElementById("cadNome").value.trim();
-  if (!re || !nome) return alert("Preencha RE e Nome.");
+async function getLocationString() {
+  let location = "Não disponível";
+  try {
+    const pos = await new Promise((res, rej) =>
+      navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 8000 })
+    );
+    location = pos.coords.latitude + "," + pos.coords.longitude;
+  } catch {}
+  return location;
+}
 
-  if (!confirm(`Salvar/Atualizar funcionário?\nRE: ${re}\nNome: ${nome}`)) return;
-
+// ==== BUSCAR NOME PELO RE ====
+async function buscarNomePorRe(re) {
   const ref = doc(db, "colaboradores", re);
-  await setDoc(ref, {
-    re,
-    nome,
-    ativo: true,
-    updatedAt: new Date().toISOString()
-  }, { merge: true });
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return "";
+  return (snap.data()?.nome || "").trim();
+}
 
-  alert("Funcionário salvo!");
-  document.getElementById("cadRe").value = "";
-  document.getElementById("cadNome").value = "";
-};
+async function atualizarNomeNaTela() {
+  const re = reInput.value.trim();
+  nomeAtual = "";
+  nomeMostrado.innerText = "Nome: —";
 
-// ===== Buscar Jornadas =====
-let ultimaTabela = [];
+  if (!re) return;
 
-window.buscar = async function(){
-  const iniStr = document.getElementById("inicio").value || "2000-01-01";
-  const fimStr = document.getElementById("fim").value || "2999-12-31";
-  const filtroRe = norm(document.getElementById("filtroRe").value);
-  const filtroNome = norm(document.getElementById("filtroNome").value);
+  const nome = await buscarNomePorRe(re);
+  if (!nome) {
+    nomeMostrado.innerText = "Nome: (RE não cadastrado)";
+    return;
+  }
 
-  const snap = await getDocs(collection(db, "jornadas"));
+  nomeAtual = nome;
+  nomeMostrado.innerText = "Nome: " + nomeAtual;
+}
+
+reInput.addEventListener("blur", atualizarNomeNaTela);
+reInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    atualizarNomeNaTela();
+  }
+});
+
+// ==== LIMPAR FORM ====
+function limparForm() {
+  reInput.value = "";
+  nomeAtual = "";
+  nomeMostrado.innerText = "Nome: —";
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+// ==== REGISTRAR ====
+registrarBtn.addEventListener("click", async () => {
+  if (clickLock) return;
+  clickLock = true;
+  setTimeout(() => clickLock = false, 1200);
+
+  const re = reInput.value.trim();
+  if (!re) return alert("Digite o RE.");
+
+  if (!nomeAtual) {
+    await atualizarNomeNaTela();
+    if (!nomeAtual) return alert("RE não cadastrado. Fale com o administrador.");
+  }
+
+  const foto = canvas.toDataURL("image/jpeg", 0.4);
+  const location = await getLocationString();
+
+  // Busca jornadas do RE
+  const q = query(collection(db, "jornadas"), where("re", "==", re));
+  const snap = await getDocs(q);
   let jornadas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-  // filtra por data de ENTRADA (pela ts da entrada)
-  jornadas = jornadas.filter(j => {
-    const entradaDate = formatYYYYMMDD(j.entrada?.ts);
-    if (!entradaDate) return false;
-    return entradaDate >= iniStr && entradaDate <= fimStr;
+  // Mais recente primeiro
+  jornadas.sort((a, b) => {
+    const ta = toDateAny(a.updatedAt) || toDateAny(a.entrada?.ts) || new Date(0);
+    const tb = toDateAny(b.updatedAt) || toDateAny(b.entrada?.ts) || new Date(0);
+    return tb - ta;
   });
 
-  if (filtroRe) jornadas = jornadas.filter(j => norm(j.re) === filtroRe);
-  if (filtroNome) jornadas = jornadas.filter(j => norm(j.nome).includes(filtroNome));
-
-  // ordena por entrada desc
-  jornadas.sort((a,b) => (toDateAny(b.entrada?.ts) || new Date(0)) - (toDateAny(a.entrada?.ts) || new Date(0)));
-
-  ultimaTabela = jornadas;
-  montarTabela(jornadas);
-};
-
-function montarTabela(jornadas){
-  const tbody = document.querySelector("tbody");
-  tbody.innerHTML = "";
-
-  for (const j of jornadas){
-    const dataEntrada = formatYYYYMMDD(j.entrada?.ts);
-
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${dataEntrada}</td>
-      <td>${j.nome || ""}</td>
-      <td>${j.re || ""}</td>
-
-      ${cellEdit(j.id, "entrada.ts", j.entrada?.ts)}
-      ${cellEdit(j.id, "saida_intervalo.ts", j.saida_intervalo?.ts)}
-      ${cellEdit(j.id, "retorno_intervalo.ts", j.retorno_intervalo?.ts)}
-      ${cellEdit(j.id, "saida.ts", j.saida?.ts)}
-      ${cellEdit(j.id, "entrada_he.ts", j.entrada_he?.ts)}
-      ${cellEdit(j.id, "saida_he.ts", j.saida_he?.ts)}
-    `;
-    tbody.appendChild(row);
-  }
-}
-
-function cellEdit(docId, path, ts){
-  const v = formatHHMM(ts);
-  const full = (() => {
-    const d = toDateAny(ts);
-    if (!d || isNaN(d)) return "";
-    const ymd = d.toISOString().slice(0,10);
-    const hhmm = d.toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit" });
-    return `${ymd} ${hhmm}`;
-  })();
-
-  return `
-    <td>
-      <span title="${full}">${v}</span>
-      <button class="editBtn" onclick="editar('${docId}','${path}')">✏️</button>
-    </td>
-  `;
-}
-
-// ===== ✅ Editar campo: pede AAAA-MM-DD HH:MM =====
-window.editar = async function(docId, path){
-  const j = ultimaTabela.find(x => x.id === docId);
-  if (!j) return alert("Jornada não encontrada.");
-
-  // valor atual
-  const bloco = path.split(".")[0]; // ex "saida"
-  const atualISO = j[bloco]?.ts || "";
-  const atualDate = toDateAny(atualISO);
-  const sugestao = atualDate && !isNaN(atualDate)
-    ? `${atualDate.toISOString().slice(0,10)} ${atualDate.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`
-    : "";
-
-  const novo = prompt(`Editar ${path}\nDigite: AAAA-MM-DD HH:MM\nEx: 2026-02-16 07:10`, sugestao);
-  if (novo === null) return;
-
-  const iso = formatISOFromYYYYMMDD_HHMM(novo);
-  if (!iso) return alert("Formato inválido. Use AAAA-MM-DD HH:MM (ex: 2026-02-16 07:10).");
-
-  if (!confirm(`Confirmar alteração?\n${path} = ${novo}`)) return;
-
-  const ref = doc(db, "jornadas", docId);
-  await updateDoc(ref, {
-    [path]: iso,
-    updatedAt: new Date().toISOString()
-  });
-
-  alert("Atualizado!");
-  buscar();
-};
-
-// ===== Exportar CSV =====
-window.exportar = function(){
-  let csv = "DataEntrada,Nome,RE,Entrada,SaidaIntervalo,RetornoIntervalo,Saida,EntradaHE,SaidaHE\n";
-
-  for (const j of ultimaTabela){
-    const linha = [
-      formatYYYYMMDD(j.entrada?.ts),
-      j.nome || "",
-      j.re || "",
-      formatHHMM(j.entrada?.ts),
-      formatHHMM(j.saida_intervalo?.ts),
-      formatHHMM(j.retorno_intervalo?.ts),
-      formatHHMM(j.saida?.ts),
-      formatHHMM(j.entrada_he?.ts),
-      formatHHMM(j.saida_he?.ts),
-    ].map(v => `"${String(v).replaceAll('"','""')}"`).join(",");
-    csv += linha + "\n";
+  // Jornada ativa = primeira incompleta
+  let jornadaAtiva = null;
+  for (const j of jornadas) {
+    if (getNextStepFromJornada(j)) {
+      jornadaAtiva = j;
+      break;
+    }
   }
 
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "jornadas.csv";
-  a.click();
-};
+  const now = new Date();
+
+  // Se não tem jornada ativa: cria nova com ENTRADA
+  if (!jornadaAtiva) {
+    const etapa = etapas[0];
+    if (!confirm(etapa.confirm)) return;
+
+    await addDoc(collection(db, "jornadas"), {
+      re,
+      nome: nomeAtual,
+      status: "aberta",
+      entrada: { ts: now.toISOString(), foto, location },
+      updatedAt: now.toISOString()
+    });
+
+    alert("ENTRADA registrada com sucesso!");
+    limparForm();
+    return;
+  }
+
+  // Próxima etapa
+  const etapa = getNextStepFromJornada(jornadaAtiva);
+  if (!etapa) {
+    alert("Jornada já completa. Inicie uma nova ENTRADA.");
+    limparForm();
+    return;
+  }
+
+  if (!confirm(etapa.confirm)) return;
+
+  // Anti-duplicidade 5 min (último registro existente)
+  const lastTs =
+    toDateAny(jornadaAtiva.saida_he?.ts) ||
+    toDateAny(jornadaAtiva.entrada_he?.ts) ||
+    toDateAny(jornadaAtiva.saida?.ts) ||
+    toDateAny(jornadaAtiva.retorno_intervalo?.ts) ||
+    toDateAny(jornadaAtiva.saida_intervalo?.ts) ||
+    toDateAny(jornadaAtiva.entrada?.ts);
+
+  if (lastTs && (now - lastTs) < TEMPO_MINIMO) {
+    alert("Registro duplicado detectado. Aguarde 5 minutos para registrar novamente.");
+    return;
+  }
+
+  const ref = doc(db, "jornadas", jornadaAtiva.id);
+
+  const payload = { ...jornadaAtiva };
+  payload[etapa.key] = { ts: now.toISOString(), foto, location };
+  payload.updatedAt = now.toISOString();
+
+  // Fecha se completou tudo
+  if (!getNextStepFromJornada(payload)) payload.status = "fechada";
+
+  await setDoc(ref, payload, { merge: true });
+
+  alert(etapa.label + " registrada com sucesso!");
+  limparForm();
+});
 </script>
 
 </body>
