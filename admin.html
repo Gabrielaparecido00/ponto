@@ -155,6 +155,12 @@
       <input id="cadRe" placeholder="RE" inputmode="numeric">
       <input id="cadNome" placeholder="Nome completo">
       <input id="cadCpf" placeholder="CPF (obrigatório)" inputmode="numeric">
+
+      <select id="cadEscala">
+        <option value="5x2" selected>5x2 (Seg–Sex)</option>
+        <option value="6x1">6x1 (Folga Domingo)</option>
+      </select>
+
       <button onclick="cadastrarColab()">Cadastrar</button>
       <button onclick="carregarColaboradores()">Atualizar lista</button>
     </div>
@@ -165,6 +171,7 @@
           <th>RE</th>
           <th>Nome</th>
           <th>CPF</th>
+          <th>Escala</th>
           <th>Status</th>
           <th>Ações</th>
         </tr>
@@ -343,20 +350,23 @@ window.cadastrarColab = async function(){
   const re = document.getElementById("cadRe").value.trim();
   const nome = document.getElementById("cadNome").value.trim();
   let cpf = document.getElementById("cadCpf").value.trim();
+  const escala = document.getElementById("cadEscala").value || "5x2";
 
   if (!re || !nome) return alert("Preencha RE e Nome.");
   cpf = cpf.replace(/\D/g,"");
   if (!cpf || cpf.length < 4) return alert("CPF é obrigatório (mínimo 4 dígitos).");
 
-  if (!confirm(`Cadastrar?\nRE: ${re}\nNome: ${nome}`)) return;
+  if (!confirm(`Cadastrar?\nRE: ${re}\nNome: ${nome}\nEscala: ${escala}`)) return;
 
   await setDoc(doc(db,"colaboradores",re), {
-    re, nome, cpf, ativo:true, updatedAt:new Date().toISOString()
+    re, nome, cpf, escala, ativo:true, updatedAt:new Date().toISOString()
   }, { merge:true });
 
   document.getElementById("cadRe").value="";
   document.getElementById("cadNome").value="";
   document.getElementById("cadCpf").value="";
+  document.getElementById("cadEscala").value="5x2";
+
   carregarColaboradores();
 };
 
@@ -370,11 +380,13 @@ window.carregarColaboradores = async function(){
 
   for (const c of cacheColabs){
     const status = (c.ativo === false) ? "Inativo" : "Ativo";
+    const escala = (c.escala || "5x2");
     const tr=document.createElement("tr");
     tr.innerHTML = `
       <td>${c.re || c.id}</td>
       <td>${c.nome || ""}</td>
       <td>${c.cpf || ""}</td>
+      <td>${escala}</td>
       <td>${status}</td>
       <td><button class="minBtn" onclick="editarColab('${c.id}')">Modificar</button></td>
     `;
@@ -402,6 +414,15 @@ window.editarColab = function(reDocId){
           <label>Nome</label>
           <input id="mNome" value="${c.nome || ""}">
         </div>
+
+        <div style="grid-column:1 / -1">
+          <label>Escala</label>
+          <select id="mEscala">
+            <option value="5x2" ${(c.escala || "5x2") === "5x2" ? "selected" : ""}>5x2 (Seg–Sex)</option>
+            <option value="6x1" ${(c.escala || "5x2") === "6x1" ? "selected" : ""}>6x1 (Folga Domingo)</option>
+          </select>
+        </div>
+
         <div style="grid-column:1 / -1">
           <label>Status</label>
           <select id="mAtivo">
@@ -418,6 +439,7 @@ window.editarColab = function(reDocId){
       const nome = document.getElementById("mNome").value.trim();
       let cpf = document.getElementById("mCpf").value.trim().replace(/\D/g,"");
       const ativo = document.getElementById("mAtivo").value === "true";
+      const escala = document.getElementById("mEscala").value || "5x2";
 
       if (!nome) return alert("Nome não pode ficar vazio.");
       if (!cpf || cpf.length < 4) return alert("CPF é obrigatório (mínimo 4 dígitos).");
@@ -425,7 +447,7 @@ window.editarColab = function(reDocId){
       if (!confirm("Salvar alteração do colaborador?")) return;
 
       await setDoc(doc(db,"colaboradores",reDocId), {
-        nome, cpf, ativo, updatedAt:new Date().toISOString()
+        nome, cpf, ativo, escala, updatedAt:new Date().toISOString()
       }, { merge:true });
 
       closeModal();
