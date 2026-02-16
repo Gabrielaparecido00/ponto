@@ -15,7 +15,7 @@ body {
     background: white;
     padding: 20px;
     margin: 20px auto;
-    max-width: 1000px;
+    max-width: 1100px;
     border-radius: 10px;
 }
 
@@ -37,14 +37,27 @@ table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 20px;
+    font-size: 13px;
 }
 
 th, td {
     border: 1px solid #ccc;
     padding: 8px;
 }
-</style>
 
+.filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.filters input {
+    width: 180px;
+}
+</style>
 </head>
 <body>
 
@@ -61,37 +74,44 @@ th, td {
 
 <!-- PAINEL -->
 <div id="painelDiv" class="container" style="display:none;">
-
     <img src="GW.png" class="logo">
 
     <h2>Painel de Ponto</h2>
 
-    <label>De:</label>
-    <input type="date" id="inicio">
+    <div class="filters">
+        <label>De:</label>
+        <input type="date" id="inicio">
 
-    <label>Até:</label>
-    <input type="date" id="fim">
+        <label>Até:</label>
+        <input type="date" id="fim">
 
-    <br>
+        <label>RE:</label>
+        <input type="text" id="filtroRe" placeholder="(opcional)">
 
-    <button onclick="buscar()">Buscar</button>
-    <button onclick="exportar()">Exportar Excel</button>
-    <button onclick="logout()">Sair</button>
+        <label>Nome:</label>
+        <input type="text" id="filtroNome" placeholder="(opcional)">
+
+        <button onclick="buscar()">Buscar</button>
+        <button onclick="exportar()">Exportar CSV</button>
+        <button onclick="logout()">Sair</button>
+    </div>
 
     <table>
         <thead>
             <tr>
+                <th>Data</th>
                 <th>Nome</th>
                 <th>RE</th>
                 <th>Entrada</th>
                 <th>Saída Intervalo</th>
-                <th>Retorno</th>
-                <th>Saída Final</th>
+                <th>Retorno Intervalo</th>
+                <th>Saída</th>
+                <th>Entrada HE</th>
+                <th>Saída HE</th>
             </tr>
         </thead>
         <tbody></tbody>
     </table>
-
 </div>
 
 <script type="module">
@@ -120,7 +140,6 @@ const painelDiv = document.getElementById("painelDiv");
 
 // 🔐 LOGIN
 window.login = async function() {
-
     const email = document.getElementById("email").value;
     const senha = document.getElementById("senha").value;
 
@@ -139,108 +158,154 @@ window.logout = function() {
 
 // 🔐 PROTEÇÃO
 onAuthStateChanged(auth, user => {
-
-    if (user) {
-        loginDiv.style.display = "none";
-        painelDiv.style.display = "block";
-    } else {
-        loginDiv.style.display = "block";
-        painelDiv.style.display = "none";
-    }
+    loginDiv.style.display = user ? "none" : "block";
+    painelDiv.style.display = user ? "block" : "none";
 });
 
-// 🔍 BUSCAR DADOS
+// helpers
+function norm(s) {
+    return (s || "").toString().trim().toLowerCase();
+}
+
+// Converte timestamp (ISO/string/Date/Timestamp do Firestore) para Date
+function toDateAny(ts) {
+    if (!ts) return null;
+    if (ts.toDate) return ts.toDate();           // Firestore Timestamp
+    if (ts instanceof Date) return ts;           // Date
+    return new Date(ts);                         // ISO string
+}
+
+// ✅ BUSCAR DADOS (SEM INDEX) — filtra por "data" (YYYY-MM-DD)
 window.buscar = async function() {
 
-    let ini = document.getElementById("inicio").value;
-    let fim = document.getElementById("fim").value;
+    const iniStr = document.getElementById("inicio").value || "2000-01-01";
+    const fimStr = document.getElementById("fim").value || "2999-12-31";
 
-    ini = ini ? new Date(ini) : new Date("2000-01-01");
-    fim = fim ? new Date(fim) : new Date();
-
-    fim.setHours(23,59,59,999);
+    const filtroRe = norm(document.getElementById("filtroRe").value);
+    const filtroNome = norm(document.getElementById("filtroNome").value);
 
     const snap = await getDocs(collection(db, "pontos"));
+    let docs = snap.docs.map(doc => doc.data());
 
-    let dados = [];
-
-    snap.forEach(doc => {
-        const d = doc.data();
-
-        if (!d.timestamp) return;
-
-        const t = new Date(d.timestamp);
-
-        if (t >= ini && t <= fim) {
-            dados.push(d);
-        }
+    // Filtrar período pelo campo "data" (mais confiável que new Date(timestamp))
+    docs = docs.filter(d => {
+        const dData = (d.data || "");
+        return dData >= iniStr && dData <= fimStr;
     });
 
-    console.log("dados encontrados:", dados);
+    // Filtro RE
+    if (filtroRe) {
+        docs = docs.filter(d => norm(d.re) === filtroRe);
+    }
 
-    montarTabela(dados);
+    // Filtro Nome (contém)
+    if (filtroNome) {
+        docs = docs.filter(d => norm(d.nome).includes(filtroNome));
+    }
+
+    console.log("docs filtrados:", docs.length);
+    montarTabela(docs);
 };
 
-// 📊 ORGANIZAR REGISTROS
+// 📊 ORGANIZAR EM 6 COLUNAS USANDO "tipo"
 function montarTabela(dados) {
 
     const tbody = document.querySelector("tbody");
     tbody.innerHTML = "";
 
+    // Agrupa por DIA + RE + NOME
     const grupos = {};
 
-    dados.forEach(d => {
+    for (const d of dados) {
 
-        const chave = d.re + "_" + new Date(d.timestamp).toLocaleDateString();
+        const data = d.data || ""; // YYYY-MM-DD
+        const nome = d.nome || "";
+        const re = d.re || "";
 
-        if (!grupos[chave]) grupos[chave] = [];
+        const chave = `${data}__${re}__${nome}`;
 
-        grupos[chave].push(d);
-    });
+        if (!grupos[chave]) {
+            grupos[chave] = {
+                data,
+                nome,
+                re,
+                entrada: "",
+                saida_intervalo: "",
+                retorno_intervalo: "",
+                saida: "",
+                entrada_he: "",
+                saida_he: "",
+                _ordenacao: [] // para ordenar e preencher caso venha sem tipo (fallback)
+            };
+        }
+
+        // Preferência: usar tipo do index
+        if (d.tipo && grupos[chave][d.tipo] !== undefined) {
+            grupos[chave][d.tipo] = formatHora(d);
+        } else {
+            // fallback: guarda para ordenação
+            grupos[chave]._ordenacao.push(d);
+        }
+    }
+
+    // Se tiver registros sem tipo (dados antigos), tenta preencher por ordem
+    const ordemTipos = ["entrada","saida_intervalo","retorno_intervalo","saida","entrada_he","saida_he"];
 
     for (const chave in grupos) {
 
-        const registros = grupos[chave]
-            .sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
+        const g = grupos[chave];
 
-        const linha = document.createElement("tr");
+        if (g._ordenacao.length > 0) {
+            g._ordenacao.sort((a,b) => (toDateAny(a.timestamp) - toDateAny(b.timestamp)));
 
-        linha.innerHTML = `
-            <td>${registros[0]?.fullName || ""}</td>
-            <td>${registros[0]?.re || ""}</td>
-            <td>${formatar(registros[0])}</td>
-            <td>${formatar(registros[1])}</td>
-            <td>${formatar(registros[2])}</td>
-            <td>${formatar(registros[3])}</td>
+            // Preenche em ordem só os que estiverem vazios
+            let idx = 0;
+            for (const tipo of ordemTipos) {
+                if (!g[tipo] && g._ordenacao[idx]) {
+                    g[tipo] = formatHora(g._ordenacao[idx]);
+                    idx++;
+                }
+            }
+        }
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td>${g.data}</td>
+            <td>${g.nome}</td>
+            <td>${g.re}</td>
+            <td>${g.entrada}</td>
+            <td>${g.saida_intervalo}</td>
+            <td>${g.retorno_intervalo}</td>
+            <td>${g.saida}</td>
+            <td>${g.entrada_he}</td>
+            <td>${g.saida_he}</td>
         `;
-
-        tbody.appendChild(linha);
+        tbody.appendChild(tr);
     }
 }
 
-// ⏰ FORMATAR DATA
-function formatar(dado) {
-    if (!dado) return "";
-    return new Date(dado.timestamp).toLocaleString();
+// Formata “hora” preferindo campo hora, senão usa timestamp
+function formatHora(d) {
+    if (d.hora) return d.hora; // já vem "HH:MM"
+    const dt = toDateAny(d.timestamp);
+    if (!dt || isNaN(dt)) return "";
+    return dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
-// 📥 EXPORTAR CSV
+// 📥 EXPORTAR CSV (9 colunas)
 window.exportar = function() {
 
-    let csv = "Nome,RE,Entrada,Saida Intervalo,Retorno,Saida Final\n";
+    let csv = "Data,Nome,RE,Entrada,Saida Intervalo,Retorno Intervalo,Saida,Entrada HE,Saida HE\n";
 
     document.querySelectorAll("tbody tr").forEach(tr => {
-
         const cols = tr.querySelectorAll("td");
-
         const linha = Array.from(cols)
-            .map(td => `"${td.innerText}"`)
+            .map(td => `"${td.innerText.replaceAll('"','""')}"`)
             .join(",");
-
         csv += linha + "\n";
     });
 
-    const blob = new Blob([csv], { type: "text/csv" });
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
 
     const a = document.createElement("a");
