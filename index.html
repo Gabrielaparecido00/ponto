@@ -1,85 +1,38 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Registro de Ponto</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
-body {
-  font-family: 'Montserrat', Arial, sans-serif;
-  background: #f0f0f0;
-  padding: 20px;
-}
-
-.container {
-  max-width: 500px;
-  margin: auto;
-  background: white;
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-
-.logo {
-  width: 220px;
-  display: block;
-  margin: 0 auto 15px;
-}
-
-h2 { text-align: center; }
-
-input, button {
-  width: 100%;
-  padding: 10px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  margin-bottom: 10px;
-}
-
-button {
-  background: #4CAF50;
-  color: white;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-button:hover { background: #45a049; }
-
-canvas {
-  width: 100%;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-}
-
-#timestamp {
-  text-align: center;
-  margin-top: 10px;
-  font-weight: bold;
-}
-
-#nomeMostrado {
-  font-weight: 700;
-  text-align: center;
-  margin: 8px 0 14px;
-}
-
-.footer {
-  text-align: center;
-  margin-top: 18px;
-  font-size: 12px;
-  color: #666;
-}
+  body { font-family:'Montserrat', Arial, sans-serif; background:#f0f0f0; padding:20px; }
+  .container{
+    max-width:500px; margin:auto; background:#fff; padding:20px; border-radius:12px;
+    box-shadow:0 2px 10px rgba(0,0,0,0.10);
+  }
+  .logo{ width:220px; display:block; margin:0 auto 14px; }
+  h2{ text-align:center; margin:8px 0 14px; }
+  input, button{
+    width:100%; padding:10px; border-radius:8px; border:1px solid #ccc; margin-bottom:10px;
+    font-family:inherit;
+  }
+  button{ background:#4CAF50; color:#fff; font-weight:700; cursor:pointer; border:none; }
+  button:hover{ background:#45a049; }
+  button.secondary{ background:#1f6feb; }
+  button.secondary:hover{ background:#1a5dd6; }
+  canvas{ width:100%; border:1px solid #ccc; border-radius:8px; }
+  #timestamp{ text-align:center; margin-top:10px; font-weight:700; }
+  #nomeMostrado{ font-weight:700; text-align:center; margin:8px 0 14px; }
+  .footer{ text-align:center; margin-top:16px; font-size:12px; color:#666; }
 </style>
 </head>
 
 <body>
-
 <div class="container">
-  <img src="GW.png" class="logo">
-
+  <img src="GW.png" class="logo" />
   <h2>Registro de Ponto</h2>
 
   <input type="text" id="re" placeholder="Digite seu RE" inputmode="numeric" autocomplete="off">
@@ -89,6 +42,7 @@ canvas {
   <button type="button" id="captureBtn">Capturar Foto</button>
 
   <button type="button" id="registrarBtn">Registrar Ponto</button>
+  <button type="button" class="secondary" onclick="window.location.href='meu_ponto.html'">Área do colaborador</button>
 
   <div id="timestamp"></div>
 </div>
@@ -115,7 +69,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// ==== UI/STATE ====
+// UI
 const reInput = document.getElementById("re");
 const nomeMostrado = document.getElementById("nomeMostrado");
 const registrarBtn = document.getElementById("registrarBtn");
@@ -123,26 +77,26 @@ const captureBtn = document.getElementById("captureBtn");
 const canvas = document.getElementById("photo");
 const ctx = canvas.getContext("2d");
 
+// estado
 let nomeAtual = "";
+let colaboradorAtivo = false;
 let stream = null;
 let clickLock = false;
 
-// ==== RELÓGIO ====
+// relógio
 setInterval(() => {
   document.getElementById("timestamp").innerText = "Data/Hora: " + new Date().toLocaleString();
 }, 1000);
 
-// ==== CAMERA ====
+// câmera
 navigator.mediaDevices.getUserMedia({ video: true })
   .then(s => stream = s)
   .catch(() => alert("Erro ao acessar câmera"));
 
 captureBtn.addEventListener("click", async () => {
   if (!stream) return alert("Câmera não iniciada");
-
   const track = stream.getVideoTracks()[0];
   const imageCapture = new ImageCapture(track);
-
   try {
     const bitmap = await imageCapture.grabFrame();
     ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
@@ -151,9 +105,8 @@ captureBtn.addEventListener("click", async () => {
   }
 });
 
-// ==== HELPERS ====
+// regras
 const TEMPO_MINIMO = 5 * 60 * 1000; // 5 min
-
 const etapas = [
   { key: "entrada",           label: "ENTRADA",           confirm: "Você está entrando no serviço?" },
   { key: "saida_intervalo",   label: "SAÍDA INTERVALO",   confirm: "Você está saindo para intervalo?" },
@@ -163,85 +116,81 @@ const etapas = [
   { key: "saida_he",          label: "SAÍDA HE",          confirm: "Você está finalizando hora extra?" }
 ];
 
-function toDateAny(ts) {
+function toDateAny(ts){
   if (!ts) return null;
   if (ts.toDate) return ts.toDate();
   if (ts instanceof Date) return ts;
   return new Date(ts);
 }
-
-function getNextStepFromJornada(j) {
-  for (const e of etapas) {
+function getNextStepFromJornada(j){
+  for (const e of etapas){
     if (!j[e.key] || !j[e.key].ts) return e;
   }
   return null;
 }
-
-async function getLocationString() {
+async function getLocationString(){
   let location = "Não disponível";
-  try {
+  try{
     const pos = await new Promise((res, rej) =>
-      navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 8000 })
+      navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy:true, timeout:8000 })
     );
     location = pos.coords.latitude + "," + pos.coords.longitude;
-  } catch {}
+  }catch{}
   return location;
 }
+function limparForm(){
+  reInput.value = "";
+  nomeAtual = "";
+  colaboradorAtivo = false;
+  nomeMostrado.innerText = "Nome: —";
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
 
-// ==== BUSCAR NOME PELO RE ====
-async function buscarNomePorRe(re) {
+// buscar colaborador
+async function buscarColaborador(re){
   const ref = doc(db, "colaboradores", re);
   const snap = await getDoc(ref);
-  if (!snap.exists()) return { nome: "", ativo: false };
+  if (!snap.exists()) return { nome:"", ativo:false };
 
   const data = snap.data() || {};
   const nome = (data.nome || "").trim();
-  const ativo = (data.ativo !== false); // default = ativo
-
+  const ativo = (data.ativo !== false); // default true
   return { nome, ativo };
 }
-  
-async function atualizarNomeNaTela() {
+
+async function atualizarNomeNaTela(){
   const re = reInput.value.trim();
   nomeAtual = "";
+  colaboradorAtivo = false;
   nomeMostrado.innerText = "Nome: —";
-
   if (!re) return;
 
-  const res = await buscarNomePorRe(re);
+  const res = await buscarColaborador(re);
 
-  if (!res.nome) {
+  if (!res.nome){
     nomeMostrado.innerText = "Nome: (RE não cadastrado)";
     return;
   }
 
-  if (!res.ativo) {
+  if (!res.ativo){
     nomeMostrado.innerText = "Nome: " + res.nome + " (INATIVO)";
-    nomeAtual = ""; // não deixa registrar
     return;
   }
 
   nomeAtual = res.nome;
+  colaboradorAtivo = true;
   nomeMostrado.innerText = "Nome: " + nomeAtual;
 }
 
 reInput.addEventListener("blur", atualizarNomeNaTela);
 reInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
+  if (e.key === "Enter"){
     e.preventDefault();
     atualizarNomeNaTela();
   }
 });
 
-// ==== LIMPAR FORM ====
-function limparForm() {
-  reInput.value = "";
-  nomeAtual = "";
-  nomeMostrado.innerText = "Nome: —";
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-}
-
-// ==== REGISTRAR ====
+// registrar
 registrarBtn.addEventListener("click", async () => {
   if (clickLock) return;
   clickLock = true;
@@ -250,38 +199,38 @@ registrarBtn.addEventListener("click", async () => {
   const re = reInput.value.trim();
   if (!re) return alert("Digite o RE.");
 
-  if (!nomeAtual) {
-  return alert("Colaborador não cadastrado ou INATIVO. Procure o administrador.");
-}
-  
+  if (!nomeAtual || !colaboradorAtivo){
+    await atualizarNomeNaTela();
+    if (!nomeAtual || !colaboradorAtivo){
+      return alert("Colaborador não cadastrado ou INATIVO. Procure o administrador.");
+    }
+  }
+
   const foto = canvas.toDataURL("image/jpeg", 0.4);
   const location = await getLocationString();
 
-  // Busca jornadas do RE
+  // buscar jornadas do RE
   const q = query(collection(db, "jornadas"), where("re", "==", re));
   const snap = await getDocs(q);
   let jornadas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-  // Mais recente primeiro
-  jornadas.sort((a, b) => {
+  // mais recente primeiro
+  jornadas.sort((a,b) => {
     const ta = toDateAny(a.updatedAt) || toDateAny(a.entrada?.ts) || new Date(0);
     const tb = toDateAny(b.updatedAt) || toDateAny(b.entrada?.ts) || new Date(0);
     return tb - ta;
   });
 
-  // Jornada ativa = primeira incompleta
+  // jornada ativa = primeira incompleta
   let jornadaAtiva = null;
-  for (const j of jornadas) {
-    if (getNextStepFromJornada(j)) {
-      jornadaAtiva = j;
-      break;
-    }
+  for (const j of jornadas){
+    if (getNextStepFromJornada(j)) { jornadaAtiva = j; break; }
   }
 
   const now = new Date();
 
-  // Se não tem jornada ativa: cria nova com ENTRADA
-  if (!jornadaAtiva) {
+  // se não tem jornada ativa: cria nova com ENTRADA
+  if (!jornadaAtiva){
     const etapa = etapas[0];
     if (!confirm(etapa.confirm)) return;
 
@@ -298,9 +247,9 @@ registrarBtn.addEventListener("click", async () => {
     return;
   }
 
-  // Próxima etapa
+  // próxima etapa
   const etapa = getNextStepFromJornada(jornadaAtiva);
-  if (!etapa) {
+  if (!etapa){
     alert("Jornada já completa. Inicie uma nova ENTRADA.");
     limparForm();
     return;
@@ -308,7 +257,7 @@ registrarBtn.addEventListener("click", async () => {
 
   if (!confirm(etapa.confirm)) return;
 
-  // Anti-duplicidade 5 min (último registro existente)
+  // anti duplicidade (último ponto)
   const lastTs =
     toDateAny(jornadaAtiva.saida_he?.ts) ||
     toDateAny(jornadaAtiva.entrada_he?.ts) ||
@@ -317,18 +266,17 @@ registrarBtn.addEventListener("click", async () => {
     toDateAny(jornadaAtiva.saida_intervalo?.ts) ||
     toDateAny(jornadaAtiva.entrada?.ts);
 
-  if (lastTs && (now - lastTs) < TEMPO_MINIMO) {
-    alert("Registro duplicado detectado. Aguarde 5 minutos para registrar novamente.");
-    return;
+  if (lastTs && (now - lastTs) < TEMPO_MINIMO){
+    return alert("Registro duplicado detectado. Aguarde 5 minutos para registrar novamente.");
   }
 
+  // merge da jornada
   const ref = doc(db, "jornadas", jornadaAtiva.id);
-
   const payload = { ...jornadaAtiva };
+
   payload[etapa.key] = { ts: now.toISOString(), foto, location };
   payload.updatedAt = now.toISOString();
 
-  // Fecha se completou tudo
   if (!getNextStepFromJornada(payload)) payload.status = "fechada";
 
   await setDoc(ref, payload, { merge: true });
@@ -337,6 +285,5 @@ registrarBtn.addEventListener("click", async () => {
   limparForm();
 });
 </script>
-
 </body>
 </html>
