@@ -2,38 +2,78 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Registro de Ponto</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
 body {
-    font-family: Arial;
-    background: #f0f0f0;
-    padding: 20px;
+  font-family: 'Montserrat', Arial, sans-serif;
+  background: #f0f0f0;
+  padding: 20px;
 }
 
 .container {
-    max-width: 500px;
-    margin: auto;
-    background: white;
-    padding: 20px;
-    border-radius: 10px;
-}
-
-input, button {
-    width: 100%;
-    padding: 10px;
-    margin: 10px 0;
-}
-
-canvas {
-    width: 100%;
-    border: 1px solid #ccc;
+  max-width: 500px;
+  margin: auto;
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 
 .logo {
-    width: 250px;
-    display: block;
-    margin: auto;
+  width: 220px;
+  display: block;
+  margin: 0 auto 15px;
+}
+
+h2 { text-align: center; }
+
+input, button {
+  width: 100%;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  margin-bottom: 10px;
+}
+
+button {
+  background: #4CAF50;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:hover { background: #45a049; }
+
+canvas {
+  width: 100%;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+#timestamp {
+  text-align: center;
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+#nomeMostrado {
+  font-weight: 700;
+  text-align: center;
+  margin: 8px 0 14px;
+}
+
+.footer {
+  text-align: center;
+  margin-top: 18px;
+}
+.footer a {
+  font-size: 12px;
+  color: #aaa;
+  text-decoration: none;
 }
 </style>
 </head>
@@ -41,29 +81,31 @@ canvas {
 <body>
 
 <div class="container">
+  <img src="GW.png" class="logo">
 
-<img src="GW.png" class="logo">
+  <h2>Registro de Ponto</h2>
 
-<h2>Registro de Ponto</h2>
+  <input type="text" id="re" placeholder="Digite seu RE" inputmode="numeric" autocomplete="off">
+  <div id="nomeMostrado">Nome: —</div>
 
-<input type="text" id="nome" placeholder="Nome Completo">
-<input type="text" id="re" placeholder="RE">
+  <canvas id="photo" width="240" height="320"></canvas>
+  <button type="button" id="captureBtn">Capturar Foto</button>
 
-<canvas id="photo" width="240" height="320"></canvas>
-<button id="captureBtn">Capturar Foto</button>
+  <button type="button" id="registrarBtn">Registrar Ponto</button>
 
-<button id="registrarBtn">Registrar Ponto</button>
+  <div id="timestamp"></div>
+</div>
 
-<p id="hora"></p>
-
+<div class="footer">
+  <a href="admin.html">.</a>
 </div>
 
 <script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, addDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {
+  getFirestore, doc, getDoc, setDoc, addDoc, collection, getDocs, query, where
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-// CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyD--zpWLbLg5X82oGTyz6SuPFQV0sd7NWc",
   authDomain: "controle-ponto-f539b.firebaseapp.com",
@@ -76,144 +118,227 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// CAMERA
-let stream;
+// ==== UI/STATE ====
+const reInput = document.getElementById("re");
+const nomeMostrado = document.getElementById("nomeMostrado");
+const registrarBtn = document.getElementById("registrarBtn");
+const captureBtn = document.getElementById("captureBtn");
+const canvas = document.getElementById("photo");
+const ctx = canvas.getContext("2d");
 
-navigator.mediaDevices.getUserMedia({ video: true })
-.then(s => stream = s)
-.catch(() => alert("Erro ao acessar câmera"));
+let nomeAtual = "";
+let stream = null;
+let clickLock = false;
 
-document.getElementById("captureBtn").onclick = async () => {
-    if (!stream) return alert("Câmera não iniciada");
-
-    const videoTrack = stream.getVideoTracks()[0];
-    const imageCapture = new ImageCapture(videoTrack);
-
-    const bitmap = await imageCapture.grabFrame();
-    const ctx = document.getElementById("photo").getContext("2d");
-    ctx.drawImage(bitmap, 0, 0, 240, 320);
-};
-
-// CONFIG
-const TEMPO_MINIMO = 5 * 60 * 1000; // 5 min
-let bloqueioClique = false; // trava clique duplo instantâneo (além dos 5 min)
-
-// 6 ETAPAS
-const etapas = [
-    { tipo: "entrada",         label: "ENTRADA",          confirm: "Você está entrando no serviço?" },
-    { tipo: "saida_intervalo", label: "SAÍDA INTERVALO",  confirm: "Você está saindo para intervalo?" },
-    { tipo: "retorno_intervalo", label: "RETORNO INTERVALO", confirm: "Você está retornando do intervalo?" },
-    { tipo: "saida",           label: "SAÍDA",            confirm: "Você está encerrando o expediente?" },
-    { tipo: "entrada_he",      label: "ENTRADA HE",       confirm: "Você está iniciando hora extra?" },
-    { tipo: "saida_he",        label: "SAÍDA HE",         confirm: "Você está finalizando hora extra?" }
-];
-
-function hoje() {
-    return new Date().toISOString().split('T')[0];
-}
-
-function horaAtual() {
-    return new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-}
-
-// RELÓGIO
+// ==== RELÓGIO ====
 setInterval(() => {
-    document.getElementById("hora").innerText = new Date().toLocaleString();
+  document.getElementById("timestamp").innerText = "Data/Hora: " + new Date().toLocaleString();
 }, 1000);
 
-// Botão registrar (sem inline onclick, mais confiável)
-document.getElementById("registrarBtn").addEventListener("click", registrar);
+// ==== CAMERA ====
+navigator.mediaDevices.getUserMedia({ video: true })
+  .then(s => stream = s)
+  .catch(() => alert("Erro ao acessar câmera"));
 
-// REGISTRAR
-async function registrar() {
+captureBtn.addEventListener("click", async () => {
+  if (!stream) return alert("Câmera não iniciada");
 
-    if (bloqueioClique) return;           // trava clique duplo
-    bloqueioClique = true;
-    setTimeout(() => bloqueioClique = false, 1500); // libera após 1.5s
+  const track = stream.getVideoTracks()[0];
+  const imageCapture = new ImageCapture(track);
 
-    const nome = document.getElementById("nome").value.trim();
-    const re = document.getElementById("re").value.trim();
+  try {
+    const bitmap = await imageCapture.grabFrame();
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  } catch {
+    alert("Erro ao capturar foto");
+  }
+});
 
-    if (!nome || !re) {
-        alert("Preencha nome e RE");
-        return;
-    }
+// ==== HELPERS ====
+const TEMPO_MINIMO = 5 * 60 * 1000; // 5 min
 
-    const agora = new Date();
-    const dataHoje = hoje();
+const etapas = [
+  { key: "entrada",           label: "ENTRADA",          confirm: "Você está entrando no serviço?" },
+  { key: "saida_intervalo",   label: "SAÍDA INTERVALO",  confirm: "Você está saindo para intervalo?" },
+  { key: "retorno_intervalo", label: "RETORNO INTERVALO",confirm: "Você está retornando do intervalo?" },
+  { key: "saida",             label: "SAÍDA",            confirm: "Você está encerrando o expediente?" },
+  { key: "entrada_he",        label: "ENTRADA HE",       confirm: "Você está iniciando hora extra?" },
+  { key: "saida_he",          label: "SAÍDA HE",         confirm: "Você está finalizando hora extra?" }
+];
 
-    // ✅ CONSULTA SEM INDEX:
-    // Busca pelo par (nome + re), e filtra a data no JS
-    const q = query(
-        collection(db, "pontos"),
-        where("re", "==", re),
-        where("nome", "==", nome)
-    );
-
-    const snap = await getDocs(q);
-    let registros = snap.docs.map(d => d.data());
-
-    // FILTRA SOMENTE HOJE
-    registros = registros.filter(r => r.data === dataHoje);
-
-    // ORDENA NO JS (timestamp pode vir como Date, string ou Timestamp)
-    registros.sort((a, b) => {
-        const ta = a.timestamp?.toDate?.() || new Date(a.timestamp);
-        const tb = b.timestamp?.toDate?.() || new Date(b.timestamp);
-        return ta - tb;
-    });
-
-    // ✅ BLOQUEIO DUPLICIDADE (5 min)
-    if (registros.length > 0) {
-        const ultimo = registros[registros.length - 1];
-        const ultimoTs = ultimo.timestamp?.toDate?.() || new Date(ultimo.timestamp);
-
-        if ((agora - ultimoTs) < TEMPO_MINIMO) {
-            alert("Registro duplicado detectado. Aguarde 5 minutos para registrar novamente.");
-            return;
-        }
-    }
-
-    // ✅ DEFINIR ETAPA PELA QUANTIDADE DO DIA (6 etapas)
-    const etapaIndex = registros.length;
-
-    if (etapaIndex >= etapas.length) {
-        alert("Todos os registros do dia já foram feitos.");
-        return;
-    }
-
-    const etapa = etapas[etapaIndex];
-
-    // ✅ CONFIRMAÇÃO
-    if (!confirm(etapa.confirm)) return;
-
-    // FOTO (se não tiver capturado, ainda salva — se quiser obrigar, eu travo)
-    const canvas = document.getElementById("photo");
-    const foto = canvas.toDataURL("image/jpeg", 0.4);
-
-    // LOCALIZAÇÃO
-    let location = "Não disponível";
-    try {
-        const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej));
-        location = pos.coords.latitude + "," + pos.coords.longitude;
-    } catch {}
-
-    // SALVAR
-    await addDoc(collection(db, "pontos"), {
-        nome,
-        re,
-        tipo: etapa.tipo,
-        label: etapa.label,
-        data: dataHoje,
-        hora: horaAtual(),
-        timestamp: agora.toISOString(), // salva como string ISO (mais consistente)
-        foto,
-        location
-    });
-
-    alert(etapa.label + " registrada com sucesso!");
+function toDateAny(ts) {
+  if (!ts) return null;
+  if (ts.toDate) return ts.toDate();
+  if (ts instanceof Date) return ts;
+  return new Date(ts);
 }
 
+function getNextStepFromJornada(j) {
+  // próxima etapa é o primeiro campo vazio na ordem
+  for (const e of etapas) {
+    if (!j[e.key] || !j[e.key].ts) return e;
+  }
+  return null; // jornada completa
+}
+
+function isCanvasBlank() {
+  const pixel = ctx.getImageData(0, 0, 1, 1).data;
+  // se estiver tudo 0 é possível estar “vazio”, mas não perfeito.
+  // como você já usa isso na prática, deixo sem obrigar.
+  return false;
+}
+
+async function getLocationString() {
+  let location = "Não disponível";
+  try {
+    const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 8000 }));
+    location = pos.coords.latitude + "," + pos.coords.longitude;
+  } catch {}
+  return location;
+}
+
+// ==== BUSCAR NOME PELO RE ====
+async function buscarNomePorRe(re) {
+  const ref = doc(db, "colaboradores", re);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return "";
+  const data = snap.data();
+  return (data?.nome || "").trim();
+}
+
+async function atualizarNomeNaTela() {
+  const re = reInput.value.trim();
+  nomeAtual = "";
+  nomeMostrado.innerText = "Nome: —";
+
+  if (!re) return;
+
+  const nome = await buscarNomePorRe(re);
+  if (!nome) {
+    nomeMostrado.innerText = "Nome: (RE não cadastrado)";
+    return;
+  }
+
+  nomeAtual = nome;
+  nomeMostrado.innerText = "Nome: " + nomeAtual;
+}
+
+// busca ao sair do campo e também com Enter
+reInput.addEventListener("blur", atualizarNomeNaTela);
+reInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    atualizarNomeNaTela();
+  }
+});
+
+// ==== REGISTRAR (NÃO USA DATA COMO BASE; USA A JORNADA EM ABERTO) ====
+registrarBtn.addEventListener("click", async () => {
+  if (clickLock) return;
+  clickLock = true;
+  setTimeout(() => clickLock = false, 1200);
+
+  const re = reInput.value.trim();
+  if (!re) return alert("Digite o RE.");
+
+  if (!nomeAtual) {
+    await atualizarNomeNaTela();
+    if (!nomeAtual) return alert("RE não cadastrado. Fale com o administrador.");
+  }
+
+  // Foto
+  const foto = canvas.toDataURL("image/jpeg", 0.4);
+
+  // Localização
+  const location = await getLocationString();
+
+  // 1) Buscar jornadas do colaborador (sem index: pega tudo do RE e decide no JS)
+  // (Se você tiver MUITA gente, depois a gente cria índice e melhora performance)
+  const q = query(collection(db, "jornadas"), where("re", "==", re));
+  const snap = await getDocs(q);
+  let jornadas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  // Ordena por updatedAt/entrada.ts (mais recente primeiro)
+  jornadas.sort((a, b) => {
+    const ta = toDateAny(a.updatedAt) || toDateAny(a.entrada?.ts) || new Date(0);
+    const tb = toDateAny(b.updatedAt) || toDateAny(b.entrada?.ts) || new Date(0);
+    return tb - ta;
+  });
+
+  // 2) Pega a jornada “ativa” (a mais recente que não está fechada ou está incompleta)
+  let jornadaAtiva = null;
+  for (const j of jornadas) {
+    const next = getNextStepFromJornada(j);
+    if (next) { // incompleta
+      jornadaAtiva = j;
+      break;
+    }
+  }
+
+  // Se não tem jornada ativa, cria uma nova (entrada)
+  let etapa = null;
+
+  if (!jornadaAtiva) {
+    etapa = etapas[0]; // entrada
+    if (!confirm(etapa.confirm)) return;
+
+    const now = new Date();
+
+    await addDoc(collection(db, "jornadas"), {
+      re,
+      nome: nomeAtual,
+      status: "aberta",
+      entrada: { ts: now.toISOString(), foto, location },
+      updatedAt: now.toISOString()
+    });
+
+    alert("ENTRADA registrada com sucesso!");
+    return;
+  }
+
+  // 3) Se tem jornada ativa, pega próxima etapa
+  etapa = getNextStepFromJornada(jornadaAtiva);
+  if (!etapa) {
+    // deveria não acontecer, mas por segurança
+    alert("Jornada já completa. Vou iniciar uma nova ENTRADA.");
+    return;
+  }
+
+  // Confirmação
+  if (!confirm(etapa.confirm)) return;
+
+  // 4) Anti duplicidade 5 min (comparando com último registro da jornada)
+  const lastTs =
+    toDateAny(jornadaAtiva.saida_he?.ts) ||
+    toDateAny(jornadaAtiva.entrada_he?.ts) ||
+    toDateAny(jornadaAtiva.saida?.ts) ||
+    toDateAny(jornadaAtiva.retorno_intervalo?.ts) ||
+    toDateAny(jornadaAtiva.saida_intervalo?.ts) ||
+    toDateAny(jornadaAtiva.entrada?.ts);
+
+  const now = new Date();
+  if (lastTs && (now - lastTs) < TEMPO_MINIMO) {
+    alert("Registro duplicado detectado. Aguarde 5 minutos para registrar novamente.");
+    return;
+  }
+
+  // 5) Atualiza jornada ativa no documento (sem updateDoc para manter compatível simples)
+  const ref = doc(db, "jornadas", jornadaAtiva.id);
+
+  // monta o payload novo
+  const payload = { ...jornadaAtiva };
+  payload[etapa.key] = { ts: now.toISOString(), foto, location };
+  payload.updatedAt = now.toISOString();
+
+  // Fecha automaticamente quando completar a última etapa
+  const afterNext = getNextStepFromJornada(payload);
+  if (!afterNext) payload.status = "fechada";
+
+  // Salva sobrescrevendo (merge true)
+  await setDoc(ref, payload, { merge: true });
+
+  alert(etapa.label + " registrada com sucesso!");
+});
 </script>
 
 </body>
