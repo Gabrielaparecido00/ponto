@@ -3,342 +3,310 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Registro de Ponto</title>
-
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+<title>Painel Admin</title>
 
 <style>
-body {
-  font-family: 'Montserrat', Arial, sans-serif;
-  background: #f0f0f0;
-  padding: 20px;
-}
+body { font-family: Arial; background:#f5f5f5; text-align:center; }
+.container { background:white; padding:20px; margin:20px auto; max-width:1200px; border-radius:10px; }
+.logo { width:260px; margin-bottom: 10px; }
 
-.container {
-  max-width: 500px;
-  margin: auto;
-  background: white;
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
+input, button { padding:10px; margin:5px; }
+button { cursor:pointer; }
 
-.logo {
-  width: 220px;
-  display: block;
-  margin: 0 auto 15px;
-}
+.row { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center; margin-top:10px; }
 
-h2 { text-align: center; }
+table { width:100%; border-collapse:collapse; margin-top:18px; font-size:13px; }
+th, td { border:1px solid #ccc; padding:8px; }
+th { background:#fafafa; }
 
-input, button {
-  width: 100%;
-  padding: 10px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  margin-bottom: 10px;
-}
+.editBtn { border:none; background:transparent; cursor:pointer; font-size:14px; }
+.small { font-size: 12px; color:#666; }
 
-button {
-  background: #4CAF50;
-  color: white;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-button:hover { background: #45a049; }
-
-canvas {
-  width: 100%;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-}
-
-#timestamp {
-  text-align: center;
-  margin-top: 10px;
-  font-weight: bold;
-}
-
-#nomeMostrado {
-  font-weight: 700;
-  text-align: center;
-  margin: 8px 0 14px;
-}
-
-.footer {
-  text-align: center;
-  margin-top: 18px;
-}
-.footer a {
-  font-size: 12px;
-  color: #aaa;
-  text-decoration: none;
-}
+.boxTitle { margin-top: 0; }
+.hr { height:1px; background:#eee; margin:18px 0; border:0; }
 </style>
 </head>
-
 <body>
 
-<div class="container">
+<!-- LOGIN -->
+<div id="loginDiv" class="container">
   <img src="GW.png" class="logo">
-
-  <h2>Registro de Ponto</h2>
-
-  <input type="text" id="re" placeholder="Digite seu RE" inputmode="numeric" autocomplete="off">
-  <div id="nomeMostrado">Nome: —</div>
-
-  <canvas id="photo" width="240" height="320"></canvas>
-  <button type="button" id="captureBtn">Capturar Foto</button>
-
-  <button type="button" id="registrarBtn">Registrar Ponto</button>
-
-  <div id="timestamp"></div>
+  <h2>Login Admin</h2>
+  <input id="email" placeholder="Email"><br>
+  <input id="senha" type="password" placeholder="Senha"><br>
+  <button onclick="login()">Entrar</button>
 </div>
 
-<div class="footer">
-  <a href="admin.html">.</a>
+<!-- PAINEL -->
+<div id="painelDiv" class="container" style="display:none;">
+  <img src="GW.png" class="logo">
+
+  <h2 class="boxTitle">Painel Admin</h2>
+  <div class="small">Cadastro de colaboradores + correção de registros</div>
+
+  <hr class="hr">
+
+  <!-- CADASTRO COLABORADOR -->
+  <h3>Cadastro de Colaborador</h3>
+  <div class="row">
+    <input id="cadRe" placeholder="RE (docId)" inputmode="numeric">
+    <input id="cadNome" placeholder="Nome completo">
+    <button onclick="salvarColaborador()">Salvar / Atualizar</button>
+  </div>
+  <div class="small">Isso grava em <b>colaboradores</b> (docId = RE).</div>
+
+  <hr class="hr">
+
+  <!-- FILTROS -->
+  <h3>Jornadas</h3>
+  <div class="row">
+    <label>De:</label>
+    <input type="date" id="inicio">
+    <label>Até:</label>
+    <input type="date" id="fim">
+    <input id="filtroRe" placeholder="Filtrar por RE (opcional)" inputmode="numeric">
+    <input id="filtroNome" placeholder="Filtrar por Nome (opcional)">
+    <button onclick="buscar()">Buscar</button>
+    <button onclick="exportar()">Exportar CSV</button>
+    <button onclick="logout()">Sair</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Data (Entrada)</th>
+        <th>Nome</th>
+        <th>RE</th>
+
+        <th>ENTRADA</th>
+        <th>SAÍDA INTERVALO</th>
+        <th>RETORNO INTERVALO</th>
+        <th>SAÍDA</th>
+        <th>ENTRADA HE</th>
+        <th>SAÍDA HE</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
-  getFirestore, doc, getDoc, setDoc, addDoc, collection, getDocs, query, where
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  getFirestore, doc, setDoc, getDocs, collection, query, where, updateDoc
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {
+  getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD--zpWLbLg5X82oGTyz6SuPFQV0sd7NWc",
   authDomain: "controle-ponto-f539b.firebaseapp.com",
   projectId: "controle-ponto-f539b",
-  storageBucket: "controle-ponto-f539b.appspot.com",
+  storageBucket: "controle-ponto-f539b.firebasestorage.app",
   messagingSenderId: "324716100257",
-  appId: "1:324716100257:web:32d49a9ab4916182dd4ee0"
+  appId: "1:324716100257:web:32d49a9ab4916182dd4ee0",
+  measurementId: "G-P81H3C4SFK"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 
-// ==== UI/STATE ====
-const reInput = document.getElementById("re");
-const nomeMostrado = document.getElementById("nomeMostrado");
-const registrarBtn = document.getElementById("registrarBtn");
-const captureBtn = document.getElementById("captureBtn");
-const canvas = document.getElementById("photo");
-const ctx = canvas.getContext("2d");
+const loginDiv = document.getElementById("loginDiv");
+const painelDiv = document.getElementById("painelDiv");
 
-let nomeAtual = "";
-let stream = null;
-let clickLock = false;
-
-// ==== RELÓGIO ====
-setInterval(() => {
-  document.getElementById("timestamp").innerText = "Data/Hora: " + new Date().toLocaleString();
-}, 1000);
-
-// ==== CAMERA ====
-navigator.mediaDevices.getUserMedia({ video: true })
-  .then(s => stream = s)
-  .catch(() => alert("Erro ao acessar câmera"));
-
-captureBtn.addEventListener("click", async () => {
-  if (!stream) return alert("Câmera não iniciada");
-
-  const track = stream.getVideoTracks()[0];
-  const imageCapture = new ImageCapture(track);
-
+window.login = async function() {
+  const email = document.getElementById("email").value;
+  const senha = document.getElementById("senha").value;
   try {
-    const bitmap = await imageCapture.grabFrame();
-    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  } catch {
-    alert("Erro ao capturar foto");
+    await signInWithEmailAndPassword(auth, email, senha);
+  } catch (e) {
+    alert("Erro no login");
+    console.error(e);
   }
+};
+
+window.logout = function() {
+  signOut(auth);
+};
+
+onAuthStateChanged(auth, user => {
+  loginDiv.style.display = user ? "none" : "block";
+  painelDiv.style.display = user ? "block" : "none";
 });
 
-// ==== HELPERS ====
-const TEMPO_MINIMO = 5 * 60 * 1000; // 5 min
-
-const etapas = [
-  { key: "entrada",           label: "ENTRADA",          confirm: "Você está entrando no serviço?" },
-  { key: "saida_intervalo",   label: "SAÍDA INTERVALO",  confirm: "Você está saindo para intervalo?" },
-  { key: "retorno_intervalo", label: "RETORNO INTERVALO",confirm: "Você está retornando do intervalo?" },
-  { key: "saida",             label: "SAÍDA",            confirm: "Você está encerrando o expediente?" },
-  { key: "entrada_he",        label: "ENTRADA HE",       confirm: "Você está iniciando hora extra?" },
-  { key: "saida_he",          label: "SAÍDA HE",         confirm: "Você está finalizando hora extra?" }
-];
-
-function toDateAny(ts) {
+// ===== Helpers =====
+function norm(s){ return (s||"").toString().trim().toLowerCase(); }
+function toDateAny(ts){
   if (!ts) return null;
   if (ts.toDate) return ts.toDate();
   if (ts instanceof Date) return ts;
   return new Date(ts);
 }
-
-function getNextStepFromJornada(j) {
-  // próxima etapa é o primeiro campo vazio na ordem
-  for (const e of etapas) {
-    if (!j[e.key] || !j[e.key].ts) return e;
-  }
-  return null; // jornada completa
+function formatHHMM(ts){
+  const d = toDateAny(ts);
+  if (!d || isNaN(d)) return "";
+  return d.toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit" });
+}
+function formatYYYYMMDD(ts){
+  const d = toDateAny(ts);
+  if (!d || isNaN(d)) return "";
+  return d.toISOString().slice(0,10);
 }
 
-function isCanvasBlank() {
-  const pixel = ctx.getImageData(0, 0, 1, 1).data;
-  // se estiver tudo 0 é possível estar “vazio”, mas não perfeito.
-  // como você já usa isso na prática, deixo sem obrigar.
-  return false;
-}
+// ===== Cadastro Colaborador =====
+window.salvarColaborador = async function(){
+  const re = document.getElementById("cadRe").value.trim();
+  const nome = document.getElementById("cadNome").value.trim();
+  if (!re || !nome) return alert("Preencha RE e Nome.");
 
-async function getLocationString() {
-  let location = "Não disponível";
-  try {
-    const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 8000 }));
-    location = pos.coords.latitude + "," + pos.coords.longitude;
-  } catch {}
-  return location;
-}
+  if (!confirm(`Salvar/Atualizar colaborador?\nRE: ${re}\nNome: ${nome}`)) return;
 
-// ==== BUSCAR NOME PELO RE ====
-async function buscarNomePorRe(re) {
   const ref = doc(db, "colaboradores", re);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) return "";
-  const data = snap.data();
-  return (data?.nome || "").trim();
-}
+  await setDoc(ref, {
+    re,
+    nome,
+    ativo: true,
+    updatedAt: new Date().toISOString()
+  }, { merge: true });
 
-async function atualizarNomeNaTela() {
-  const re = reInput.value.trim();
-  nomeAtual = "";
-  nomeMostrado.innerText = "Nome: —";
+  alert("Colaborador salvo!");
+};
 
-  if (!re) return;
+// ===== Buscar Jornadas =====
+let ultimaTabela = []; // para export
 
-  const nome = await buscarNomePorRe(re);
-  if (!nome) {
-    nomeMostrado.innerText = "Nome: (RE não cadastrado)";
-    return;
-  }
+window.buscar = async function(){
+  const iniStr = document.getElementById("inicio").value || "2000-01-01";
+  const fimStr = document.getElementById("fim").value || "2999-12-31";
+  const filtroRe = norm(document.getElementById("filtroRe").value);
+  const filtroNome = norm(document.getElementById("filtroNome").value);
 
-  nomeAtual = nome;
-  nomeMostrado.innerText = "Nome: " + nomeAtual;
-}
-
-// busca ao sair do campo e também com Enter
-reInput.addEventListener("blur", atualizarNomeNaTela);
-reInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    atualizarNomeNaTela();
-  }
-});
-
-// ==== REGISTRAR (NÃO USA DATA COMO BASE; USA A JORNADA EM ABERTO) ====
-registrarBtn.addEventListener("click", async () => {
-  if (clickLock) return;
-  clickLock = true;
-  setTimeout(() => clickLock = false, 1200);
-
-  const re = reInput.value.trim();
-  if (!re) return alert("Digite o RE.");
-
-  if (!nomeAtual) {
-    await atualizarNomeNaTela();
-    if (!nomeAtual) return alert("RE não cadastrado. Fale com o administrador.");
-  }
-
-  // Foto
-  const foto = canvas.toDataURL("image/jpeg", 0.4);
-
-  // Localização
-  const location = await getLocationString();
-
-  // 1) Buscar jornadas do colaborador (sem index: pega tudo do RE e decide no JS)
-  // (Se você tiver MUITA gente, depois a gente cria índice e melhora performance)
-  const q = query(collection(db, "jornadas"), where("re", "==", re));
-  const snap = await getDocs(q);
+  // sem index: busca tudo e filtra no JS
+  const snap = await getDocs(collection(db, "jornadas"));
   let jornadas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-  // Ordena por updatedAt/entrada.ts (mais recente primeiro)
-  jornadas.sort((a, b) => {
-    const ta = toDateAny(a.updatedAt) || toDateAny(a.entrada?.ts) || new Date(0);
-    const tb = toDateAny(b.updatedAt) || toDateAny(b.entrada?.ts) || new Date(0);
-    return tb - ta;
+  // filtra por data de ENTRADA (pela ts da entrada)
+  jornadas = jornadas.filter(j => {
+    const entradaDate = formatYYYYMMDD(j.entrada?.ts);
+    if (!entradaDate) return false;
+    return entradaDate >= iniStr && entradaDate <= fimStr;
   });
 
-  // 2) Pega a jornada “ativa” (a mais recente que não está fechada ou está incompleta)
-  let jornadaAtiva = null;
-  for (const j of jornadas) {
-    const next = getNextStepFromJornada(j);
-    if (next) { // incompleta
-      jornadaAtiva = j;
-      break;
-    }
+  if (filtroRe) {
+    jornadas = jornadas.filter(j => norm(j.re) === filtroRe);
+  }
+  if (filtroNome) {
+    jornadas = jornadas.filter(j => norm(j.nome).includes(filtroNome));
   }
 
-  // Se não tem jornada ativa, cria uma nova (entrada)
-  let etapa = null;
+  // ordena por entrada desc
+  jornadas.sort((a,b) => (toDateAny(b.entrada?.ts) || new Date(0)) - (toDateAny(a.entrada?.ts) || new Date(0)));
 
-  if (!jornadaAtiva) {
-    etapa = etapas[0]; // entrada
-    if (!confirm(etapa.confirm)) return;
+  ultimaTabela = jornadas;
+  montarTabela(jornadas);
+};
 
-    const now = new Date();
+function montarTabela(jornadas){
+  const tbody = document.querySelector("tbody");
+  tbody.innerHTML = "";
 
-    await addDoc(collection(db, "jornadas"), {
-      re,
-      nome: nomeAtual,
-      status: "aberta",
-      entrada: { ts: now.toISOString(), foto, location },
-      updatedAt: now.toISOString()
-    });
+  for (const j of jornadas){
+    const dataEntrada = formatYYYYMMDD(j.entrada?.ts);
 
-    alert("ENTRADA registrada com sucesso!");
-    return;
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${dataEntrada}</td>
+      <td>${j.nome || ""}</td>
+      <td>${j.re || ""}</td>
+
+      ${cellEdit(j.id, "entrada.ts", j.entrada?.ts)}
+      ${cellEdit(j.id, "saida_intervalo.ts", j.saida_intervalo?.ts)}
+      ${cellEdit(j.id, "retorno_intervalo.ts", j.retorno_intervalo?.ts)}
+      ${cellEdit(j.id, "saida.ts", j.saida?.ts)}
+      ${cellEdit(j.id, "entrada_he.ts", j.entrada_he?.ts)}
+      ${cellEdit(j.id, "saida_he.ts", j.saida_he?.ts)}
+    `;
+    tbody.appendChild(row);
+  }
+}
+
+function cellEdit(docId, path, ts){
+  const v = formatHHMM(ts);
+  // botão lápis chama editar(docId, path)
+  return `
+    <td>
+      <span data-doc="${docId}" data-path="${path}">${v}</span>
+      <button class="editBtn" onclick="editar('${docId}','${path}')">✏️</button>
+    </td>
+  `;
+}
+
+// ===== Editar campo (pede HH:MM e grava no DB mantendo a data da própria entrada) =====
+window.editar = async function(docId, path){
+  // pega a jornada atual do DOM (mais simples: buscar de ultimaTabela)
+  const j = ultimaTabela.find(x => x.id === docId);
+  if (!j) return alert("Jornada não encontrada.");
+
+  const entradaDate = formatYYYYMMDD(j.entrada?.ts);
+  if (!entradaDate) return alert("Jornada sem ENTRADA válida.");
+
+  const atual = (() => {
+    const parts = path.split(".");
+    const bloco = parts[0]; // ex: "saida"
+    return formatHHMM(j[bloco]?.ts);
+  })();
+
+  const novo = prompt(`Editar ${path}\nData base: ${entradaDate}\nDigite hora no formato HH:MM`, atual || "");
+  if (novo === null) return;
+
+  const m = novo.trim().match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+  if (!m) return alert("Hora inválida. Use HH:MM (ex: 07:15).");
+
+  // monta ISO com a DATA DA ENTRADA + hora digitada
+  const iso = new Date(`${entradaDate}T${m[1]}:${m[2]}:00`).toISOString();
+
+  if (!confirm(`Confirmar alteração?\n${path} = ${entradaDate} ${novo}`)) return;
+
+  // update no campo aninhado: ex "saida.ts"
+  const ref = doc(db, "jornadas", docId);
+  await updateDoc(ref, {
+    [path]: iso,
+    updatedAt: new Date().toISOString()
+  });
+
+  alert("Atualizado!");
+  buscar(); // recarrega tabela
+};
+
+// ===== Exportar CSV =====
+window.exportar = function(){
+  let csv = "DataEntrada,Nome,RE,Entrada,SaidaIntervalo,RetornoIntervalo,Saida,EntradaHE,SaidaHE\n";
+
+  for (const j of ultimaTabela){
+    const dataEntrada = formatYYYYMMDD(j.entrada?.ts);
+    const linha = [
+      dataEntrada,
+      j.nome || "",
+      j.re || "",
+      formatHHMM(j.entrada?.ts),
+      formatHHMM(j.saida_intervalo?.ts),
+      formatHHMM(j.retorno_intervalo?.ts),
+      formatHHMM(j.saida?.ts),
+      formatHHMM(j.entrada_he?.ts),
+      formatHHMM(j.saida_he?.ts),
+    ].map(v => `"${String(v).replaceAll('"','""')}"`).join(",");
+    csv += linha + "\n";
   }
 
-  // 3) Se tem jornada ativa, pega próxima etapa
-  etapa = getNextStepFromJornada(jornadaAtiva);
-  if (!etapa) {
-    // deveria não acontecer, mas por segurança
-    alert("Jornada já completa. Vou iniciar uma nova ENTRADA.");
-    return;
-  }
-
-  // Confirmação
-  if (!confirm(etapa.confirm)) return;
-
-  // 4) Anti duplicidade 5 min (comparando com último registro da jornada)
-  const lastTs =
-    toDateAny(jornadaAtiva.saida_he?.ts) ||
-    toDateAny(jornadaAtiva.entrada_he?.ts) ||
-    toDateAny(jornadaAtiva.saida?.ts) ||
-    toDateAny(jornadaAtiva.retorno_intervalo?.ts) ||
-    toDateAny(jornadaAtiva.saida_intervalo?.ts) ||
-    toDateAny(jornadaAtiva.entrada?.ts);
-
-  const now = new Date();
-  if (lastTs && (now - lastTs) < TEMPO_MINIMO) {
-    alert("Registro duplicado detectado. Aguarde 5 minutos para registrar novamente.");
-    return;
-  }
-
-  // 5) Atualiza jornada ativa no documento (sem updateDoc para manter compatível simples)
-  const ref = doc(db, "jornadas", jornadaAtiva.id);
-
-  // monta o payload novo
-  const payload = { ...jornadaAtiva };
-  payload[etapa.key] = { ts: now.toISOString(), foto, location };
-  payload.updatedAt = now.toISOString();
-
-  // Fecha automaticamente quando completar a última etapa
-  const afterNext = getNextStepFromJornada(payload);
-  if (!afterNext) payload.status = "fechada";
-
-  // Salva sobrescrevendo (merge true)
-  await setDoc(ref, payload, { merge: true });
-
-  alert(etapa.label + " registrada com sucesso!");
-});
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "jornadas.csv";
+  a.click();
+};
 </script>
 
 </body>
