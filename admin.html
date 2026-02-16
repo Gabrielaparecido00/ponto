@@ -9,7 +9,8 @@
   body { font-family: Arial; background:#f5f5f5; text-align:center; }
   .container { background:#fff; padding:20px; margin:20px auto; max-width:1300px; border-radius:10px; }
   .logo { width:260px; margin-bottom: 10px; }
-  input, button, select { padding:10px; margin:5px; }
+  input, button, select, textarea { padding:10px; margin:5px; }
+  textarea{ width:100%; box-sizing:border-box; resize:vertical; min-height:70px; }
   button { cursor:pointer; }
   .row { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:end; margin-top:10px; }
   table { width:100%; border-collapse:collapse; margin-top:18px; font-size:13px; }
@@ -43,7 +44,7 @@
   }
   .modal{
     background:#fff;
-    width:min(760px, 94vw);
+    width:min(820px, 94vw);
     border-radius:12px;
     padding:16px;
     box-shadow:0 10px 30px rgba(0,0,0,0.2);
@@ -108,6 +109,7 @@
     <button onclick="showSection('secJornadas')">Jornadas</button>
     <button onclick="showSection('secColab')">Colaboradores</button>
     <button onclick="showSection('secLocal')">Locais</button>
+    <button onclick="showSection('secOcor')">Ocorrências</button>
     <button class="secondary" onclick="logout()">Sair</button>
   </div>
 
@@ -155,12 +157,10 @@
       <input id="cadRe" placeholder="RE" inputmode="numeric">
       <input id="cadNome" placeholder="Nome completo">
       <input id="cadCpf" placeholder="CPF (obrigatório)" inputmode="numeric">
-
       <select id="cadEscala">
-        <option value="5x2" selected>5x2 (Seg–Sex)</option>
+        <option value="5x2" selected>5x2 (Seg-Sex)</option>
         <option value="6x1">6x1 (Folga Domingo)</option>
       </select>
-
       <button onclick="cadastrarColab()">Cadastrar</button>
       <button onclick="carregarColaboradores()">Atualizar lista</button>
     </div>
@@ -207,6 +207,51 @@
       <tbody id="tbodyLocais"></tbody>
     </table>
   </div>
+
+  <!-- OCORRÊNCIAS (ATESTADO/ABONO POR DIA) -->
+  <div id="secOcor" class="section">
+    <h3>Ocorrências (Abonar por dia)</h3>
+    <div class="small">DocId = <b>RE_YYYY-MM-DD</b> • Serve para <b>ATESTADO</b>, <b>ABONO</b> e <b>FALTA JUSTIFICADA</b>.</div>
+
+    <div class="row">
+      <input id="ocRe" placeholder="RE" inputmode="numeric">
+      <input id="ocData" type="date">
+      <select id="ocTipo">
+        <option value="ATESTADO" selected>ATESTADO</option>
+        <option value="ABONO">ABONO</option>
+        <option value="FALTA_JUSTIFICADA">FALTA JUSTIFICADA</option>
+      </select>
+      <button onclick="salvarOcorrencia()">Salvar/Atualizar</button>
+      <button onclick="listarOcorrencias()">Atualizar lista</button>
+    </div>
+
+    <div class="row" style="max-width:900px;margin:0 auto;">
+      <textarea id="ocMotivo" placeholder="Motivo / Observação (opcional)"></textarea>
+    </div>
+
+    <hr class="hr">
+
+    <div class="row">
+      <label>Filtrar De:</label><input type="date" id="ocIni">
+      <label>Até:</label><input type="date" id="ocFim">
+      <input id="ocFiltroRe" placeholder="Filtrar por RE (opcional)" inputmode="numeric">
+      <button onclick="listarOcorrencias()">Buscar</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>RE</th>
+          <th>Tipo</th>
+          <th>Motivo</th>
+          <th>Criado por</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tbodyOcor"></tbody>
+    </table>
+  </div>
 </div>
 
 <!-- MODAL -->
@@ -224,7 +269,8 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
-  getFirestore, doc, setDoc, getDocs, collection, updateDoc, addDoc, deleteDoc, deleteField
+  getFirestore, doc, setDoc, getDocs, collection, updateDoc, addDoc, deleteDoc, deleteField,
+  query, where
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import {
   getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
@@ -257,6 +303,7 @@ window.showSection = function(id){
   document.getElementById(id).classList.add("active");
   if (id === "secLocal") carregarLocais();
   if (id === "secColab") carregarColaboradores();
+  if (id === "secOcor") listarOcorrencias();
 };
 
 // auth
@@ -350,7 +397,7 @@ window.cadastrarColab = async function(){
   const re = document.getElementById("cadRe").value.trim();
   const nome = document.getElementById("cadNome").value.trim();
   let cpf = document.getElementById("cadCpf").value.trim();
-  const escala = document.getElementById("cadEscala").value || "5x2";
+  const escala = document.getElementById("cadEscala").value;
 
   if (!re || !nome) return alert("Preencha RE e Nome.");
   cpf = cpf.replace(/\D/g,"");
@@ -359,14 +406,15 @@ window.cadastrarColab = async function(){
   if (!confirm(`Cadastrar?\nRE: ${re}\nNome: ${nome}\nEscala: ${escala}`)) return;
 
   await setDoc(doc(db,"colaboradores",re), {
-    re, nome, cpf, escala, ativo:true, updatedAt:new Date().toISOString()
+    re, nome, cpf, escala,
+    ativo:true,
+    updatedAt:new Date().toISOString()
   }, { merge:true });
 
   document.getElementById("cadRe").value="";
   document.getElementById("cadNome").value="";
   document.getElementById("cadCpf").value="";
   document.getElementById("cadEscala").value="5x2";
-
   carregarColaboradores();
 };
 
@@ -380,13 +428,12 @@ window.carregarColaboradores = async function(){
 
   for (const c of cacheColabs){
     const status = (c.ativo === false) ? "Inativo" : "Ativo";
-    const escala = (c.escala || "5x2");
     const tr=document.createElement("tr");
     tr.innerHTML = `
       <td>${c.re || c.id}</td>
       <td>${c.nome || ""}</td>
       <td>${c.cpf || ""}</td>
-      <td>${escala}</td>
+      <td>${c.escala || "5x2"}</td>
       <td>${status}</td>
       <td><button class="minBtn" onclick="editarColab('${c.id}')">Modificar</button></td>
     `;
@@ -414,16 +461,14 @@ window.editarColab = function(reDocId){
           <label>Nome</label>
           <input id="mNome" value="${c.nome || ""}">
         </div>
-
-        <div style="grid-column:1 / -1">
+        <div>
           <label>Escala</label>
           <select id="mEscala">
-            <option value="5x2" ${(c.escala || "5x2") === "5x2" ? "selected" : ""}>5x2 (Seg–Sex)</option>
-            <option value="6x1" ${(c.escala || "5x2") === "6x1" ? "selected" : ""}>6x1 (Folga Domingo)</option>
+            <option value="5x2" ${(c.escala||"5x2")==="5x2" ? "selected" : ""}>5x2 (Seg-Sex)</option>
+            <option value="6x1" ${(c.escala||"5x2")==="6x1" ? "selected" : ""}>6x1 (Folga Domingo)</option>
           </select>
         </div>
-
-        <div style="grid-column:1 / -1">
+        <div>
           <label>Status</label>
           <select id="mAtivo">
             <option value="true" ${c.ativo === false ? "" : "selected"}>Ativo</option>
@@ -439,7 +484,7 @@ window.editarColab = function(reDocId){
       const nome = document.getElementById("mNome").value.trim();
       let cpf = document.getElementById("mCpf").value.trim().replace(/\D/g,"");
       const ativo = document.getElementById("mAtivo").value === "true";
-      const escala = document.getElementById("mEscala").value || "5x2";
+      const escala = document.getElementById("mEscala").value;
 
       if (!nome) return alert("Nome não pode ficar vazio.");
       if (!cpf || cpf.length < 4) return alert("CPF é obrigatório (mínimo 4 dígitos).");
@@ -560,7 +605,7 @@ window.editarLocal = function(id){
   }, 0);
 };
 
-// ===== JORNADAS (um único modificar por linha) =====
+// ===== JORNADAS =====
 window.buscar = async function(){
   const iniStr = document.getElementById("inicio").value || "2000-01-01";
   const fimStr = document.getElementById("fim").value || "2999-12-31";
@@ -570,7 +615,6 @@ window.buscar = async function(){
   const snap = await getDocs(collection(db,"jornadas"));
   let jornadas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
 
-  // filtra por data da ENTRADA (base)
   jornadas = jornadas.filter(j => {
     const d = formatYYYYMMDD(j.entrada?.ts);
     if (!d) return false;
@@ -654,7 +698,7 @@ window.editarJornada = function(docId){
       for (const [path, txt] of campos){
         const t = (txt || "").trim();
         if (!t){
-          payload[path] = deleteField(); // apaga de verdade
+          payload[path] = deleteField();
           continue;
         }
         const iso = isoFromYmdHm(t);
@@ -698,6 +742,136 @@ window.exportar = function(){
   a.href = url;
   a.download = "jornadas.csv";
   a.click();
+};
+
+// ===== OCORRÊNCIAS (abonar por dia) =====
+function docIdOc(re, data){ return `${re}_${data}`; }
+
+window.salvarOcorrencia = async function(){
+  const re = (document.getElementById("ocRe").value || "").trim();
+  const data = (document.getElementById("ocData").value || "").trim();
+  const tipo = document.getElementById("ocTipo").value;
+  const motivo = (document.getElementById("ocMotivo").value || "").trim();
+
+  if (!re) return alert("Digite o RE.");
+  if (!data) return alert("Escolha a data.");
+  const id = docIdOc(re, data);
+
+  if (!confirm(`Salvar ocorrência?\nRE: ${re}\nData: ${data}\nTipo: ${tipo}`)) return;
+
+  const criadoPor = auth.currentUser?.email || auth.currentUser?.uid || "admin";
+  await setDoc(doc(db,"ocorrencias",id), {
+    re, data, tipo, motivo,
+    criadoPor,
+    updatedAt: new Date().toISOString()
+  }, { merge:true });
+
+  alert("Ocorrência salva!");
+  document.getElementById("ocMotivo").value = "";
+  listarOcorrencias();
+};
+
+window.listarOcorrencias = async function(){
+  const ini = document.getElementById("ocIni").value || "2000-01-01";
+  const fim = document.getElementById("ocFim").value || "2999-12-31";
+  const filtroRe = norm(document.getElementById("ocFiltroRe").value);
+
+  // busca por data (como string YYYY-MM-DD funciona)
+  let qy = query(
+    collection(db,"ocorrencias"),
+    where("data", ">=", ini),
+    where("data", "<=", fim)
+  );
+  const snap = await getDocs(qy);
+  let rows = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+
+  if (filtroRe) rows = rows.filter(o => norm(o.re) === filtroRe);
+
+  rows.sort((a,b)=> (a.data||"").localeCompare(b.data||"") || (a.re||"").localeCompare(b.re||""));
+
+  const tbody = document.getElementById("tbodyOcor");
+  tbody.innerHTML = "";
+  for (const o of rows){
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${o.data || ""}</td>
+      <td>${o.re || ""}</td>
+      <td>${(o.tipo || "").replaceAll("_"," ")}</td>
+      <td>${o.motivo || ""}</td>
+      <td>${o.criadoPor || ""}</td>
+      <td><button class="minBtn" onclick="editarOcorrencia('${o.id}')">Modificar</button></td>
+    `;
+    tbody.appendChild(tr);
+  }
+};
+
+window.editarOcorrencia = function(id){
+  openModal({
+    title: "Modificar ocorrência",
+    bodyHtml: `
+      <div class="grid">
+        <div>
+          <label>DocId</label>
+          <input id="moId" value="${id}" disabled>
+        </div>
+        <div>
+          <label>Tipo</label>
+          <select id="moTipo">
+            <option value="ATESTADO">ATESTADO</option>
+            <option value="ABONO">ABONO</option>
+            <option value="FALTA_JUSTIFICADA">FALTA JUSTIFICADA</option>
+          </select>
+        </div>
+        <div>
+          <label>RE</label>
+          <input id="moRe" disabled>
+        </div>
+        <div>
+          <label>Data</label>
+          <input id="moData" disabled>
+        </div>
+        <div style="grid-column:1 / -1">
+          <label>Motivo</label>
+          <textarea id="moMotivo"></textarea>
+        </div>
+        <div class="small" style="grid-column:1 / -1">
+          <button class="btnDangerInline" id="btnExcluirOc">Excluir ocorrência</button>
+        </div>
+      </div>
+    `,
+    onSave: async () => {
+      const tipo = document.getElementById("moTipo").value;
+      const motivo = (document.getElementById("moMotivo").value || "").trim();
+      if (!confirm("Salvar alterações da ocorrência?")) return;
+
+      await updateDoc(doc(db,"ocorrencias",id), {
+        tipo, motivo, updatedAt: new Date().toISOString()
+      });
+
+      closeModal();
+      listarOcorrencias();
+    }
+  });
+
+  // preencher campos lendo no cache via query rápida
+  (async () => {
+    const snap = await getDocs(query(collection(db,"ocorrencias"), where("__name__", "==", id)));
+    const d = snap.docs[0]?.data() || {};
+    document.getElementById("moRe").value = d.re || "";
+    document.getElementById("moData").value = d.data || "";
+    document.getElementById("moMotivo").value = d.motivo || "";
+    document.getElementById("moTipo").value = d.tipo || "ATESTADO";
+
+    const btn = document.getElementById("btnExcluirOc");
+    if (btn){
+      btn.onclick = async () => {
+        if (!confirm("Excluir esta ocorrência?")) return;
+        await deleteDoc(doc(db,"ocorrencias",id));
+        closeModal();
+        listarOcorrencias();
+      };
+    }
+  })();
 };
 </script>
 </body>
