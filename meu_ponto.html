@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Área do Colaborador - Meu Ponto</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+  body { font-family: 'Montserrat', Arial, sans-serif; background:#f0f0f0; padding:20px; }
+  .container{
+    max-width:1100px; margin:auto; background:#fff; padding:18px;
+    border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.08);
+  }
+  .logo{ width:180px; display:block; margin:0 auto 10px; }
+  h2{ text-align:center; margin:8px 0 12px; }
+  .row{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; align-items:end; }
+  input, select, button{
+    padding:10px; border-radius:8px; border:1px solid #ccc;
+    font-family:inherit;
+  }
+  input, select{ min-width:220px; }
+  button{ cursor:pointer; background:#1f6feb; color:#fff; border:none; font-weight:700; }
+  button.secondary{ background:#6c757d; }
+  button:disabled{ opacity:.6; cursor:not-allowed; }
+  .info{ text-align:center; margin:10px 0; font-weight:700; }
+  .small{ text-align:center; font-size:12px; color:#666; margin-top:6px; }
+  table{ width:100%; border-collapse:collapse; margin-top:14px; font-size:12px; }
+  th,td{ border:1px solid #ddd; padding:8px; text-align:center; }
+  th{ background:#fafafa; }
+  .footer{ text-align:center; margin-top:14px; font-size:12px; color:#666; }
+</style>
+</head>
+
+<body>
+<div class="container">
+  <img src="GW.png" class="logo" />
+  <h2>Área do Colaborador</h2>
+
+  <!-- LOGIN -->
+  <div id="loginBox">
+    <div class="row">
+      <div>
+        <label>RE</label><br>
+        <input id="re" placeholder="Digite seu RE" inputmode="numeric" autocomplete="off">
+      </div>
+      <div>
+        <label>Senha (4 primeiros do CPF)</label><br>
+        <input id="senha" type="password" placeholder="Ex: 4382" inputmode="numeric" autocomplete="off">
+      </div>
+      <button id="btnEntrar">Entrar</button>
+      <button class="secondary" onclick="voltar()">Voltar ao Registro</button>
+    </div>
+    <div class="small">A senha é os 4 primeiros dígitos do CPF cadastrado pelo administrador.</div>
+  </div>
+
+  <!-- CONTEÚDO -->
+  <div id="conteudo" style="display:none;">
+    <div class="info" id="infoUser">—</div>
+
+    <div class="row">
+      <div>
+        <label>Mês</label><br>
+        <select id="mes"></select>
+      </div>
+      <div>
+        <label>Ano</label><br>
+        <select id="ano"></select>
+      </div>
+
+      <button id="btnCarregar">Carregar</button>
+      <button id="btnPdf">Exportar PDF</button>
+      <button class="secondary" onclick="voltar()">Voltar ao Registro</button>
+    </div>
+
+    <div class="small" id="hintMes">Mostrando jornadas pelo dia da ENTRADA.</div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Data (Entrada)</th>
+          <th>Dia</th>
+          <th>Entrada</th>
+          <th>Saída Intervalo</th>
+          <th>Retorno</th>
+          <th>Saída</th>
+          <th>Entrada HE</th>
+          <th>Saída HE</th>
+          <th>Posto</th>
+          <th>Obs</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+
+    <div class="footer">
+      Sistema desenvolvido por Gabriel Wandele, todos direitos reservados
+    </div>
+  </div>
+</div>
+
+<!-- jsPDF -->
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, getDoc, getDocs, collection, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD--zpWLbLg5X82oGTyz6SuPFQV0sd7NWc",
+  authDomain: "controle-ponto-f539b.firebaseapp.com",
+  projectId: "controle-ponto-f539b",
+  storageBucket: "controle-ponto-f539b.appspot.com",
+  messagingSenderId: "324716100257",
+  appId: "1:324716100257:web:32d49a9ab4916182dd4ee0"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const loginBox = document.getElementById("loginBox");
+const conteudo = document.getElementById("conteudo");
+const infoUser = document.getElementById("infoUser");
+const tbody = document.getElementById("tbody");
+
+const reEl = document.getElementById("re");
+const senhaEl = document.getElementById("senha");
+const btnEntrar = document.getElementById("btnEntrar");
+
+const mesSel = document.getElementById("mes");
+const anoSel = document.getElementById("ano");
+const btnCarregar = document.getElementById("btnCarregar");
+const btnPdf = document.getElementById("btnPdf");
+
+let user = null;          // {re,nome,cpf}
+let jornadasMes = [];     // jornadas filtradas
+let cacheLocais = [];     // [{nome,lat,lng,raio}]
+
+function voltar(){ window.location.href = "index.html"; }
+window.voltar = voltar;
+
+function pad2(n){ return String(n).padStart(2,"0"); }
+function toDateAny(ts){
+  if (!ts) return null;
+  if (ts.toDate) return ts.toDate();
+  if (ts instanceof Date) return ts;
+  return new Date(ts);
+}
+function ymd(d){
+  if (!d || isNaN(d)) return "";
+  return d.toISOString().slice(0,10);
+}
+function hm(d){
+  if (!d || isNaN(d)) return "";
+  return d.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"});
+}
+function weekday(d){
+  if (!d || isNaN(d)) return "";
+  return d.toLocaleDateString("pt-BR", { weekday:"short" });
+}
+
+// Distância (Haversine) p/ reconhecer local
+function haversineMeters(lat1, lon1, lat2, lon2){
+  const R = 6371000;
+  const toRad = x => x * Math.PI / 180;
+  const dLat = toRad(lat2-lat1);
+  const dLon = toRad(lon2-lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return 2*R*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+function parseLocation(str){
+  if (!str) return null;
+  const p = str.split(",").map(s=>s.trim());
+  if (p.length !== 2) return null;
+  const lat = Number(p[0]), lng = Number(p[1]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return {lat,lng};
+}
+function getBestLocationFromJornada(j){
+  const steps = ["saida_he","entrada_he","saida","retorno_intervalo","saida_intervalo","entrada"];
+  for (const s of steps){
+    const loc = j?.[s]?.location;
+    if (loc) return loc;
+  }
+  return "";
+}
+function reconhecerLocal(locationStr){
+  const p = parseLocation(locationStr);
+  if (!p) return "Não disponível";
+  let best = null;
+  for (const l of cacheLocais){
+    const d = haversineMeters(p.lat,p.lng,l.lat,l.lng);
+    if (d <= l.raio){
+      if (!best || d < best.d) best = {nome:l.nome, d};
+    }
+  }
+  return best ? best.nome : "Não reconhecido";
+}
+
+// Popula selects mês/ano
+(function initMonthYear(){
+  const now = new Date();
+  const y = now.getFullYear();
+  for (let m=1;m<=12;m++){
+    const opt = document.createElement("option");
+    opt.value = String(m);
+    opt.textContent = pad2(m);
+    if (m === (now.getMonth()+1)) opt.selected = true;
+    mesSel.appendChild(opt);
+  }
+  for (let yy=y-3; yy<=y+1; yy++){
+    const opt = document.createElement("option");
+    opt.value = String(yy);
+    opt.textContent = String(yy);
+    if (yy === y) opt.selected = true;
+    anoSel.appendChild(opt);
+  }
+})();
+
+async function carregarLocais(){
+  const snap = await getDocs(collection(db, "locais"));
+  cacheLocais = snap.docs.map(d => d.data())
+    .filter(l => Number.isFinite(l.lat) && Number.isFinite(l.lng) && Number.isFinite(l.raio));
+}
+
+async function entrar(){
+  const re = reEl.value.trim();
+  const senha = senhaEl.value.trim();
+  if (!re || !senha) return alert("Digite RE e senha.");
+
+  // Busca colaborador
+  const ref = doc(db, "colaboradores", re);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return alert("RE não cadastrado.");
+
+  const data = snap.data() || {};
+  const nome = (data.nome || "").trim();
+  const cpf  = (data.cpf  || "").toString().trim();
+  const ativo = (data.ativo !== false);
+
+  if (!ativo) return alert("Seu cadastro está INATIVO. Procure o administrador.");
+  if (!cpf || cpf.length < 4) return alert("CPF não cadastrado corretamente. Procure o administrador.");
+
+  const senhaCorreta = cpf.replace(/\D/g,"").slice(0,4);
+  if (senha !== senhaCorreta) return alert("Senha incorreta.");
+
+  user = { re, nome, cpf };
+
+  await carregarLocais();
+
+  infoUser.textContent = `${user.nome} — RE ${user.re}`;
+  loginBox.style.display = "none";
+  conteudo.style.display = "block";
+
+  await carregar();
+}
+
+btnEntrar.addEventListener("click", entrar);
+btnCarregar.addEventListener("click", carregar);
+
+async function carregar(){
+  if (!user) return;
+
+  const mes = Number(mesSel.value);
+  const ano = Number(anoSel.value);
+
+  // Busca jornadas por RE e filtra no JS pelo mês/ano da ENTRADA
+  const q = query(collection(db, "jornadas"), where("re", "==", user.re));
+  const snap = await getDocs(q);
+  const jornadas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+
+  const filtradas = jornadas.filter(j => {
+    const dEnt = toDateAny(j.entrada?.ts);
+    if (!dEnt || isNaN(dEnt)) return false;
+    return (dEnt.getFullYear() === ano) && ((dEnt.getMonth()+1) === mes);
+  }).sort((a,b) => (toDateAny(a.entrada?.ts)||0) - (toDateAny(b.entrada?.ts)||0));
+
+  jornadasMes = filtradas;
+  renderTabela();
+}
+
+function obsJornada(j){
+  const dEnt = toDateAny(j.entrada?.ts);
+  const dSai = toDateAny(j.saida?.ts);
+  let obs = [];
+
+  if (dEnt && dSai && ymd(dEnt) !== ymd(dSai)) obs.push("Virou o dia");
+  if (!j.saida?.ts) obs.push("Sem saída");
+  if ((j.saida_intervalo?.ts && !j.retorno_intervalo?.ts) || (!j.saida_intervalo?.ts && j.retorno_intervalo?.ts)) {
+    obs.push("Intervalo incompleto");
+  }
+  const posto = reconhecerLocal(getBestLocationFromJornada(j));
+  if (posto === "Não reconhecido") obs.push("Fora do posto");
+
+  return obs.join(" | ");
+}
+
+function renderTabela(){
+  tbody.innerHTML = "";
+
+  if (!jornadasMes.length){
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td colspan="10">Nenhuma jornada encontrada no mês selecionado.</td>`;
+    tbody.appendChild(tr);
+    return;
+  }
+
+  for (const j of jornadasMes){
+    const dEnt = toDateAny(j.entrada?.ts);
+    const posto = reconhecerLocal(getBestLocationFromJornada(j));
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${dEnt ? dEnt.toLocaleDateString("pt-BR") : ""}</td>
+      <td>${weekday(dEnt)}</td>
+      <td>${hm(toDateAny(j.entrada?.ts))}</td>
+      <td>${hm(toDateAny(j.saida_intervalo?.ts))}</td>
+      <td>${hm(toDateAny(j.retorno_intervalo?.ts))}</td>
+      <td>${hm(toDateAny(j.saida?.ts))}${(toDateAny(j.saida?.ts) && dEnt && ymd(toDateAny(j.saida?.ts)) !== ymd(dEnt)) ? " (+1)" : ""}</td>
+      <td>${hm(toDateAny(j.entrada_he?.ts))}</td>
+      <td>${hm(toDateAny(j.saida_he?.ts))}</td>
+      <td>${posto}</td>
+      <td>${obsJornada(j)}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+btnPdf.addEventListener("click", exportarPdf);
+
+function exportarPdf(){
+  if (!user) return;
+  if (!jornadasMes.length) return alert("Sem dados para exportar.");
+
+  const mes = pad2(Number(mesSel.value));
+  const ano = anoSel.value;
+
+  const { jsPDF } = window.jspdf;
+  const docPdf = new jsPDF({ orientation:"landscape", unit:"pt", format:"a4" });
+
+  docPdf.setFontSize(14);
+  docPdf.text("Espelho de Ponto (Colaborador)", 40, 40);
+
+  docPdf.setFontSize(11);
+  docPdf.text(`Nome: ${user.nome}`, 40, 62);
+  docPdf.text(`RE: ${user.re}`, 40, 80);
+  docPdf.text(`Competência: ${mes}/${ano}`, 40, 98);
+  docPdf.text(`Emissão: ${new Date().toLocaleString("pt-BR")}`, 40, 116);
+
+  const head = [[
+    "Data (Entrada)","Dia","Entrada","Saída Int.","Retorno","Saída","Ent. HE","Saída HE","Posto","Obs"
+  ]];
+
+  const body = jornadasMes.map(j => {
+    const dEnt = toDateAny(j.entrada?.ts);
+    const dSai = toDateAny(j.saida?.ts);
+    const posto = reconhecerLocal(getBestLocationFromJornada(j));
+    return [
+      dEnt ? dEnt.toLocaleDateString("pt-BR") : "",
+      weekday(dEnt),
+      hm(toDateAny(j.entrada?.ts)),
+      hm(toDateAny(j.saida_intervalo?.ts)),
+      hm(toDateAny(j.retorno_intervalo?.ts)),
+      `${hm(dSai)}${(dSai && dEnt && ymd(dSai) !== ymd(dEnt)) ? " (+1)" : ""}`,
+      hm(toDateAny(j.entrada_he?.ts)),
+      hm(toDateAny(j.saida_he?.ts)),
+      posto,
+      obsJornada(j)
+    ];
+  });
+
+  docPdf.autoTable({
+    startY: 140,
+    head,
+    body,
+    styles: { fontSize: 8, cellPadding: 4 },
+    headStyles: { fillColor: [240,240,240], textColor: [0,0,0] }
+  });
+
+  docPdf.save(`espelho_${user.re}_${mes}-${ano}.pdf`);
+}
+</script>
+
+</body>
+</html>
