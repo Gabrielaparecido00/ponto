@@ -142,10 +142,11 @@ document.getElementById("btnVoltar1").onclick = voltar;
 document.getElementById("btnVoltar2").onclick = voltar;
 
 // estado
-let user = null;          // {re,nome,cpf,escala}
-let cacheLocais = [];     // [{nome,lat,lng,raio}]
-let jornadasMes = [];     // jornadas do mês (entrada no mês)
-let linhasMes = [];       // linhas 01..ultimoDia com dados ou vazias
+let user = null;                // {re,nome,cpf,escala}
+let cacheLocais = [];           // [{nome,lat,lng,raio}]
+let jornadasMes = [];           // jornadas do mês (entrada no mês)
+let linhasMes = [];             // linhas 01..ultimoDia com dados ou vazias
+let mapOcorrencias = {};        // { "YYYY-MM-DD": {tipo,motivo,...} }
 
 // ===== helpers gerais =====
 function voltar(){ window.location.href = "index.html"; }
@@ -170,7 +171,7 @@ function weekday(d){
   return d.toLocaleDateString("pt-BR", { weekday:"short" });
 }
 function daysInMonth(year, month1to12){
-  return new Date(year, month1to12, 0).getDate(); // mês 1..12
+  return new Date(year, month1to12, 0).getDate();
 }
 
 // ===== escala (5x2 / 6x1) =====
@@ -187,13 +188,10 @@ function haversineMeters(lat1, lon1, lat2, lon2){
   const R = 6371000;
   const toRad = x => x * Math.PI / 180;
   const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1); // ✅ certo
-  const a =
-    Math.sin(dLat/2)**2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
-  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const dLon = toRad(lon2 - lon1); // ✅ correto
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return 2*R*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
-
 function parseLocation(str){
   if (!str) return null;
   const p = str.split(",").map(s=>s.trim());
@@ -286,7 +284,7 @@ btnEntrar.addEventListener("click", entrar);
 btnCarregar.addEventListener("click", carregar);
 btnPdf.addEventListener("click", exportarPdf);
 
-// ✅ Auto recarregar ao mudar mês/ano (evita “mês do cabeçalho diferente da tabela”)
+// ✅ auto-recarregar ao mudar mês/ano
 mesSel.addEventListener("change", () => { if (user) carregar(); });
 anoSel.addEventListener("change", () => { if (user) carregar(); });
 
@@ -329,9 +327,10 @@ async function carregar(){
   const mes = Number(mesSel.value);
   const ano = Number(anoSel.value);
 
-  const q = query(collection(db, "jornadas"), where("re", "==", user.re));
-  const snap = await getDocs(q);
-  const jornadas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+  // jornadas do RE no mês (pela ENTRADA)
+  const qJ = query(collection(db, "jornadas"), where("re", "==", user.re));
+  const snapJ = await getDocs(qJ);
+  const jornadas = snapJ.docs.map(d => ({ id:d.id, ...d.data() }));
 
   jornadasMes = jornadas.filter(j => {
     const dEnt = toDateAny(j.entrada?.ts);
@@ -340,6 +339,24 @@ async function carregar(){
   }).sort((a,b) => (toDateAny(a.entrada?.ts)||0) - (toDateAny(b.entrada?.ts)||0));
 
   const last = daysInMonth(ano, mes);
+
+  // ✅ ocorrências do mês (por dia) — docId RE_YYYY-MM-DD
+  const start = `${ano}-${pad2(mes)}-01`;
+  const end   = `${ano}-${pad2(mes)}-${pad2(last)}`;
+  const qO = query(
+    collection(db, "ocorrencias"),
+    where("re", "==", user.re),
+    where("data", ">=", start),
+    where("data", "<=", end)
+  );
+  const snapO = await getDocs(qO);
+  mapOcorrencias = {};
+  for (const d of snapO.docs){
+    const o = d.data() || {};
+    if (o.data) mapOcorrencias[o.data] = { id: d.id, ...o };
+  }
+
+  // map dia -> jornadas
   const mapDia = {};
   for (const j of jornadasMes){
     const dEnt = toDateAny(j.entrada?.ts);
@@ -348,6 +365,7 @@ async function carregar(){
     mapDia[dia].push(j);
   }
 
+  // linhas 01..ultimoDia
   linhasMes = [];
   for (let dia=1; dia<=last; dia++){
     const dateObj = new Date(ano, mes-1, dia, 12, 0, 0);
@@ -374,6 +392,11 @@ function obsJornada(j){
   return obs.join(" | ");
 }
 
+function labelOc(o){
+  if (!o || !o.tipo) return "";
+  return (o.tipo || "").replaceAll("_"," ");
+}
+
 function renderTabela(){
   tbody.innerHTML = "";
 
@@ -385,7 +408,11 @@ function renderTabela(){
     const j1 = (linha.jornadas && linha.jornadas.length) ? linha.jornadas[0] : null;
     const ehFolga = isFolgaByEscala(dateObj, user?.escala);
 
+    const dataKey = `${ano}-${pad2(mes)}-${pad2(linha.dia)}`;
+    const oc = mapOcorrencias[dataKey] || null;
+
     let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="", obs="";
+
     if (j1){
       const dEnt = toDateAny(j1.entrada?.ts);
       const dSai = toDateAny(j1.saida?.ts);
@@ -403,18 +430,20 @@ function renderTabela(){
         obs = (obs ? (obs + " | ") : "") + `2+ jornadas no dia (${linha.jornadas.length})`;
       }
     } else {
+      posto = "-";
       if (ehFolga){
-        posto = "-";
         obs = "FOLGA (escala)";
+      } else if (oc){
+        obs = labelOc(oc) + (oc.motivo ? ` | ${oc.motivo}` : "");
       } else {
-        obs = "SEM REGISTRO";
+        obs = "FALTA";
       }
     }
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${String(linha.dia).padStart(2,"0")}/${String(mes).padStart(2,"0")}/${ano}</td>
-      <td class="${(j1 || ehFolga) ? "" : "muted"}">${weekday(dateObj)}</td>
+      <td class="${(j1 || ehFolga || oc) ? "" : "muted"}">${weekday(dateObj)}</td>
       <td>${entrada}</td>
       <td>${saiInt}</td>
       <td>${retInt}</td>
@@ -428,11 +457,11 @@ function renderTabela(){
   }
 }
 
-// ===== PDF (múltiplas páginas, sem texto por cima) =====
+// ===== PDF (múltiplas páginas, com ocorrências) =====
 async function exportarPdf(){
   if (!user) return;
 
-  // ✅ garante que o PDF usa o mês/ano atual selecionado
+  // ✅ garante que PDF usa o mês atual selecionado
   await carregar();
 
   const mes = Number(mesSel.value);
@@ -473,7 +502,6 @@ async function exportarPdf(){
       docPdf.addImage(logoDataUrl, "PNG", marginX, y, logoW, logoH);
       y += logoH + 10;
     }
-
     docPdf.setFontSize(12);
     docPdf.text("Espelho de Ponto (Colaborador)", marginX, y); y += 14;
 
@@ -495,6 +523,9 @@ async function exportarPdf(){
     const j1 = (linha.jornadas && linha.jornadas.length) ? linha.jornadas[0] : null;
     const ehFolga = isFolgaByEscala(linha.dateObj, user?.escala);
 
+    const dataKey = `${ano}-${pad2(mes)}-${pad2(linha.dia)}`;
+    const oc = mapOcorrencias[dataKey] || null;
+
     let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="", obs="";
     if (j1){
       const dEnt = toDateAny(j1.entrada?.ts);
@@ -515,7 +546,13 @@ async function exportarPdf(){
       }
     } else {
       posto = "-";
-      obs = ehFolga ? "FOLGA (escala)" : "SEM REGISTRO";
+      if (ehFolga){
+        obs = "FOLGA";
+      } else if (oc){
+        obs = shortObsForPdf(labelOc(oc) + (oc.motivo ? ` | ${oc.motivo}` : ""));
+      } else {
+        obs = "FALTA";
+      }
     }
 
     return [
