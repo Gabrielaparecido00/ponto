@@ -192,10 +192,15 @@ async function getLocationString() {
 async function buscarNomePorRe(re) {
   const ref = doc(db, "colaboradores", re);
   const snap = await getDoc(ref);
-  if (!snap.exists()) return "";
-  return (snap.data()?.nome || "").trim();
-}
+  if (!snap.exists()) return { nome: "", ativo: false };
 
+  const data = snap.data() || {};
+  const nome = (data.nome || "").trim();
+  const ativo = (data.ativo !== false); // default = ativo
+
+  return { nome, ativo };
+}
+  
 async function atualizarNomeNaTela() {
   const re = reInput.value.trim();
   nomeAtual = "";
@@ -203,13 +208,20 @@ async function atualizarNomeNaTela() {
 
   if (!re) return;
 
-  const nome = await buscarNomePorRe(re);
-  if (!nome) {
+  const res = await buscarNomePorRe(re);
+
+  if (!res.nome) {
     nomeMostrado.innerText = "Nome: (RE não cadastrado)";
     return;
   }
 
-  nomeAtual = nome;
+  if (!res.ativo) {
+    nomeMostrado.innerText = "Nome: " + res.nome + " (INATIVO)";
+    nomeAtual = ""; // não deixa registrar
+    return;
+  }
+
+  nomeAtual = res.nome;
   nomeMostrado.innerText = "Nome: " + nomeAtual;
 }
 
@@ -239,10 +251,9 @@ registrarBtn.addEventListener("click", async () => {
   if (!re) return alert("Digite o RE.");
 
   if (!nomeAtual) {
-    await atualizarNomeNaTela();
-    if (!nomeAtual) return alert("RE não cadastrado. Fale com o administrador.");
-  }
-
+  return alert("Colaborador não cadastrado ou INATIVO. Procure o administrador.");
+}
+  
   const foto = canvas.toDataURL("image/jpeg", 0.4);
   const location = await getLocationString();
 
