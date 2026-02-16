@@ -80,6 +80,7 @@ const ctx = canvas.getContext("2d");
 // estado
 let nomeAtual = "";
 let colaboradorAtivo = false;
+let escalaAtual = "5x2";
 let stream = null;
 let clickLock = false;
 
@@ -142,6 +143,7 @@ function limparForm(){
   reInput.value = "";
   nomeAtual = "";
   colaboradorAtivo = false;
+  escalaAtual = "5x2";
   nomeMostrado.innerText = "Nome: —";
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
@@ -150,18 +152,20 @@ function limparForm(){
 async function buscarColaborador(re){
   const ref = doc(db, "colaboradores", re);
   const snap = await getDoc(ref);
-  if (!snap.exists()) return { nome:"", ativo:false };
+  if (!snap.exists()) return { nome:"", ativo:false, escala:"5x2" };
 
   const data = snap.data() || {};
   const nome = (data.nome || "").trim();
   const ativo = (data.ativo !== false); // default true
-  return { nome, ativo };
+  const escala = (data.escala || "5x2");
+  return { nome, ativo, escala };
 }
 
 async function atualizarNomeNaTela(){
   const re = reInput.value.trim();
   nomeAtual = "";
   colaboradorAtivo = false;
+  escalaAtual = "5x2";
   nomeMostrado.innerText = "Nome: —";
   if (!re) return;
 
@@ -179,7 +183,8 @@ async function atualizarNomeNaTela(){
 
   nomeAtual = res.nome;
   colaboradorAtivo = true;
-  nomeMostrado.innerText = "Nome: " + nomeAtual;
+  escalaAtual = res.escala || "5x2";
+  nomeMostrado.innerText = `Nome: ${nomeAtual} — Escala: ${escalaAtual}`;
 }
 
 reInput.addEventListener("blur", atualizarNomeNaTela);
