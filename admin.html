@@ -15,7 +15,6 @@ button { cursor:pointer; }
 table { width:100%; border-collapse:collapse; margin-top:18px; font-size:13px; }
 th, td { border:1px solid #ccc; padding:8px; }
 th { background:#fafafa; }
-.editBtn { border:none; background:transparent; cursor:pointer; font-size:14px; }
 .small { font-size: 12px; color:#666; }
 .hr { height:1px; background:#eee; margin:18px 0; border:0; }
 .menu { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:10px; }
@@ -23,6 +22,68 @@ th { background:#fafafa; }
 .menu button.secondary { background:#6c757d; }
 .section { display:none; }
 .section.active { display:block; }
+
+/* ✏️ minimalista */
+.editBtn {
+  border:none;
+  background:transparent;
+  cursor:pointer;
+  font-size:11px;          /* menor */
+  padding:2px 5px;         /* minimalista */
+  opacity:0.65;
+}
+.editBtn:hover { opacity:1; }
+
+/* Modal */
+.modalOverlay{
+  position:fixed; inset:0;
+  background:rgba(0,0,0,0.45);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+}
+.modal{
+  background:#fff;
+  width:min(520px, 92vw);
+  border-radius:12px;
+  padding:16px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.2);
+  text-align:left;
+}
+.modal h3{ margin:0 0 10px; }
+.modal .grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:10px;
+}
+.modal label{ font-size:12px; color:#555; }
+.modal input, .modal select{
+  width:100%;
+  box-sizing:border-box;
+  margin:4px 0 0;
+}
+.modal .actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+  margin-top:14px;
+}
+.modal .actions button{
+  border:none;
+  border-radius:10px;
+}
+.btnPrimary{ background:#1f6feb; color:#fff; }
+.btnDanger{ background:#dc3545; color:#fff; }
+.btnGhost{ background:#e9ecef; }
+.badge{
+  display:inline-block;
+  font-size:11px;
+  padding:2px 8px;
+  border-radius:999px;
+  background:#eee;
+  margin-left:6px;
+}
 </style>
 </head>
 <body>
@@ -83,7 +144,7 @@ th { background:#fafafa; }
           <th>Local reconhecido</th>
         </tr>
       </thead>
-      <tbody></tbody>
+      <tbody id="tbodyJornadas"></tbody>
     </table>
   </div>
 
@@ -92,24 +153,42 @@ th { background:#fafafa; }
     <h3>Cadastro de colaborador</h3>
     <div class="small">Coleção: <b>colaboradores</b> (docId = RE)</div>
 
+    <!-- Cadastro rápido -->
     <div class="row">
       <input id="cadRe" placeholder="RE (docId)" inputmode="numeric">
       <input id="cadNome" placeholder="Nome completo">
-      <button onclick="salvarColaborador()">Salvar / Atualizar</button>
+      <input id="cadCpf" placeholder="CPF (opcional)" inputmode="numeric">
+      <button onclick="salvarColaboradorNovo()">Cadastrar</button>
+      <button onclick="carregarColaboradores()">Atualizar lista</button>
     </div>
+
+    <!-- Lista -->
+    <table>
+      <thead>
+        <tr>
+          <th>RE</th>
+          <th>Nome</th>
+          <th>CPF</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tbodyColab"></tbody>
+    </table>
   </div>
 
   <!-- ====== SEÇÃO LOCAL ====== -->
   <div id="secLocal" class="section">
     <h3>Cadastro de local</h3>
-    <div class="small">Coleção: <b>locais</b> (auto-id) • margem = raio em metros</div>
+    <div class="small">Coleção: <b>locais</b> • margem = raio em metros</div>
 
+    <!-- Cadastro rápido -->
     <div class="row">
       <input id="locNome" placeholder="Nome do posto (ex: Posto A)">
       <input id="locLat" placeholder="Latitude (X) ex: -12.3456">
       <input id="locLng" placeholder="Longitude (Y) ex: -38.1234">
       <input id="locRaio" placeholder="Margem (metros) ex: 150" inputmode="numeric">
-      <button onclick="salvarLocal()">Salvar local</button>
+      <button onclick="salvarLocalNovo()">Cadastrar</button>
       <button onclick="carregarLocais()">Atualizar lista</button>
     </div>
 
@@ -129,14 +208,25 @@ th { background:#fafafa; }
 
 </div>
 
+<!-- ===== MODAL GENÉRICO ===== -->
+<div id="modalOverlay" class="modalOverlay" onclick="closeModalIfBackdrop(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3 id="modalTitle">Editar</h3>
+
+    <div id="modalBody"></div>
+
+    <div class="actions">
+      <button class="btnGhost" onclick="closeModal()">Cancelar</button>
+      <button id="modalDeleteBtn" class="btnDanger" style="display:none;">Excluir</button>
+      <button id="modalSaveBtn" class="btnPrimary">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import {
-  getFirestore, doc, setDoc, getDocs, collection, updateDoc, addDoc, deleteDoc
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import {
-  getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDocs, collection, updateDoc, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD--zpWLbLg5X82oGTyz6SuPFQV0sd7NWc",
@@ -156,40 +246,38 @@ const loginDiv = document.getElementById("loginDiv");
 const painelDiv = document.getElementById("painelDiv");
 
 let ultimaTabela = [];
-let cacheLocais = []; // [{id,nome,lat,lng,raio}]
+let cacheLocais = [];
+let cacheColabs = [];
 
 // ===== MENU =====
 window.showSection = function(id){
   document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
   document.getElementById(id).classList.add("active");
 
-  // quando entrar na tela de locais, já atualiza
   if (id === "secLocal") carregarLocais();
+  if (id === "secColab") carregarColaboradores();
 };
 
 // ===== AUTH =====
 window.login = async function() {
   const email = document.getElementById("email").value;
   const senha = document.getElementById("senha").value;
-  try {
-    await signInWithEmailAndPassword(auth, email, senha);
-  } catch (e) {
-    alert("Erro no login");
-    console.error(e);
-  }
+  try { await signInWithEmailAndPassword(auth, email, senha); }
+  catch (e) { alert("Erro no login"); console.error(e); }
 };
 
-window.logout = function() {
-  signOut(auth);
-};
+window.logout = function() { signOut(auth); };
 
 onAuthStateChanged(auth, user => {
   loginDiv.style.display = user ? "none" : "block";
   painelDiv.style.display = user ? "block" : "none";
-  if (user) carregarLocais(); // já carrega locais pra reconhecimento
+  if (user) {
+    carregarLocais();
+    carregarColaboradores();
+  }
 });
 
-// ===== HELPERS =====
+// ===== Helpers =====
 function norm(s){ return (s||"").toString().trim().toLowerCase(); }
 function toDateAny(ts){
   if (!ts) return null;
@@ -214,32 +302,22 @@ function formatISOFromYYYYMMDD_HHMM(str){
   if (isNaN(dt)) return null;
   return dt.toISOString();
 }
-
-// Haversine (metros)
 function haversineMeters(lat1, lon1, lat2, lon2){
   const R = 6371000;
   const toRad = (x)=> x * Math.PI / 180;
   const dLat = toRad(lat2-lat1);
   const dLon = toRad(lon2-lon1);
-  const a =
-    Math.sin(dLat/2)*Math.sin(dLat/2) +
-    Math.cos(toRad(lat1))*Math.cos(toRad(lat2)) *
-    Math.sin(dLon/2)*Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R*c;
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return 2*R*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
-
 function parseLocation(str){
   if (!str) return null;
   const parts = str.split(",").map(s=>s.trim());
   if (parts.length !== 2) return null;
-  const lat = Number(parts[0]);
-  const lng = Number(parts[1]);
+  const lat = Number(parts[0]), lng = Number(parts[1]);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   return { lat, lng };
 }
-
-// pega “melhor” location da jornada (último registro existente)
 function getBestLocationFromJornada(j){
   const steps = ["saida_he","entrada_he","saida","retorno_intervalo","saida_intervalo","entrada"];
   for (const s of steps){
@@ -248,7 +326,6 @@ function getBestLocationFromJornada(j){
   }
   return "";
 }
-
 function reconhecerLocal(locationStr){
   const p = parseLocation(locationStr);
   if (!p) return "Não disponível";
@@ -257,83 +334,34 @@ function reconhecerLocal(locationStr){
   for (const l of cacheLocais){
     const d = haversineMeters(p.lat, p.lng, l.lat, l.lng);
     if (d <= l.raio){
-      if (!melhor || d < melhor.dist) melhor = { nome: l.nome, dist: d, raio: l.raio };
+      if (!melhor || d < melhor.dist) melhor = { nome:l.nome, dist:d };
     }
   }
-  return melhor ? `${melhor.nome}` : "Não reconhecido";
+  return melhor ? melhor.nome : "Não reconhecido";
 }
 
-// ===== CADASTRO COLABORADOR =====
-window.salvarColaborador = async function(){
-  const re = document.getElementById("cadRe").value.trim();
-  const nome = document.getElementById("cadNome").value.trim();
-  if (!re || !nome) return alert("Preencha RE e Nome.");
+/* ===== MODAL ===== */
+const overlay = document.getElementById("modalOverlay");
+const titleEl = document.getElementById("modalTitle");
+const bodyEl = document.getElementById("modalBody");
+const saveBtn = document.getElementById("modalSaveBtn");
+const delBtn = document.getElementById("modalDeleteBtn");
 
-  if (!confirm(`Salvar/Atualizar colaborador?\nRE: ${re}\nNome: ${nome}`)) return;
+window.closeModal = function(){ overlay.style.display = "none"; bodyEl.innerHTML=""; saveBtn.onclick=null; delBtn.onclick=null; };
+window.closeModalIfBackdrop = function(e){ if (e.target === overlay) closeModal(); };
 
-  const ref = doc(db, "colaboradores", re);
-  await setDoc(ref, { re, nome, ativo:true, updatedAt: new Date().toISOString() }, { merge:true });
+function openModal({ title, bodyHtml, onSave, onDelete, showDelete }) {
+  titleEl.innerText = title;
+  bodyEl.innerHTML = bodyHtml;
+  overlay.style.display = "flex";
 
-  alert("Colaborador salvo!");
-  document.getElementById("cadRe").value = "";
-  document.getElementById("cadNome").value = "";
-};
+  delBtn.style.display = showDelete ? "inline-block" : "none";
 
-// ===== CADASTRO LOCAL =====
-window.salvarLocal = async function(){
-  const nome = document.getElementById("locNome").value.trim();
-  const lat = Number(document.getElementById("locLat").value.trim());
-  const lng = Number(document.getElementById("locLng").value.trim());
-  const raio = Number(document.getElementById("locRaio").value.trim());
+  saveBtn.onclick = onSave || null;
+  delBtn.onclick = onDelete || null;
+}
 
-  if (!nome || !Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(raio)) {
-    return alert("Preencha Nome, Latitude, Longitude e Raio (metros).");
-  }
-
-  if (!confirm(`Salvar local?\n${nome}\n(${lat}, ${lng})\nRaio: ${raio}m`)) return;
-
-  await addDoc(collection(db, "locais"), {
-    nome, lat, lng, raio, updatedAt: new Date().toISOString()
-  });
-
-  alert("Local cadastrado!");
-  document.getElementById("locNome").value = "";
-  document.getElementById("locLat").value = "";
-  document.getElementById("locLng").value = "";
-  document.getElementById("locRaio").value = "";
-  carregarLocais();
-};
-
-window.carregarLocais = async function(){
-  const snap = await getDocs(collection(db, "locais"));
-  cacheLocais = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-    .filter(l => Number.isFinite(l.lat) && Number.isFinite(l.lng) && Number.isFinite(l.raio));
-
-  // render lista
-  const tbody = document.getElementById("tbodyLocais");
-  tbody.innerHTML = "";
-  for (const l of cacheLocais){
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${l.nome || ""}</td>
-      <td>${l.lat}</td>
-      <td>${l.lng}</td>
-      <td>${l.raio}</td>
-      <td>
-        <button onclick="removerLocal('${l.id}')">Excluir</button>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  }
-};
-
-window.removerLocal = async function(id){
-  if (!confirm("Excluir este local?")) return;
-  await deleteDoc(doc(db, "locais", id));
-  carregarLocais();
-};
-
-// ===== JORNADAS =====
+/* ===== JORNADAS ===== */
 window.buscar = async function(){
   const iniStr = document.getElementById("inicio").value || "2000-01-01";
   const fimStr = document.getElementById("fim").value || "2999-12-31";
@@ -343,7 +371,6 @@ window.buscar = async function(){
   const snap = await getDocs(collection(db, "jornadas"));
   let jornadas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-  // filtra por data da entrada (pra pesquisa)
   jornadas = jornadas.filter(j => {
     const d = formatYYYYMMDD(j.entrada?.ts);
     if (!d) return false;
@@ -353,10 +380,10 @@ window.buscar = async function(){
   if (filtroRe) jornadas = jornadas.filter(j => norm(j.re) === filtroRe);
   if (filtroNome) jornadas = jornadas.filter(j => norm(j.nome).includes(filtroNome));
 
-  jornadas.sort((a,b) => (toDateAny(b.entrada?.ts) || new Date(0)) - (toDateAny(a.entrada?.ts) || new Date(0)));
+  jornadas.sort((a,b) => (toDateAny(b.entrada?.ts)||new Date(0)) - (toDateAny(a.entrada?.ts)||new Date(0)));
 
   ultimaTabela = jornadas;
-  montarTabela(jornadas);
+  montarTabelaJornadas(jornadas);
 };
 
 function cellEdit(docId, path, ts){
@@ -366,20 +393,19 @@ function cellEdit(docId, path, ts){
   return `
     <td>
       <span title="${tooltip}">${v}</span>
-      <button class="editBtn" onclick="editar('${docId}','${path}')">✏️</button>
+      <button class="editBtn" onclick="editarCampoJornada('${docId}','${path}')">✎</button>
     </td>
   `;
 }
 
-function montarTabela(jornadas){
-  const tbody = document.querySelector("tbody");
+function montarTabelaJornadas(jornadas){
+  const tbody = document.getElementById("tbodyJornadas");
   tbody.innerHTML = "";
 
   for (const j of jornadas){
     const dataEntrada = formatYYYYMMDD(j.entrada?.ts);
-
-    const locationStr = getBestLocationFromJornada(j);
-    const reconhecido = reconhecerLocal(locationStr);
+    const loc = getBestLocationFromJornada(j);
+    const rec = reconhecerLocal(loc);
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -387,22 +413,21 @@ function montarTabela(jornadas){
       <td>${j.nome || ""}</td>
       <td>${j.re || ""}</td>
 
-      ${cellEdit(j.id, "entrada.ts", j.entrada?.ts)}
-      ${cellEdit(j.id, "saida_intervalo.ts", j.saida_intervalo?.ts)}
-      ${cellEdit(j.id, "retorno_intervalo.ts", j.retorno_intervalo?.ts)}
-      ${cellEdit(j.id, "saida.ts", j.saida?.ts)}
-      ${cellEdit(j.id, "entrada_he.ts", j.entrada_he?.ts)}
-      ${cellEdit(j.id, "saida_he.ts", j.saida_he?.ts)}
+      ${cellEdit(j.id,"entrada.ts", j.entrada?.ts)}
+      ${cellEdit(j.id,"saida_intervalo.ts", j.saida_intervalo?.ts)}
+      ${cellEdit(j.id,"retorno_intervalo.ts", j.retorno_intervalo?.ts)}
+      ${cellEdit(j.id,"saida.ts", j.saida?.ts)}
+      ${cellEdit(j.id,"entrada_he.ts", j.entrada_he?.ts)}
+      ${cellEdit(j.id,"saida_he.ts", j.saida_he?.ts)}
 
-      <td>${locationStr || ""}</td>
-      <td>${reconhecido}</td>
+      <td>${loc || ""}</td>
+      <td>${rec}</td>
     `;
     tbody.appendChild(tr);
   }
 }
 
-// Editar (Data + Hora)
-window.editar = async function(docId, path){
+window.editarCampoJornada = function(docId, path){
   const j = ultimaTabela.find(x => x.id === docId);
   if (!j) return alert("Jornada não encontrada.");
 
@@ -414,31 +439,251 @@ window.editar = async function(docId, path){
     ? `${atualDate.toISOString().slice(0,10)} ${atualDate.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`
     : "";
 
-  const novo = prompt(`Editar ${path}\nDigite: AAAA-MM-DD HH:MM\nEx: 2026-02-16 07:10`, sugestao);
-  if (novo === null) return;
+  openModal({
+    title: "Editar Jornada",
+    bodyHtml: `
+      <div class="grid">
+        <div>
+          <label>Campo</label>
+          <input value="${path}" disabled>
+        </div>
+        <div>
+          <label>Valor (AAAA-MM-DD HH:MM)</label>
+          <input id="editJValue" placeholder="2026-02-16 07:10" value="${sugestao}">
+        </div>
+      </div>
+      <div class="small" style="margin-top:8px">Isso atualiza somente o timestamp desse campo.</div>
+    `,
+    showDelete: false,
+    onSave: async () => {
+      const novo = document.getElementById("editJValue").value;
+      const iso = formatISOFromYYYYMMDD_HHMM(novo);
+      if (!iso) return alert("Formato inválido. Use AAAA-MM-DD HH:MM.");
 
-  const iso = formatISOFromYYYYMMDD_HHMM(novo);
-  if (!iso) return alert("Formato inválido. Use AAAA-MM-DD HH:MM (ex: 2026-02-16 07:10).");
+      if (!confirm(`Confirmar alteração?\n${path} = ${novo}`)) return;
 
-  if (!confirm(`Confirmar alteração?\n${path} = ${novo}`)) return;
+      await updateDoc(doc(db, "jornadas", docId), {
+        [path]: iso,
+        updatedAt: new Date().toISOString()
+      });
 
-  await updateDoc(doc(db, "jornadas", docId), {
-    [path]: iso,
-    updatedAt: new Date().toISOString()
+      closeModal();
+      buscar();
+    }
   });
-
-  alert("Atualizado!");
-  buscar();
 };
 
-// Exportar
+/* ===== COLABORADORES ===== */
+window.salvarColaboradorNovo = async function(){
+  const re = document.getElementById("cadRe").value.trim();
+  const nome = document.getElementById("cadNome").value.trim();
+  const cpf = document.getElementById("cadCpf").value.trim();
+
+  if (!re || !nome) return alert("Preencha RE e Nome.");
+  if (!confirm(`Cadastrar colaborador?\nRE: ${re}\nNome: ${nome}`)) return;
+
+  await setDoc(doc(db, "colaboradores", re), {
+    re, nome, cpf: cpf || "", ativo: true, updatedAt: new Date().toISOString()
+  }, { merge:true });
+
+  alert("Cadastrado!");
+  document.getElementById("cadRe").value="";
+  document.getElementById("cadNome").value="";
+  document.getElementById("cadCpf").value="";
+  carregarColaboradores();
+};
+
+window.carregarColaboradores = async function(){
+  const snap = await getDocs(collection(db, "colaboradores"));
+  cacheColabs = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+
+  // ordena por nome
+  cacheColabs.sort((a,b)=> (a.nome||"").localeCompare(b.nome||""));
+
+  const tbody = document.getElementById("tbodyColab");
+  tbody.innerHTML = "";
+
+  for (const c of cacheColabs){
+    const status = (c.ativo === false) ? "Inativo" : "Ativo";
+    const badge = (c.ativo === false) ? `<span class="badge">inativo</span>` : `<span class="badge">ativo</span>`;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${c.re || c.id}</td>
+      <td>${c.nome || ""}</td>
+      <td>${c.cpf || ""}</td>
+      <td>${status} ${badge}</td>
+      <td><button onclick="editarColaborador('${c.id}')">Modificar</button></td>
+    `;
+    tbody.appendChild(tr);
+  }
+};
+
+window.editarColaborador = function(reDocId){
+  const c = cacheColabs.find(x => x.id === reDocId);
+  if (!c) return alert("Colaborador não encontrado.");
+
+  openModal({
+    title: "Modificar colaborador",
+    bodyHtml: `
+      <div class="grid">
+        <div>
+          <label>RE (docId)</label>
+          <input id="colRe" value="${c.re || c.id}" disabled>
+        </div>
+        <div>
+          <label>CPF</label>
+          <input id="colCpf" value="${c.cpf || ""}" placeholder="Somente números">
+        </div>
+
+        <div style="grid-column:1 / -1">
+          <label>Nome</label>
+          <input id="colNome" value="${c.nome || ""}">
+        </div>
+
+        <div style="grid-column:1 / -1">
+          <label>Status</label>
+          <select id="colAtivo">
+            <option value="true" ${c.ativo === false ? "" : "selected"}>Ativo</option>
+            <option value="false" ${c.ativo === false ? "selected" : ""}>Inativo</option>
+          </select>
+        </div>
+      </div>
+      <div class="small" style="margin-top:8px">Você pode inativar sem excluir.</div>
+    `,
+    showDelete: true,
+    onSave: async () => {
+      const nome = document.getElementById("colNome").value.trim();
+      const cpf = document.getElementById("colCpf").value.trim();
+      const ativo = document.getElementById("colAtivo").value === "true";
+
+      if (!nome) return alert("Nome não pode ficar vazio.");
+      if (!confirm("Salvar alterações do colaborador?")) return;
+
+      await setDoc(doc(db, "colaboradores", reDocId), {
+        nome, cpf: cpf || "", ativo, updatedAt: new Date().toISOString()
+      }, { merge:true });
+
+      closeModal();
+      carregarColaboradores();
+    },
+    onDelete: async () => {
+      if (!confirm("Excluir colaborador? Isso remove do banco.")) return;
+      await deleteDoc(doc(db, "colaboradores", reDocId));
+      closeModal();
+      carregarColaboradores();
+    }
+  });
+};
+
+/* ===== LOCAIS ===== */
+window.salvarLocalNovo = async function(){
+  const nome = document.getElementById("locNome").value.trim();
+  const lat = Number(document.getElementById("locLat").value.trim());
+  const lng = Number(document.getElementById("locLng").value.trim());
+  const raio = Number(document.getElementById("locRaio").value.trim());
+
+  if (!nome || !Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(raio)) {
+    return alert("Preencha Nome, Latitude, Longitude e Raio (metros).");
+  }
+
+  if (!confirm(`Cadastrar local?\n${nome}\n(${lat}, ${lng})\nRaio: ${raio}m`)) return;
+
+  await addDoc(collection(db, "locais"), { nome, lat, lng, raio, updatedAt: new Date().toISOString() });
+
+  alert("Local cadastrado!");
+  document.getElementById("locNome").value="";
+  document.getElementById("locLat").value="";
+  document.getElementById("locLng").value="";
+  document.getElementById("locRaio").value="";
+  carregarLocais();
+};
+
+window.carregarLocais = async function(){
+  const snap = await getDocs(collection(db, "locais"));
+  cacheLocais = snap.docs.map(d => ({ id:d.id, ...d.data() }))
+    .filter(l => Number.isFinite(l.lat) && Number.isFinite(l.lng) && Number.isFinite(l.raio));
+
+  cacheLocais.sort((a,b)=> (a.nome||"").localeCompare(b.nome||""));
+
+  const tbody = document.getElementById("tbodyLocais");
+  tbody.innerHTML = "";
+  for (const l of cacheLocais){
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${l.nome || ""}</td>
+      <td>${l.lat}</td>
+      <td>${l.lng}</td>
+      <td>${l.raio}</td>
+      <td><button onclick="editarLocal('${l.id}')">Modificar</button></td>
+    `;
+    tbody.appendChild(tr);
+  }
+};
+
+window.editarLocal = function(localId){
+  const l = cacheLocais.find(x => x.id === localId);
+  if (!l) return alert("Local não encontrado.");
+
+  openModal({
+    title: "Modificar local",
+    bodyHtml: `
+      <div class="grid">
+        <div style="grid-column:1 / -1">
+          <label>Nome do posto</label>
+          <input id="mLocNome" value="${l.nome || ""}">
+        </div>
+        <div>
+          <label>Latitude (X)</label>
+          <input id="mLocLat" value="${l.lat}">
+        </div>
+        <div>
+          <label>Longitude (Y)</label>
+          <input id="mLocLng" value="${l.lng}">
+        </div>
+        <div style="grid-column:1 / -1">
+          <label>Margem (metros)</label>
+          <input id="mLocRaio" value="${l.raio}">
+        </div>
+      </div>
+      <div class="small" style="margin-top:8px">Reconhecimento usa raio (metros) com cálculo de distância.</div>
+    `,
+    showDelete: true,
+    onSave: async () => {
+      const nome = document.getElementById("mLocNome").value.trim();
+      const lat = Number(document.getElementById("mLocLat").value.trim());
+      const lng = Number(document.getElementById("mLocLng").value.trim());
+      const raio = Number(document.getElementById("mLocRaio").value.trim());
+
+      if (!nome || !Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(raio)) {
+        return alert("Preencha corretamente Nome, Latitude, Longitude e Raio.");
+      }
+      if (!confirm("Salvar alterações do local?")) return;
+
+      await updateDoc(doc(db, "locais", localId), {
+        nome, lat, lng, raio, updatedAt: new Date().toISOString()
+      });
+
+      closeModal();
+      carregarLocais();
+      buscar(); // atualiza reconhecimento na tabela de jornadas
+    },
+    onDelete: async () => {
+      if (!confirm("Excluir local?")) return;
+      await deleteDoc(doc(db, "locais", localId));
+      closeModal();
+      carregarLocais();
+      buscar();
+    }
+  });
+};
+
+/* ===== EXPORT ===== */
 window.exportar = function(){
   let csv = "DataEntrada,Nome,RE,Entrada,SaidaIntervalo,RetornoIntervalo,Saida,EntradaHE,SaidaHE,LocationCoords,LocalReconhecido\n";
-
   for (const j of ultimaTabela){
     const loc = getBestLocationFromJornada(j);
     const rec = reconhecerLocal(loc);
-
     const linha = [
       formatYYYYMMDD(j.entrada?.ts),
       j.nome || "",
@@ -452,11 +697,9 @@ window.exportar = function(){
       loc || "",
       rec || ""
     ].map(v => `"${String(v).replaceAll('"','""')}"`).join(",");
-
     csv += linha + "\n";
   }
-
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const blob = new Blob([csv], { type:"text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
