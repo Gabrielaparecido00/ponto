@@ -243,15 +243,26 @@ async function loadImageAsDataURL(url){
     r.readAsDataURL(blob);
   });
 }
+
+// pega dimensões reais da imagem (pra manter proporção sem distorcer)
+async function getImageNaturalSize(dataUrl){
+  return await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve({ w: img.naturalWidth || img.width, h: img.naturalHeight || img.height });
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+}
+
 function shortObsForPdf(text){
   const t = (text || "").replace(/\s+/g, " ").trim();
-  const max = 26; // evita quebrar linha
+  const max = 42; // agora pode ser maior, pois não forçamos 1 página
   if (t.length <= max) return t;
   return t.slice(0, max - 1) + "…";
 }
 function shortPostoForPdf(text){
   const t = (text || "").trim();
-  const max = 18;
+  const max = 24;
   if (t.length <= max) return t;
   return t.slice(0, max - 1) + "…";
 }
@@ -422,7 +433,7 @@ function renderTabela(){
   }
 }
 
-// ===== PDF (A4 vertical, 1 página, logo) =====
+// ===== PDF (A4 vertical, múltiplas páginas, logo sem distorcer) =====
 async function exportarPdf(){
   if (!user) return;
 
@@ -431,13 +442,22 @@ async function exportarPdf(){
   const mesTxt = pad2(mes);
 
   const { jsPDF } = window.jspdf;
-  const page = new jsPDF({ orientation:"portrait", unit:"pt", format:"a4" });
-  const pageH = page.internal.pageSize.getHeight();
+  const docPdf = new jsPDF({ orientation:"portrait", unit:"pt", format:"a4" });
+  const pageW = docPdf.internal.pageSize.getWidth();
+  const pageH = docPdf.internal.pageSize.getHeight();
 
-  // LOGO (GW.png)
+  // LOGO (GW.png) - carrega e mantém proporção (sem distorcer)
   let logoDataUrl = null;
-  try { logoDataUrl = await loadImageAsDataURL("GW.png"); } catch { logoDataUrl = null; }
+  let logoNat = null;
+  try {
+    logoDataUrl = await loadImageAsDataURL("GW.png");
+    logoNat = await getImageNaturalSize(logoDataUrl);
+  } catch {
+    logoDataUrl = null;
+    logoNat = null;
+  }
 
+  // Monta tabela
   const head = [[ "Data","Dia","Ent","Sai Int","Ret","Sai","HE Ent","HE Sai","Posto","Obs" ]];
 
   const body = linhasMes.map(linha => {
@@ -475,68 +495,78 @@ async function exportarPdf(){
     ];
   });
 
-  const tries = [
-    { font:7, pad:2 },
-    { font:6, pad:2 },
-    { font:5, pad:1 }
-  ];
+  // Layout do cabeçalho/rodapé
+  const marginX = 30;
+  const headerTop = 22;
 
-  for (const t of tries){
-    // recria página limpa
-    const docPdf = new jsPDF({ orientation:"portrait", unit:"pt", format:"a4" });
+  // define tamanho do logo no PDF SEM distorcer: usa largura fixa e altura proporcional
+  // (PDF não tem "pixels reais", mas isso garante proporção e boa leitura)
+  const logoW = 110; // tamanho confortável no A4
+  let logoH = 0;
+  if (logoNat && logoNat.w && logoNat.h){
+    logoH = Math.round(logoW * (logoNat.h / logoNat.w));
+  } else {
+    logoH = 45; // fallback
+  }
 
-    const marginX = 30;
-    let y = 26;
+  // altura do header (logo + textos)
+  const headerH = logoDataUrl ? (logoH + 52) : 62;
+
+  // desenha cabeçalho e rodapé em todas as páginas
+  function drawHeaderFooter(){
+    // Header
+    let y = headerTop;
 
     if (logoDataUrl){
-      const logoW = 90, logoH = 45;
-      docPdf.addImage(logoDataUrl, "PNG", marginX, y, logoW, logoH);
-      y += logoH + 6;
+      docPdf.addImage(logoDataUrl, "PNG", marginX, y, logoW, logoH); // sem distorcer (proporção mantida)
+      y += logoH + 10;
     } else {
-      y += 30;
+      y += 10;
     }
 
     docPdf.setFontSize(12);
-    docPdf.text("Espelho de Ponto (Colaborador)", marginX, y); y += 14;
+    docPdf.text("Espelho de Ponto (Colaborador)", marginX, y);
+    y += 14;
 
     docPdf.setFontSize(9);
     docPdf.text(`Nome: ${user.nome}`, marginX, y); y += 12;
     docPdf.text(`RE: ${user.re}`, marginX, y); y += 12;
     docPdf.text(`Escala: ${user.escala}`, marginX, y); y += 12;
-    docPdf.text(`Competência: ${mesTxt}/${ano}`, marginX, y); y += 12;
+    docPdf.text(`Competência: ${mesTxt}/${ano}`, marginX, y); y += 10;
 
-    docPdf.autoTable({
-      startY: y + 6,
-      head,
-      body,
-      theme: "grid",
-      styles: { fontSize: t.font, cellPadding: t.pad, overflow:"hidden", valign:"middle", halign:"center" },
-      headStyles: { fillColor: [240,240,240], textColor: [0,0,0] },
-      columnStyles: {
-        0: { cellWidth: 64 },
-        1: { cellWidth: 34 },
-        2: { cellWidth: 34 },
-        3: { cellWidth: 40 },
-        4: { cellWidth: 34 },
-        5: { cellWidth: 38 },
-        6: { cellWidth: 38 },
-        7: { cellWidth: 38 },
-        8: { cellWidth: 70 },
-        9: { cellWidth: 70 }
-      },
-      margin: { left: marginX, right: marginX, top: 0, bottom: 18 },
-      pageBreak: "avoid"
-    });
-
-    if (docPdf.getNumberOfPages() === 1){
-      docPdf.setFontSize(8);
-      docPdf.text("Sistema desenvolvido por Gabriel Wandele, todos direitos reservados", marginX, pageH - 10);
-      docPdf.save(`espelho_${user.re}_${mesTxt}-${ano}.pdf`);
-      return;
-    }
+    // Footer
+    docPdf.setFontSize(8);
+    docPdf.text("Sistema desenvolvido por Gabriel Wandele, todos direitos reservados", marginX, pageH - 10);
   }
 
-  alert("Não foi possível gerar em 1 página. (Obs/colunas estão grandes demais)");
+  // cria a tabela com paginação automática
+  docPdf.autoTable({
+    head,
+    body,
+    theme: "grid",
+    startY: headerTop + headerH,
+    margin: { left: marginX, right: marginX, top: headerTop, bottom: 22 },
+    styles: { fontSize: 8, cellPadding: 3, overflow:"linebreak", valign:"middle", halign:"center" },
+    headStyles: { fillColor: [240,240,240], textColor: [0,0,0] },
+    // colunas mais “normais” agora (sem esmagar)
+    columnStyles: {
+      0: { cellWidth: 70 },  // Data
+      1: { cellWidth: 38 },  // Dia
+      2: { cellWidth: 38 },  // Ent
+      3: { cellWidth: 48 },  // Sai Int
+      4: { cellWidth: 38 },  // Ret
+      5: { cellWidth: 44 },  // Sai
+      6: { cellWidth: 44 },  // HE Ent
+      7: { cellWidth: 44 },  // HE Sai
+      8: { cellWidth: 86 },  // Posto
+      9: { cellWidth: "auto" } // Obs (sobra)
+    },
+    didDrawPage: () => {
+      drawHeaderFooter();
+    }
+  });
+
+  docPdf.save(`espelho_${user.re}_${mesTxt}-${ano}.pdf`);
 }
 </script>
 
