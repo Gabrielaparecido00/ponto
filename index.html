@@ -9,21 +9,16 @@
 body { font-family: Arial; background:#f5f5f5; text-align:center; }
 .container { background:white; padding:20px; margin:20px auto; max-width:1200px; border-radius:10px; }
 .logo { width:260px; margin-bottom: 10px; }
-
 input, button { padding:10px; margin:5px; }
 button { cursor:pointer; }
-
 .row { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center; margin-top:10px; }
-
 table { width:100%; border-collapse:collapse; margin-top:18px; font-size:13px; }
 th, td { border:1px solid #ccc; padding:8px; }
 th { background:#fafafa; }
-
 .editBtn { border:none; background:transparent; cursor:pointer; font-size:14px; }
 .small { font-size: 12px; color:#666; }
-
-.boxTitle { margin-top: 0; }
 .hr { height:1px; background:#eee; margin:18px 0; border:0; }
+.sectionTitle { margin: 10px 0 0; }
 </style>
 </head>
 <body>
@@ -41,24 +36,25 @@ th { background:#fafafa; }
 <div id="painelDiv" class="container" style="display:none;">
   <img src="GW.png" class="logo">
 
-  <h2 class="boxTitle">Painel Admin</h2>
+  <h2>Painel Admin</h2>
   <div class="small">Cadastro de colaboradores + correção de registros</div>
 
   <hr class="hr">
 
-  <!-- CADASTRO COLABORADOR -->
-  <h3>Cadastro de Colaborador</h3>
+  <!-- ✅ CADASTRADOR DE FUNCIONÁRIO -->
+  <h3 class="sectionTitle">Cadastro de Funcionário</h3>
+  <div class="small">Coleção: <b>colaboradores</b> (docId = RE)</div>
+
   <div class="row">
-    <input id="cadRe" placeholder="RE (docId)" inputmode="numeric">
+    <input id="cadRe" placeholder="RE (ex: 12345)" inputmode="numeric">
     <input id="cadNome" placeholder="Nome completo">
     <button onclick="salvarColaborador()">Salvar / Atualizar</button>
   </div>
-  <div class="small">Isso grava em <b>colaboradores</b> (docId = RE).</div>
 
   <hr class="hr">
 
   <!-- FILTROS -->
-  <h3>Jornadas</h3>
+  <h3 class="sectionTitle">Jornadas (Turnos)</h3>
   <div class="row">
     <label>De:</label>
     <input type="date" id="inicio">
@@ -71,13 +67,16 @@ th { background:#fafafa; }
     <button onclick="logout()">Sair</button>
   </div>
 
+  <div class="small">
+    ✏️ Para editar um campo, clique no lápis e informe: <b>AAAA-MM-DD HH:MM</b> (ex: 2026-02-16 07:10)
+  </div>
+
   <table>
     <thead>
       <tr>
         <th>Data (Entrada)</th>
         <th>Nome</th>
         <th>RE</th>
-
         <th>ENTRADA</th>
         <th>SAÍDA INTERVALO</th>
         <th>RETORNO INTERVALO</th>
@@ -92,12 +91,8 @@ th { background:#fafafa; }
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import {
-  getFirestore, doc, setDoc, getDocs, collection, query, where, updateDoc
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import {
-  getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDocs, collection, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD--zpWLbLg5X82oGTyz6SuPFQV0sd7NWc",
@@ -154,14 +149,23 @@ function formatYYYYMMDD(ts){
   if (!d || isNaN(d)) return "";
   return d.toISOString().slice(0,10);
 }
+function formatISOFromYYYYMMDD_HHMM(str){
+  // "2026-02-16 07:10"
+  const m = (str||"").trim().match(/^(\d{4})-(\d{2})-(\d{2})\s+([01]\d|2[0-3]):([0-5]\d)$/);
+  if (!m) return null;
+  // cria Date em horário local e converte para ISO
+  const dt = new Date(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:00`);
+  if (isNaN(dt)) return null;
+  return dt.toISOString();
+}
 
-// ===== Cadastro Colaborador =====
+// ===== ✅ Cadastro de Funcionário (colaboradores) =====
 window.salvarColaborador = async function(){
   const re = document.getElementById("cadRe").value.trim();
   const nome = document.getElementById("cadNome").value.trim();
   if (!re || !nome) return alert("Preencha RE e Nome.");
 
-  if (!confirm(`Salvar/Atualizar colaborador?\nRE: ${re}\nNome: ${nome}`)) return;
+  if (!confirm(`Salvar/Atualizar funcionário?\nRE: ${re}\nNome: ${nome}`)) return;
 
   const ref = doc(db, "colaboradores", re);
   await setDoc(ref, {
@@ -171,11 +175,13 @@ window.salvarColaborador = async function(){
     updatedAt: new Date().toISOString()
   }, { merge: true });
 
-  alert("Colaborador salvo!");
+  alert("Funcionário salvo!");
+  document.getElementById("cadRe").value = "";
+  document.getElementById("cadNome").value = "";
 };
 
 // ===== Buscar Jornadas =====
-let ultimaTabela = []; // para export
+let ultimaTabela = [];
 
 window.buscar = async function(){
   const iniStr = document.getElementById("inicio").value || "2000-01-01";
@@ -183,7 +189,6 @@ window.buscar = async function(){
   const filtroRe = norm(document.getElementById("filtroRe").value);
   const filtroNome = norm(document.getElementById("filtroNome").value);
 
-  // sem index: busca tudo e filtra no JS
   const snap = await getDocs(collection(db, "jornadas"));
   let jornadas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
@@ -194,12 +199,8 @@ window.buscar = async function(){
     return entradaDate >= iniStr && entradaDate <= fimStr;
   });
 
-  if (filtroRe) {
-    jornadas = jornadas.filter(j => norm(j.re) === filtroRe);
-  }
-  if (filtroNome) {
-    jornadas = jornadas.filter(j => norm(j.nome).includes(filtroNome));
-  }
+  if (filtroRe) jornadas = jornadas.filter(j => norm(j.re) === filtroRe);
+  if (filtroNome) jornadas = jornadas.filter(j => norm(j.nome).includes(filtroNome));
 
   // ordena por entrada desc
   jornadas.sort((a,b) => (toDateAny(b.entrada?.ts) || new Date(0)) - (toDateAny(a.entrada?.ts) || new Date(0)));
@@ -234,42 +235,43 @@ function montarTabela(jornadas){
 
 function cellEdit(docId, path, ts){
   const v = formatHHMM(ts);
-  // botão lápis chama editar(docId, path)
+  const full = (() => {
+    const d = toDateAny(ts);
+    if (!d || isNaN(d)) return "";
+    const ymd = d.toISOString().slice(0,10);
+    const hhmm = d.toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit" });
+    return `${ymd} ${hhmm}`;
+  })();
+
   return `
     <td>
-      <span data-doc="${docId}" data-path="${path}">${v}</span>
+      <span title="${full}">${v}</span>
       <button class="editBtn" onclick="editar('${docId}','${path}')">✏️</button>
     </td>
   `;
 }
 
-// ===== Editar campo (pede HH:MM e grava no DB mantendo a data da própria entrada) =====
+// ===== ✅ Editar campo: pede AAAA-MM-DD HH:MM =====
 window.editar = async function(docId, path){
-  // pega a jornada atual do DOM (mais simples: buscar de ultimaTabela)
   const j = ultimaTabela.find(x => x.id === docId);
   if (!j) return alert("Jornada não encontrada.");
 
-  const entradaDate = formatYYYYMMDD(j.entrada?.ts);
-  if (!entradaDate) return alert("Jornada sem ENTRADA válida.");
+  // valor atual
+  const bloco = path.split(".")[0]; // ex "saida"
+  const atualISO = j[bloco]?.ts || "";
+  const atualDate = toDateAny(atualISO);
+  const sugestao = atualDate && !isNaN(atualDate)
+    ? `${atualDate.toISOString().slice(0,10)} ${atualDate.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`
+    : "";
 
-  const atual = (() => {
-    const parts = path.split(".");
-    const bloco = parts[0]; // ex: "saida"
-    return formatHHMM(j[bloco]?.ts);
-  })();
-
-  const novo = prompt(`Editar ${path}\nData base: ${entradaDate}\nDigite hora no formato HH:MM`, atual || "");
+  const novo = prompt(`Editar ${path}\nDigite: AAAA-MM-DD HH:MM\nEx: 2026-02-16 07:10`, sugestao);
   if (novo === null) return;
 
-  const m = novo.trim().match(/^([01]\d|2[0-3]):([0-5]\d)$/);
-  if (!m) return alert("Hora inválida. Use HH:MM (ex: 07:15).");
+  const iso = formatISOFromYYYYMMDD_HHMM(novo);
+  if (!iso) return alert("Formato inválido. Use AAAA-MM-DD HH:MM (ex: 2026-02-16 07:10).");
 
-  // monta ISO com a DATA DA ENTRADA + hora digitada
-  const iso = new Date(`${entradaDate}T${m[1]}:${m[2]}:00`).toISOString();
+  if (!confirm(`Confirmar alteração?\n${path} = ${novo}`)) return;
 
-  if (!confirm(`Confirmar alteração?\n${path} = ${entradaDate} ${novo}`)) return;
-
-  // update no campo aninhado: ex "saida.ts"
   const ref = doc(db, "jornadas", docId);
   await updateDoc(ref, {
     [path]: iso,
@@ -277,7 +279,7 @@ window.editar = async function(docId, path){
   });
 
   alert("Atualizado!");
-  buscar(); // recarrega tabela
+  buscar();
 };
 
 // ===== Exportar CSV =====
@@ -285,9 +287,8 @@ window.exportar = function(){
   let csv = "DataEntrada,Nome,RE,Entrada,SaidaIntervalo,RetornoIntervalo,Saida,EntradaHE,SaidaHE\n";
 
   for (const j of ultimaTabela){
-    const dataEntrada = formatYYYYMMDD(j.entrada?.ts);
     const linha = [
-      dataEntrada,
+      formatYYYYMMDD(j.entrada?.ts),
       j.nome || "",
       j.re || "",
       formatHHMM(j.entrada?.ts),
