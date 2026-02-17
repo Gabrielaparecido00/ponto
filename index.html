@@ -45,6 +45,7 @@
     text-align:center;
     margin:10px 0;
     display:none;
+    white-space:pre-line;
   }
   .footer{ text-align:center; margin-top:16px; font-size:12px; color:#666; }
 </style>
@@ -259,7 +260,6 @@ function isWithinRange(ymd, ini, fim){
   return !!(ymd && ini && fim && ymd >= ini && ymd <= fim);
 }
 function aplicaNoDia(afast, dateObj, escala){
-  // aplicarSomenteDiasTrabalho: true => só dias de trabalho
   const onlyWork = (afast?.aplicarSomenteDiasTrabalho === true);
   if (onlyWork && !isDiaTrabalho(dateObj, escala)) return false;
   return true;
@@ -473,57 +473,71 @@ async function obterJornadaAtivaDoRe(re){
 }
 
 async function atualizarTela(){
-  const re = reInput.value.trim();
-  colaborador = null;
-  nomeMostrado.innerText = "Nome: —";
-  horarioMostrado.innerText = "Horário previsto: —";
-  faseAtualEl.innerText = "Fase atual: —";
-  faseHintEl.innerText = "Digite seu RE para carregar suas opções.";
-  montarSelectAcoes([]);
-  showBlocked("");
-  setInputsEnabled(true);
+  try{
+    const re = reInput.value.trim();
+    colaborador = null;
+    nomeMostrado.innerText = "Nome: —";
+    horarioMostrado.innerText = "Horário previsto: —";
+    faseAtualEl.innerText = "Fase atual: —";
+    faseHintEl.innerText = "Digite seu RE para carregar suas opções.";
+    montarSelectAcoes([]);
+    showBlocked("");
+    setInputsEnabled(true);
 
-  if (!re) return;
+    if (!re) return;
 
-  const c = await buscarColaborador(re);
-  if (!c || !c.nome){
-    nomeMostrado.innerText = "Nome: (RE não cadastrado)";
-    return;
-  }
-  if (!c.ativo){
-    nomeMostrado.innerText = `Nome: ${c.nome} (INATIVO)`;
-    setInputsEnabled(false);
-    return;
-  }
+    const c = await buscarColaborador(re);
+    if (!c || !c.nome){
+      nomeMostrado.innerText = "Nome: (RE não cadastrado)";
+      return;
+    }
+    if (!c.ativo){
+      nomeMostrado.innerText = `Nome: ${c.nome} (INATIVO)`;
+      setInputsEnabled(false);
+      return;
+    }
 
-  colaborador = c;
-  nomeMostrado.innerText = "Nome: " + c.nome;
-  horarioMostrado.innerText = "Horário previsto: " + horarioTxt(c);
+    colaborador = c;
+    nomeMostrado.innerText = "Nome: " + c.nome;
+    horarioMostrado.innerText = "Horário previsto: " + horarioTxt(c);
 
-  // ✅ bloqueio por férias (somente dias de trabalho)
-  const chk = await checarBloqueioFerias(re, c.escala);
-  if (chk.bloqueado){
-    const f = chk.ferias;
-    const ini = String(f.inicio||"").slice(0,10);
-    const fim = String(f.fim||"").slice(0,10);
-    const motivo = (f.motivo || "").toString().trim();
-    showBlocked(`🚫 BLOQUEADO: Você está de FÉRIAS hoje.\nPeríodo: ${brDateFromYmd(ini)} até ${brDateFromYmd(fim)}${motivo ? "\nMotivo: "+motivo : ""}`);
-    faseAtualEl.innerText = "Fase atual: FÉRIAS";
-    faseHintEl.innerText = "Registro não permitido durante férias.";
+    // ✅ bloqueio por férias (somente dias de trabalho)
+    const chk = await checarBloqueioFerias(re, c.escala);
+    if (chk.bloqueado){
+      const f = chk.ferias;
+      const ini = String(f.inicio||"").slice(0,10);
+      const fim = String(f.fim||"").slice(0,10);
+      const motivo = (f.motivo || "").toString().trim();
+      showBlocked(`🚫 BLOQUEADO: Você está de FÉRIAS hoje.\nPeríodo: ${brDateFromYmd(ini)} até ${brDateFromYmd(fim)}${motivo ? "\nMotivo: "+motivo : ""}`);
+      faseAtualEl.innerText = "Fase atual: FÉRIAS";
+      faseHintEl.innerText = "Registro não permitido durante férias.";
+      montarSelectAcoes([]);
+      setInputsEnabled(false);
+      return;
+    }
+
+    const jornada = await obterJornadaAtivaDoRe(re);
+    const st = getEstadoEAcaoPermitida(jornada);
+
+    faseAtualEl.innerText = "Fase atual: " + st.fase;
+    faseHintEl.innerText = st.hint;
+    montarSelectAcoes(st.acoes);
+
+    // ✅ garante habilitação quando já carregou opções (inclusive ENTRADA)
+    acaoSelect.disabled = (st.acoes.length === 0);
+    registrarBtn.disabled = false;
+    captureBtn.disabled = false;
+
+  }catch(e){
+    console.error("ERRO atualizarTela:", e);
+    alert("Erro ao carregar dados (colaborador/jornada/afastamentos). Abra o Console (F12) para ver o motivo.");
+    // trava por segurança
     montarSelectAcoes([]);
     setInputsEnabled(false);
-    return;
   }
-
-  const jornada = await obterJornadaAtivaDoRe(re);
-  const st = getEstadoEAcaoPermitida(jornada);
-
-  faseAtualEl.innerText = "Fase atual: " + st.fase;
-  faseHintEl.innerText = st.hint;
-  montarSelectAcoes(st.acoes);
-  setInputsEnabled(true);
 }
 
+// ====== LISTENERS (MUDANÇA PRINCIPAL) ======
 reInput.addEventListener("blur", atualizarTela);
 reInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter"){
@@ -532,18 +546,28 @@ reInput.addEventListener("keydown", (e) => {
   }
 });
 
+// ✅ chama ao digitar (debounce)
+let tRe = null;
+reInput.addEventListener("input", () => {
+  clearTimeout(tRe);
+  tRe = setTimeout(() => atualizarTela(), 350);
+});
+
 // registrar
 registrarBtn.addEventListener("click", async () => {
   if (clickLock) return;
   clickLock = true;
   setTimeout(() => clickLock = false, 1200);
 
+  // ✅ força carregar fase/opções antes de validar (não depende de blur/enter)
+  await atualizarTela();
+
   const re = reInput.value.trim();
   if (!re) return alert("Digite o RE.");
 
   if (!colaborador){
-    await atualizarTela();
-    if (!colaborador) return alert("Colaborador não cadastrado ou INATIVO.");
+    // se ainda assim não carregou, é porque não achou o RE ou está bloqueado
+    return alert("Colaborador não cadastrado, INATIVO ou bloqueado. Confira o RE.");
   }
 
   // ✅ checa férias de novo (antiburlar)
