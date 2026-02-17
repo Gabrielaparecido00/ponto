@@ -263,7 +263,7 @@ tabHol.onclick = () => setTab("hol");
 function voltar(){ window.location.href = "index.html"; }
 
 // estado
-let user = null;                // {re,nome,cpf,escala,horaEntrada,horaSaida,dataAdmissao,plantaoHistorico,plantaoBase}
+let user = null;                // {re,nome,cpf,escala,horaEntrada,horaSaida,dataAdmissao,plantaoHistorico}
 let cacheLocais = [];
 let jornadasMes = [];
 let linhasMes = [];
@@ -330,61 +330,84 @@ function humanAdmissao(){
   return `${d}/${m}/${y}`;
 }
 
-// ===== 12x36 (base + histórico) =====
-// pega um "inicio base" válido (YYYY-MM-DD) do histórico ou de fallbacks
-function getPlantaoInicioBase(col){
-  // 1) histórico (se existir)
-  if (Array.isArray(col?.plantaoHistorico) && col.plantaoHistorico.length){
-    const items = col.plantaoHistorico
-      .map(p => String(p?.inicio || "").slice(0,10))
-      .filter(v => /^\d{4}-\d{2}-\d{2}$/.test(v))
-      .sort(); // crescente
-    if (items.length) return items[0];
-  }
-
-  // 2) fallbacks (se seu admin salvou diferente)
-  const candidates = [
-    col?.plantaoBase,
-    col?.plantaoInicio,
-    col?.plantao12x36Inicio,
-    col?.inicioPlantao,
-    col?.base12x36,
-  ].map(v => String(v || "").slice(0,10));
-
-  for (const v of candidates){
-    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
-  }
-  return null;
+// ===== 12x36 (histórico por vigência + base trabalha/folga) =====
+function is12x36(col){
+  const e = normEscala(col?.escala || "");
+  return e.includes("12") && e.includes("36");
 }
 
+// escolhe o registro vigente (ini <= dia), desempata por updatedAt
+function getPlantaoReferencia(dateObj, historico){
+  if (!historico || !historico.length) return null;
+  const key = ymd(dateObj); // YYYY-MM-DD
+
+  let best = null;
+
+  for (const p of historico){
+    const ini = String(p?.inicio || p?.vigencia || "").slice(0,10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ini)) continue;
+
+    if (ini <= key){
+      if (!best){
+        best = { ...p, inicio: ini };
+        continue;
+      }
+
+      const bestIni = String(best.inicio || "").slice(0,10);
+
+      if (ini > bestIni){
+        best = { ...p, inicio: ini };
+        continue;
+      }
+
+      // desempate: mesma vigência -> pega o mais novo
+      if (ini === bestIni){
+        const bestUp = String(best.updatedAt || "");
+        const curUp  = String(p.updatedAt || "");
+        if (curUp > bestUp){
+          best = { ...p, inicio: ini };
+        }
+      }
+    }
+  }
+
+  return best;
+}
+
+// true = FOLGA
 function isFolgaByEscala(dateObj, col){
-  const escalaRaw = col?.escala || "5x2";
-  const escala = normEscala(escalaRaw);
+  const escala = normEscala(col?.escala || "5x2");
   const dow = dateObj.getDay();
 
   if (escala === "5x2") return (dow === 0 || dow === 6);
   if (escala === "6x1") return (dow === 0);
 
-  // aceita variações: "12x36", "12X36", "12x36 A", etc.
-  const eh12x36 = escala.includes("12") && escala.includes("36");
-  if (eh12x36){
-    const inicioBaseYmd = getPlantaoInicioBase(col);
-    if (!inicioBaseYmd){
-      // sem base: não vamos acusar falta (o render trata isso como aviso)
-      return true;
-    }
+  if (is12x36(col)){
+    const hist = Array.isArray(col?.plantaoHistorico) ? col.plantaoHistorico : [];
+    const plantao = getPlantaoReferencia(dateObj, hist);
 
-    const base = new Date(inicioBaseYmd + "T00:00:00");
+    // sem plantão cadastrado -> NÃO marca falta (retorna folga, e o render mostra aviso)
+    if (!plantao) return true;
+
+    const inicio = String(plantao.inicio || "").slice(0,10);
+    const baseTxt = String(plantao.base || "trabalha").toLowerCase(); // trabalha|folga
+
+    const baseDate = new Date(inicio + "T00:00:00");
     const atual = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 12, 0, 0);
-    const diffDias = Math.floor((atual - base) / 86400000);
+    const diffDias = Math.floor((atual - baseDate) / 86400000);
 
-    // dia 0 = trabalha, dia 1 = folga...
-    const trabalha = (diffDias % 2) === 0;
-    return !trabalha;
+    // alternância 1 sim 1 não:
+    // diff 0 = "dia base"
+    const baseEhTrabalho = (baseTxt === "trabalha");
+    const ehTrabalhoHoje = (diffDias % 2 === 0) ? baseEhTrabalho : !baseEhTrabalho;
+
+    return !ehTrabalhoHoje;
   }
 
-  return false;
+  // escala desconhecida -> trata como folga pra não acusar falta errada
+  return true;
 }
+
 function isDiaTrabalho(dateObj, col){
   return !isFolgaByEscala(dateObj, col);
 }
@@ -584,27 +607,18 @@ async function entrar(){
     horaEntrada: (data.horaEntrada || "").toString().trim(),
     horaSaida: (data.horaSaida || "").toString().trim(),
     dataAdmissao: (data.dataAdmissao || data.admissao || "").toString().slice(0,10),
-
-    // histórico oficial
-    plantaoHistorico: Array.isArray(data.plantaoHistorico) ? data.plantaoHistorico : [],
-
-    // fallback caso o admin esteja salvando base em outro lugar
-    plantaoBase: (data.plantaoBase || data.plantaoInicio || data.plantao12x36Inicio || data.inicioPlantao || data.base12x36 || "")
-      .toString()
-      .slice(0,10),
+    plantaoHistorico: Array.isArray(data.plantaoHistorico) ? data.plantaoHistorico : []
   };
 
   await carregarLocais();
 
-  // header com aviso caso 12x36 sem base
-  const esc = normEscala(user.escala);
-  const eh12x36 = esc.includes("12") && esc.includes("36");
-  const base12 = getPlantaoInicioBase(user) || user.plantaoBase;
+  const eh12 = is12x36(user);
+  const temPlantao = Array.isArray(user?.plantaoHistorico) && user.plantaoHistorico.length > 0;
 
   infoUser.textContent =
     `${user.nome} — RE ${user.re} — Escala ${user.escala} — Horário ${horarioTxt(user)}`
     + (user.dataAdmissao ? ` — Admissão ${humanAdmissao()}` : "")
-    + (eh12x36 && !base12 ? " — ⚠️ Plantão 12x36 não cadastrado" : "");
+    + (eh12 && !temPlantao ? " — ⚠️ Plantão 12x36 não cadastrado" : "");
 
   loginBox.style.display = "none";
   conteudo.style.display = "block";
@@ -686,9 +700,8 @@ function renderTabela(){
   const mes = Number(mesSel.value);
   const ano = Number(anoSel.value);
 
-  const esc = normEscala(user?.escala || "");
-  const eh12x36 = esc.includes("12") && esc.includes("36");
-  const base12 = getPlantaoInicioBase(user) || user?.plantaoBase || "";
+  const eh12x36 = is12x36(user);
+  const temPlantao = Array.isArray(user?.plantaoHistorico) && user.plantaoHistorico.length > 0;
 
   for (const linha of linhasMes){
     const dataKey = `${ano}-${pad2(mes)}-${pad2(linha.dia)}`;
@@ -733,8 +746,8 @@ function renderTabela(){
       if (linha.jornadas.length > 1){
         obs = (obs ? (obs + " | ") : "") + `2+ jornadas no dia (${linha.jornadas.length})`;
       }
-    } else if (eh12x36 && !base12){
-      // ✅ evita marcar falta/folga errada quando 12x36 não tem base
+    } else if (eh12x36 && !temPlantao){
+      // ✅ evita marcar falta/folga errada quando 12x36 não tem histórico
       obs = "ESCALA 12x36 SEM PLANTÃO CADASTRADO";
     } else if (ehFolga){
       obs = "FOLGA (escala)";
@@ -763,21 +776,14 @@ function renderTabela(){
    HOLERITE (DOWNLOAD)
    ========================= */
 
-// Você já usa: holerites/<RE>/hol_<RE>_<MM>_<YYYY>.pdf
 function buildHoleriteFileNameMensal(re, mes, ano){
   return `hol_${re}_${pad2(mes)}_${String(ano)}.pdf`;
 }
-
-// 13º fixo: 1ª parcela = NOV (11), 2ª parcela = DEZ (12)
-// Nome sugerido:
-// hol_<RE>_11_<ANO>_13p1.pdf
-// hol_<RE>_12_<ANO>_13p2.pdf
 function buildHoleriteFileName13(re, ano, parcela){
   const mes = (parcela === 1) ? 11 : 12;
   const suf = (parcela === 1) ? "13p1" : "13p2";
   return `hol_${re}_${pad2(mes)}_${String(ano)}_${suf}.pdf`;
 }
-
 function buildHoleriteCandidates(re, mes, ano, tipo){
   if (tipo === "mensal"){
     return [
@@ -812,12 +818,9 @@ async function baixarHoleriteDoMes(){
     const ano = Number(holAnoSel.value);
     let mes = Number(holMesSel.value);
 
-    // 13º: força mês correto
     if (tipo === "13_1") mes = 11;
     if (tipo === "13_2") mes = 12;
 
-    // regra de admissão por competência (mês/ano)
-    // - mês de admissão É permitido (mesmo se entrou no último dia)
     if (isCompetenciaAntesDaAdmissao(user, ano, mes)){
       setHolStatus(`❌ Sem holerite nesta competência.\nVocê foi admitido em ${humanAdmissao()}.`);
       return;
@@ -834,9 +837,7 @@ async function baixarHoleriteDoMes(){
         const url = await getDownloadURL(sRef(storage, path));
         foundUrl = url;
         break;
-      }catch{
-        // tenta próximo
-      }
+      }catch{}
     }
 
     if (!foundUrl){
@@ -961,6 +962,9 @@ async function exportarPdf(){
 
   const head = [[ "Data","Dia","Ent","Ini Int","Fim Int","Sai","HE Ent","HE Sai","Posto","Obs" ]];
 
+  const eh12x36 = is12x36(user);
+  const temPlantao = Array.isArray(user?.plantaoHistorico) && user.plantaoHistorico.length > 0;
+
   const body = linhasMes.map(linha => {
     const dataKey = `${ano}-${pad2(mes)}-${pad2(linha.dia)}`;
     const oc = mapOcorrencias[dataKey] || null;
@@ -970,10 +974,6 @@ async function exportarPdf(){
 
     const ad = (user?.dataAdmissao || "").slice(0,10);
     const diaAntesAdmissao = (ad && dataKey < ad);
-
-    const esc = normEscala(user?.escala || "");
-    const eh12x36 = esc.includes("12") && esc.includes("36");
-    const base12 = getPlantaoInicioBase(user) || user?.plantaoBase || "";
 
     let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="-", obs="";
 
@@ -998,7 +998,7 @@ async function exportarPdf(){
       posto   = reconhecerLocal(getBestLocationFromJornada(j1));
       obs     = obsJornada(j1);
       if (ehFolga) obs = (obs ? ("FT | " + obs) : "FT");
-    } else if (eh12x36 && !base12){
+    } else if (eh12x36 && !temPlantao){
       obs = "ESCALA 12x36 SEM PLANTÃO CADASTRADO";
     } else if (ehFolga && !j1){
       obs = "FOLGA";
