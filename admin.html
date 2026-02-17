@@ -1,1209 +1,448 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Painel Admin</title>
 
 <style>
-  body { font-family: Arial; background:#f5f5f5; text-align:center; }
-  .container { background:#fff; padding:20px; margin:20px auto; max-width:1300px; border-radius:10px; }
-  .logo { width:260px; margin-bottom: 10px; }
-  input, button, select { padding:10px; margin:5px; }
-  button { cursor:pointer; }
-  .row { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:end; margin-top:10px; }
-  table { width:100%; border-collapse:collapse; margin-top:18px; font-size:13px; }
-  th, td { border:1px solid #ccc; padding:8px; }
-  th { background:#fafafa; }
-  .small { font-size:12px; color:#666; }
-  .hr { height:1px; background:#eee; margin:18px 0; border:0; }
-  .menu { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:10px; }
-  .menu button { background:#1f6feb; color:#fff; border:none; border-radius:8px; }
-  .menu button.secondary { background:#6c757d; }
-  .section { display:none; }
-  .section.active { display:block; }
 
-  .minBtn{
-    border:1px solid #ddd;
-    background:#fff;
-    border-radius:10px;
-    padding:6px 10px;
-    font-size:12px;
-  }
-  .minBtn:hover{ background:#f3f3f3; }
+body{
+  font-family: Arial;
+  background:#f5f5f5;
+  margin:0;
+  padding:20px;
+}
 
-  /* Modal */
-  .modalOverlay{
-    position:fixed; inset:0;
-    background:rgba(0,0,0,0.45);
-    display:none;
-    align-items:center;
-    justify-content:center;
-    z-index:9999;
-  }
-  .modal{
-    background:#fff;
-    width:min(900px, 94vw);
-    border-radius:12px;
-    padding:16px;
-    box-shadow:0 10px 30px rgba(0,0,0,0.2);
-    text-align:left;
-  }
-  .modal h3{ margin:0 0 10px; }
-  .modal .grid{
-    display:grid;
-    grid-template-columns: 1fr 1fr;
-    gap:10px;
-  }
-  .modal label{ font-size:12px; color:#555; }
-  .modal input, .modal select{
-    width:100%;
-    box-sizing:border-box;
-    margin:4px 0 0;
-  }
-  .modal .actions{
-    display:flex;
-    justify-content:flex-end;
-    gap:8px;
-    margin-top:14px;
-  }
-  .modal .actions button{
-    border:none;
-    border-radius:10px;
-    padding:10px 14px;
-  }
-  .btnPrimary{ background:#1f6feb; color:#fff; }
-  .btnGhost{ background:#e9ecef; }
-  .btnDangerInline{
-    display:inline-block;
-    border:1px solid #f2b8b5;
-    background:#fff0f0;
-    border-radius:10px;
-    padding:8px 10px;
-    font-size:12px;
-    cursor:pointer;
-    color:#a10000;
-  }
+.container{
+  background:#fff;
+  padding:20px;
+  border-radius:10px;
+  max-width:1200px;
+  margin:auto;
+}
+
+.logo{
+  width:220px;
+  display:block;
+  margin:auto;
+}
+
+h2{
+  text-align:center;
+}
+
+.row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+input, select, button{
+  padding:10px;
+}
+
+button{
+  cursor:pointer;
+  border:none;
+  border-radius:8px;
+  background:#1f6feb;
+  color:white;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+
+th, td{
+  border:1px solid #ccc;
+  padding:8px;
+}
+
+th{
+  background:#eee;
+}
+
+.minBtn{
+  background:#6c757d;
+}
+
+.modalOverlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.5);
+  display:none;
+  justify-content:center;
+  align-items:center;
+}
+
+.modal{
+  background:white;
+  padding:20px;
+  border-radius:10px;
+  width:600px;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
 </style>
 </head>
-
 <body>
 
-<!-- LOGIN -->
-<div id="loginDiv" class="container">
-  <img src="GW.png" class="logo" />
-  <h2>Login Admin</h2>
-  <input id="email" placeholder="Email"><br>
-  <input id="senha" type="password" placeholder="Senha"><br>
-  <button onclick="login()">Entrar</button>
-</div>
+<div class="container">
 
-<!-- PAINEL -->
-<div id="painelDiv" class="container" style="display:none;">
-  <img src="GW.png" class="logo" />
-  <h2>Painel Admin</h2>
-  <div class="small">
-    Editar horários no formato: <b>DD/MM/AAAA HH:MM</b> (ex: 16/02/2026 07:10)
-  </div>
+<img src="GW.png" class="logo">
 
-  <div class="menu">
-    <button onclick="showSection('secJornadas')">Jornadas</button>
-    <button onclick="showSection('secColab')">Colaboradores</button>
-    <button onclick="showSection('secLocal')">Locais</button>
-    <button onclick="showSection('secOcorr')">Ocorrências (dia)</button>
-    <button onclick="showSection('secAfast')">Férias (período)</button>
-    <button class="secondary" onclick="logout()">Sair</button>
-  </div>
+<h2>Painel Admin</h2>
 
-  <hr class="hr">
+<div class="row">
 
-  <!-- JORNADAS -->
-  <div id="secJornadas" class="section active">
-    <h3>Jornadas</h3>
-    <div class="row">
-      <label>De:</label><input type="date" id="inicio">
-      <label>Até:</label><input type="date" id="fim">
-      <input id="filtroRe" placeholder="Filtrar por RE (opcional)" inputmode="numeric">
-      <input id="filtroNome" placeholder="Filtrar por Nome (opcional)">
-      <button onclick="buscar()">Buscar</button>
-      <button onclick="exportar()">Exportar CSV</button>
-    </div>
+<input id="cadRe" placeholder="RE">
+<input id="cadNome" placeholder="Nome">
 
-    <table>
-      <thead>
-        <tr>
-          <th>Data (Entrada)</th>
-          <th>Nome</th>
-          <th>RE</th>
-          <th>Entrada</th>
-          <th>Início Intervalo</th>
-          <th>Fim Intervalo</th>
-          <th>Saída</th>
-          <th>Entrada HE</th>
-          <th>Saída HE</th>
-          <th>Coords</th>
-          <th>Local</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody id="tbodyJornadas"></tbody>
-    </table>
-  </div>
+<select id="cadEscala">
+<option value="5x2">5x2</option>
+<option value="6x1">6x1</option>
+<option value="12x36">12x36</option>
+</select>
 
-  <!-- COLABORADORES -->
-  <div id="secColab" class="section">
-    <h3>Colaboradores</h3>
-    <div class="small">CPF é obrigatório • Sem excluir colaborador • Cadastre escala, horário previsto e data de admissão</div>
+<input type="date" id="cadAdmissao">
 
-    <div class="row">
-      <input id="cadRe" placeholder="RE" inputmode="numeric">
-      <input id="cadNome" placeholder="Nome completo">
-      <input id="cadCpf" placeholder="CPF (obrigatório)" inputmode="numeric">
+<input type="date" id="cadInicioPlantao">
 
-      <select id="cadEscala">
-        <option value="5x2">5x2 (Seg-Sex)</option>
-        <option value="6x1">6x1 (Folga Dom)</option>
-      </select>
+<input type="time" id="cadHoraEntrada">
+<input type="time" id="cadHoraSaida">
 
-      <input id="cadHoraEntrada" type="time" title="Hora prevista de entrada">
-      <input id="cadHoraSaida" type="time" title="Hora prevista de saída">
-
-      <input id="cadAdmissao" type="date" title="Data de admissão">
-
-      <button onclick="cadastrarColab()">Cadastrar</button>
-      <button onclick="carregarColaboradores()">Atualizar lista</button>
-    </div>
-
-    <table>
-      <thead>
-        <tr>
-          <th>RE</th>
-          <th>Nome</th>
-          <th>CPF</th>
-          <th>Escala</th>
-          <th>Horário</th>
-          <th>Admissão</th>
-          <th>Status</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody id="tbodyColab"></tbody>
-    </table>
-  </div>
-
-  <!-- LOCAIS -->
-  <div id="secLocal" class="section">
-    <h3>Locais</h3>
-    <div class="small">margem = raio (metros) • locais podem ser excluídos</div>
-
-    <div class="row">
-      <input id="locNome" placeholder="Nome do posto (ex: Posto A)">
-      <input id="locLat" placeholder="Latitude (X) ex: -12.3456">
-      <input id="locLng" placeholder="Longitude (Y) ex: -38.1234">
-      <input id="locRaio" placeholder="Margem (metros) ex: 150" inputmode="numeric">
-      <button onclick="cadastrarLocal()">Cadastrar</button>
-      <button onclick="carregarLocais()">Atualizar lista</button>
-    </div>
-
-    <table>
-      <thead>
-        <tr>
-          <th>Nome</th>
-          <th>Latitude</th>
-          <th>Longitude</th>
-          <th>Raio (m)</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody id="tbodyLocais"></tbody>
-    </table>
-  </div>
-
-  <!-- OCORRÊNCIAS -->
-  <div id="secOcorr" class="section">
-    <h3>Ocorrências (por dia)</h3>
-    <div class="small">
-      Ao salvar (FALTA/ATESTADO/ABONO), a ocorrência vira prioridade e apaga jornadas do dia (pela data da ENTRADA).
-    </div>
-
-    <div class="row">
-      <input id="ocRe" placeholder="RE" inputmode="numeric">
-      <input id="ocData" type="date">
-      <select id="ocTipo">
-        <option value="falta">FALTA</option>
-        <option value="atestado">ATESTADO</option>
-        <option value="abono">ABONO</option>
-      </select>
-      <input id="ocMotivo" placeholder="Motivo (opcional)">
-      <button onclick="salvarOcorrencia()">Salvar ocorrência (prioritária)</button>
-    </div>
-
-    <hr class="hr">
-
-    <div class="row">
-      <input id="ocFiltroRe" placeholder="Filtrar RE (opcional)" inputmode="numeric">
-      <input id="ocFiltroData" type="date" title="Filtrar data (opcional)">
-      <button onclick="carregarOcorrencias()">Atualizar lista</button>
-    </div>
-
-    <table>
-      <thead>
-        <tr>
-          <th>Data</th>
-          <th>RE</th>
-          <th>Nome</th>
-          <th>Tipo</th>
-          <th>Motivo</th>
-          <th>Atualizado</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody id="tbodyOcorr"></tbody>
-    </table>
-  </div>
-
-  <!-- FÉRIAS (PERÍODO) -->
-  <div id="secAfast" class="section">
-    <h3>Férias (por período)</h3>
-    <div class="small">
-      Cadastre 1 período e o sistema marca automaticamente no espelho (somente dias de trabalho).<br>
-      Ao salvar férias, o sistema apaga jornadas do período (dias úteis, conforme escala do colaborador).
-    </div>
-
-    <div class="row">
-      <input id="afRe" placeholder="RE" inputmode="numeric">
-      <input id="afInicio" type="date">
-      <input id="afFim" type="date">
-      <label style="display:flex;align-items:center;gap:6px;font-size:12px;">
-        <input type="checkbox" id="afDiasUteis" checked> Somente dias de trabalho
-      </label>
-      <input id="afMotivo" placeholder="Motivo (opcional)">
-      <button onclick="salvarFerias()">Salvar FÉRIAS</button>
-      <button onclick="carregarFerias()">Atualizar lista</button>
-    </div>
-
-    <table>
-      <thead>
-        <tr>
-          <th>RE</th>
-          <th>Nome</th>
-          <th>Período</th>
-          <th>Somente dias trabalho?</th>
-          <th>Motivo</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody id="tbodyFerias"></tbody>
-    </table>
-  </div>
+<button onclick="cadastrar()">Cadastrar</button>
 
 </div>
 
-<!-- MODAL -->
-<div id="modalOverlay" class="modalOverlay" onclick="closeModalIfBackdrop(event)">
-  <div class="modal" onclick="event.stopPropagation()">
-    <h3 id="modalTitle">Editar</h3>
-    <div id="modalBody"></div>
-    <div class="actions">
-      <button class="btnGhost" onclick="closeModal()">Cancelar</button>
-      <button id="modalSaveBtn" class="btnPrimary">Salvar</button>
-    </div>
-  </div>
+<table>
+
+<thead>
+
+<tr>
+
+<th>RE</th>
+<th>Nome</th>
+<th>Escala</th>
+<th>Admissão</th>
+<th>Plantão atual</th>
+<th>Ações</th>
+
+</tr>
+
+</thead>
+
+<tbody id="tbody"></tbody>
+
+</table>
+
+</div>
+
+<div class="modalOverlay" id="modalOverlay">
+
+<div class="modal">
+
+<h3>Modificar colaborador</h3>
+
+<div id="modalBody"></div>
+
+<br>
+
+<button onclick="salvarModal()">Salvar</button>
+<button onclick="fecharModal()">Cancelar</button>
+
+</div>
+
 </div>
 
 <script type="module">
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+
 import {
-  getFirestore, doc, setDoc, getDocs, collection, updateDoc, addDoc, deleteDoc, deleteField, query, where, getDoc
+
+getFirestore,
+doc,
+setDoc,
+getDocs,
+getDoc,
+collection
+
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import {
-  getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyD--zpWLbLg5X82oGTyz6SuPFQV0sd7NWc",
-  authDomain: "controle-ponto-f539b.firebaseapp.com",
-  projectId: "controle-ponto-f539b",
-  storageBucket: "controle-ponto-f539b.firebasestorage.app",
-  messagingSenderId: "324716100257",
-  appId: "1:324716100257:web:32d49a9ab4916182dd4ee0",
-  measurementId: "G-P81H3C4SFK"
+
+apiKey:"AIzaSy...",
+authDomain:"controle-ponto-f539b.firebaseapp.com",
+projectId:"controle-ponto-f539b"
+
 };
 
 const app = initializeApp(firebaseConfig);
+
 const db = getFirestore(app);
-const auth = getAuth(app);
 
-const loginDiv = document.getElementById("loginDiv");
-const painelDiv = document.getElementById("painelDiv");
+let editandoId = null;
 
-let ultimaTabela = [];
-let cacheLocais = [];
 let cacheColabs = [];
-let cacheFerias = [];
-let cacheOcorr = [];
 
-// menu
-window.showSection = function(id){
-  document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
-  if (id === "secLocal") carregarLocais();
-  if (id === "secColab") carregarColaboradores();
-  if (id === "secAfast") { carregarColaboradores().then(carregarFerias); }
-  if (id === "secOcorr") { carregarColaboradores().then(carregarOcorrencias); }
-};
+function hojeIso(){
 
-// auth
-window.login = async function(){
-  const email = document.getElementById("email").value;
-  const senha = document.getElementById("senha").value;
-  try { await signInWithEmailAndPassword(auth, email, senha); }
-  catch(e){ alert("Erro no login."); }
-};
-window.logout = function(){ signOut(auth); };
+return new Date().toISOString().slice(0,10);
 
-onAuthStateChanged(auth, user => {
-  loginDiv.style.display = user ? "none" : "block";
-  painelDiv.style.display = user ? "block" : "none";
-  if (user){ carregarLocais(); carregarColaboradores(); }
+}
+
+function getPlantaoAtual(col){
+
+if(!col.plantaoHistorico || !col.plantaoHistorico.length) return "-";
+
+return col.plantaoHistorico[col.plantaoHistorico.length-1].inicio;
+
+}
+
+window.cadastrar = async function(){
+
+const re = cadRe.value.trim();
+
+const nome = cadNome.value.trim();
+
+const escala = cadEscala.value;
+
+const admissao = cadAdmissao.value;
+
+const inicioPlantao = cadInicioPlantao.value;
+
+const horaEntrada = cadHoraEntrada.value;
+
+const horaSaida = cadHoraSaida.value;
+
+if(!re || !nome) return;
+
+let historico = [];
+
+if(escala==="12x36" && inicioPlantao){
+
+historico.push({
+
+inicio:inicioPlantao,
+
+createdAt:new Date().toISOString()
+
 });
 
-// helpers gerais
-function norm(s){ return (s||"").toString().trim().toLowerCase(); }
-function toDateAny(ts){
-  if (!ts) return null;
-  if (ts.toDate) return ts.toDate();
-  if (ts instanceof Date) return ts;
-  return new Date(ts);
-}
-function formatHHMM(ts){
-  const d = toDateAny(ts);
-  if (!d || isNaN(d)) return "";
-  return d.toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit" });
-}
-function formatBRDate(ts){
-  const d = toDateAny(ts);
-  if (!d || isNaN(d)) return "";
-  return d.toLocaleDateString("pt-BR");
-}
-function brDateFromYmd(ymd){
-  if (!ymd) return "";
-  const [y,m,d] = ymd.split("-");
-  if (!y||!m||!d) return ymd;
-  return `${d}/${m}/${y}`;
-}
-function isoFromBrDateTime(str){
-  const m = (str||"").trim().match(/^(\d{2})\/(\d{2})\/(\d{4})\s+([01]\d|2[0-3]):([0-5]\d)$/);
-  if (!m) return null;
-  const dd=m[1], mm=m[2], yyyy=m[3], hh=m[4], mi=m[5];
-  const dt = new Date(`${yyyy}-${mm}-${dd}T${hh}:${mi}:00`);
-  if (isNaN(dt)) return null;
-  return dt.toISOString();
-}
-function brDateTimeFromIso(ts){
-  const d = toDateAny(ts);
-  if (!d || isNaN(d)) return "";
-  const data = d.toLocaleDateString("pt-BR");
-  const hora = d.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"});
-  return `${data} ${hora}`;
-}
-function horarioTxt(c){
-  const he = (c?.horaEntrada||"").trim();
-  const hs = (c?.horaSaida||"").trim();
-  if (he && hs) return `${he}–${hs}`;
-  if (he || hs) return `${he||"—"}–${hs||"—"}`;
-  return "—";
-}
-function isFolgaByEscala(dateObj, escala){
-  const dow = dateObj.getDay();
-  const e = (escala || "5x2").toLowerCase();
-  if (e === "5x2") return (dow === 0 || dow === 6);
-  if (e === "6x1") return (dow === 0);
-  return false;
-}
-function isDiaTrabalho(dateObj, escala){
-  return !isFolgaByEscala(dateObj, escala);
 }
 
-// localização/posto
-function haversineMeters(lat1, lon1, lat2, lon2){
-  const R=6371000; const toRad=x=>x*Math.PI/180;
-  const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
-  const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-  return 2*R*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
-function parseLocation(str){
-  if (!str) return null;
-  const p=str.split(",").map(s=>s.trim());
-  if (p.length!==2) return null;
-  const lat=Number(p[0]), lng=Number(p[1]);
-  if (!Number.isFinite(lat)||!Number.isFinite(lng)) return null;
-  return {lat,lng};
-}
-function getBestLocationFromJornada(j){
-  const steps=["saida_he","entrada_he","saida","retorno_intervalo","saida_intervalo","entrada"];
-  for (const s of steps){ const loc=j?.[s]?.location; if (loc) return loc; }
-  return "";
-}
-function reconhecerLocal(locationStr){
-  const p=parseLocation(locationStr);
-  if (!p) return "Não disponível";
-  let best=null;
-  for (const l of cacheLocais){
-    const d=haversineMeters(p.lat,p.lng,l.lat,l.lng);
-    if (d<=l.raio){ if (!best || d<best.d) best={nome:l.nome,d}; }
-  }
-  return best ? best.nome : "Não reconhecido";
+await setDoc(doc(db,"colaboradores",re),{
+
+re,
+nome,
+escala,
+dataAdmissao:admissao,
+horaEntrada,
+horaSaida,
+plantaoHistorico:historico,
+createdAt:new Date().toISOString()
+
+},{merge:true});
+
+carregar();
+
 }
 
-// modal
-const overlay=document.getElementById("modalOverlay");
-const titleEl=document.getElementById("modalTitle");
-const bodyEl=document.getElementById("modalBody");
-const saveBtn=document.getElementById("modalSaveBtn");
+async function carregar(){
 
-window.closeModal=function(){ overlay.style.display="none"; bodyEl.innerHTML=""; saveBtn.onclick=null; };
-window.closeModalIfBackdrop=function(e){ if (e.target===overlay) closeModal(); };
+const snap = await getDocs(collection(db,"colaboradores"));
 
-function openModal({title, bodyHtml, onSave}){
-  titleEl.innerText=title;
-  bodyEl.innerHTML=bodyHtml;
-  overlay.style.display="flex";
-  saveBtn.onclick=onSave || null;
+cacheColabs = snap.docs.map(d=>({
+
+id:d.id,
+
+...d.data()
+
+}));
+
+render();
+
 }
 
-// ===== COLABORADORES =====
-window.cadastrarColab = async function(){
-  const re = document.getElementById("cadRe").value.trim();
-  const nome = document.getElementById("cadNome").value.trim();
-  let cpf = document.getElementById("cadCpf").value.trim();
-  const escala = document.getElementById("cadEscala").value;
-  const horaEntrada = (document.getElementById("cadHoraEntrada").value || "").trim();
-  const horaSaida = (document.getElementById("cadHoraSaida").value || "").trim();
-  const dataAdmissao = (document.getElementById("cadAdmissao").value || "").trim(); // YYYY-MM-DD
+function render(){
 
-  if (!re || !nome) return alert("Preencha RE e Nome.");
-  cpf = cpf.replace(/\D/g,"");
-  if (!cpf || cpf.length < 4) return alert("CPF é obrigatório (mínimo 4 dígitos).");
-  if (!dataAdmissao) return alert("Data de admissão é obrigatória.");
+tbody.innerHTML="";
 
-  if (!confirm(
-    `Cadastrar?\nRE: ${re}\nNome: ${nome}\nEscala: ${escala}\nHorário: ${horaEntrada||"—"}–${horaSaida||"—"}\nAdmissão: ${brDateFromYmd(dataAdmissao)}`
-  )) return;
+for(const c of cacheColabs){
 
-  await setDoc(doc(db,"colaboradores",re), {
-    re, nome, cpf, escala, horaEntrada, horaSaida,
-    dataAdmissao, // ✅ NOVO
-    ativo:true,
-    updatedAt:new Date().toISOString()
-  }, { merge:true });
+const tr=document.createElement("tr");
 
-  document.getElementById("cadRe").value="";
-  document.getElementById("cadNome").value="";
-  document.getElementById("cadCpf").value="";
-  document.getElementById("cadEscala").value="5x2";
-  document.getElementById("cadHoraEntrada").value="";
-  document.getElementById("cadHoraSaida").value="";
-  document.getElementById("cadAdmissao").value="";
-  carregarColaboradores();
-};
+tr.innerHTML=`
 
-window.carregarColaboradores = async function(){
-  const snap = await getDocs(collection(db,"colaboradores"));
-  cacheColabs = snap.docs.map(d => ({ id:d.id, ...d.data() }))
-    .sort((a,b)=> (a.nome||"").localeCompare(b.nome||""));
+<td>${c.re}</td>
+<td>${c.nome}</td>
+<td>${c.escala}</td>
+<td>${c.dataAdmissao||""}</td>
+<td>${getPlantaoAtual(c)}</td>
+<td>
 
-  const tbody=document.getElementById("tbodyColab");
-  if (tbody){
-    tbody.innerHTML="";
-    for (const c of cacheColabs){
-      const status = (c.ativo === false) ? "Inativo" : "Ativo";
-      const escala = (c.escala || "5x2");
-      const adm = (c.dataAdmissao ? brDateFromYmd(String(c.dataAdmissao).slice(0,10)) : "—");
-      const tr=document.createElement("tr");
-      tr.innerHTML = `
-        <td>${c.re || c.id}</td>
-        <td>${c.nome || ""}</td>
-        <td>${c.cpf || ""}</td>
-        <td>${escala}</td>
-        <td>${horarioTxt(c)}</td>
-        <td>${adm}</td>
-        <td>${status}</td>
-        <td><button class="minBtn" onclick="editarColab('${c.id}')">Modificar</button></td>
-      `;
-      tbody.appendChild(tr);
-    }
-  }
-};
+<button class="minBtn" onclick="abrirModal('${c.id}')">
 
-window.editarColab = function(reDocId){
-  const c = cacheColabs.find(x => x.id === reDocId);
-  if (!c) return alert("Colaborador não encontrado.");
+Modificar
 
-  openModal({
-    title: "Modificar colaborador",
-    bodyHtml: `
-      <div class="grid">
-        <div>
-          <label>RE</label>
-          <input id="mRe" value="${c.re || c.id}" disabled>
-        </div>
-        <div>
-          <label>CPF (obrigatório)</label>
-          <input id="mCpf" value="${c.cpf || ""}" placeholder="Somente números">
-        </div>
+</button>
 
-        <div style="grid-column:1 / -1">
-          <label>Nome</label>
-          <input id="mNome" value="${c.nome || ""}">
-        </div>
+</td>
 
-        <div>
-          <label>Escala</label>
-          <select id="mEscala">
-            <option value="5x2" ${(c.escala||"5x2")==="5x2" ? "selected" : ""}>5x2 (Seg-Sex)</option>
-            <option value="6x1" ${(c.escala||"5x2")==="6x1" ? "selected" : ""}>6x1 (Folga Dom)</option>
-          </select>
-        </div>
+`;
 
-        <div>
-          <label>Status</label>
-          <select id="mAtivo">
-            <option value="true" ${c.ativo === false ? "" : "selected"}>Ativo</option>
-            <option value="false" ${c.ativo === false ? "selected" : ""}>Inativo</option>
-          </select>
-        </div>
+tbody.appendChild(tr);
 
-        <div>
-          <label>Hora entrada prevista</label>
-          <input id="mHoraEntrada" type="time" value="${(c.horaEntrada||"").toString().trim()}">
-        </div>
-        <div>
-          <label>Hora saída prevista</label>
-          <input id="mHoraSaida" type="time" value="${(c.horaSaida||"").toString().trim()}">
-        </div>
-
-        <div style="grid-column:1 / -1">
-          <label>Data de admissão (obrigatório)</label>
-          <input id="mAdmissao" type="date" value="${String(c.dataAdmissao||"").slice(0,10)}">
-        </div>
-
-        <div class="small" style="grid-column:1 / -1">
-          Colaborador inativo NÃO consegue registrar ponto no sistema.
-        </div>
-      </div>
-    `,
-    onSave: async () => {
-      const nome = document.getElementById("mNome").value.trim();
-      let cpf = document.getElementById("mCpf").value.trim().replace(/\D/g,"");
-      const ativo = document.getElementById("mAtivo").value === "true";
-      const escala = document.getElementById("mEscala").value;
-      const horaEntrada = (document.getElementById("mHoraEntrada").value || "").trim();
-      const horaSaida = (document.getElementById("mHoraSaida").value || "").trim();
-      const dataAdmissao = (document.getElementById("mAdmissao").value || "").trim();
-
-      if (!nome) return alert("Nome não pode ficar vazio.");
-      if (!cpf || cpf.length < 4) return alert("CPF é obrigatório (mínimo 4 dígitos).");
-      if (!dataAdmissao) return alert("Data de admissão é obrigatória.");
-
-      if (!confirm("Salvar alteração do colaborador?")) return;
-
-      await setDoc(doc(db,"colaboradores",reDocId), {
-        nome, cpf, ativo, escala, horaEntrada, horaSaida,
-        dataAdmissao, // ✅ NOVO
-        updatedAt:new Date().toISOString()
-      }, { merge:true });
-
-      closeModal();
-      carregarColaboradores();
-      carregarFerias();
-      carregarOcorrencias();
-    }
-  });
-};
-
-// ===== LOCAIS =====
-window.cadastrarLocal = async function(){
-  const nome = document.getElementById("locNome").value.trim();
-  const lat = Number(document.getElementById("locLat").value.trim());
-  const lng = Number(document.getElementById("locLng").value.trim());
-  const raio = Number(document.getElementById("locRaio").value.trim());
-
-  if (!nome || !Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(raio)){
-    return alert("Preencha Nome, Latitude, Longitude e Raio.");
-  }
-  if (!confirm(`Cadastrar local?\n${nome}\n(${lat}, ${lng})\nRaio: ${raio}m`)) return;
-
-  await addDoc(collection(db,"locais"), { nome, lat, lng, raio, updatedAt:new Date().toISOString() });
-
-  document.getElementById("locNome").value="";
-  document.getElementById("locLat").value="";
-  document.getElementById("locLng").value="";
-  document.getElementById("locRaio").value="";
-  carregarLocais();
-};
-
-window.carregarLocais = async function(){
-  const snap = await getDocs(collection(db,"locais"));
-  cacheLocais = snap.docs.map(d => ({ id:d.id, ...d.data() }))
-    .filter(l => Number.isFinite(l.lat) && Number.isFinite(l.lng) && Number.isFinite(l.raio))
-    .sort((a,b)=> (a.nome||"").localeCompare(b.nome||""));
-
-  const tbody=document.getElementById("tbodyLocais");
-  tbody.innerHTML="";
-
-  for (const l of cacheLocais){
-    const tr=document.createElement("tr");
-    tr.innerHTML = `
-      <td>${l.nome || ""}</td>
-      <td>${l.lat}</td>
-      <td>${l.lng}</td>
-      <td>${l.raio}</td>
-      <td><button class="minBtn" onclick="editarLocal('${l.id}')">Modificar</button></td>
-    `;
-    tbody.appendChild(tr);
-  }
-};
-
-window.editarLocal = function(id){
-  const l = cacheLocais.find(x => x.id === id);
-  if (!l) return alert("Local não encontrado.");
-
-  openModal({
-    title: "Modificar local",
-    bodyHtml: `
-      <div class="grid">
-        <div style="grid-column:1 / -1">
-          <label>Nome</label>
-          <input id="mlNome" value="${l.nome || ""}">
-        </div>
-        <div>
-          <label>Latitude</label>
-          <input id="mlLat" value="${l.lat}">
-        </div>
-        <div>
-          <label>Longitude</label>
-          <input id="mlLng" value="${l.lng}">
-        </div>
-        <div style="grid-column:1 / -1">
-          <label>Raio (m)</label>
-          <input id="mlRaio" value="${l.raio}">
-        </div>
-        <div class="small" style="grid-column:1 / -1">
-          <button class="btnDangerInline" id="btnExcluirLocal">Excluir local</button>
-        </div>
-      </div>
-    `,
-    onSave: async () => {
-      const nome = document.getElementById("mlNome").value.trim();
-      const lat = Number(document.getElementById("mlLat").value.trim());
-      const lng = Number(document.getElementById("mlLng").value.trim());
-      const raio = Number(document.getElementById("mlRaio").value.trim());
-
-      if (!nome || !Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(raio)){
-        return alert("Preencha corretamente Nome, Latitude, Longitude e Raio.");
-      }
-      if (!confirm("Salvar alterações do local?")) return;
-
-      await updateDoc(doc(db,"locais",id), { nome, lat, lng, raio, updatedAt:new Date().toISOString() });
-
-      closeModal();
-      carregarLocais();
-      buscar();
-    }
-  });
-
-  setTimeout(() => {
-    const btn = document.getElementById("btnExcluirLocal");
-    if (!btn) return;
-    btn.onclick = async () => {
-      if (!confirm("Excluir este local?")) return;
-      await deleteDoc(doc(db,"locais",id));
-      closeModal();
-      carregarLocais();
-      buscar();
-    };
-  }, 0);
-};
-
-// ===== JORNADAS =====
-window.buscar = async function(){
-  const iniStr = document.getElementById("inicio").value || "2000-01-01";
-  const fimStr = document.getElementById("fim").value || "2999-12-31";
-  const filtroRe = norm(document.getElementById("filtroRe").value);
-  const filtroNome = norm(document.getElementById("filtroNome").value);
-
-  const snap = await getDocs(collection(db,"jornadas"));
-  let jornadas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-
-  jornadas = jornadas.filter(j => {
-    const iso = (j.entrada?.ts || "").toString();
-    const d = iso ? iso.slice(0,10) : "";
-    if (!d) return false;
-    return d >= iniStr && d <= fimStr;
-  });
-
-  if (filtroRe) jornadas = jornadas.filter(j => norm(j.re) === filtroRe);
-  if (filtroNome) jornadas = jornadas.filter(j => norm(j.nome).includes(filtroNome));
-
-  jornadas.sort((a,b) => (toDateAny(b.entrada?.ts)||new Date(0)) - (toDateAny(a.entrada?.ts)||new Date(0)));
-
-  ultimaTabela = jornadas;
-  montarJornadas(jornadas);
-};
-
-function montarJornadas(jornadas){
-  const tbody=document.getElementById("tbodyJornadas");
-  tbody.innerHTML="";
-
-  for (const j of jornadas){
-    const dataEntrada = formatBRDate(j.entrada?.ts);
-    const loc = getBestLocationFromJornada(j);
-    const rec = reconhecerLocal(loc);
-
-    const tr=document.createElement("tr");
-    tr.innerHTML = `
-      <td>${dataEntrada}</td>
-      <td>${j.nome || ""}</td>
-      <td>${j.re || ""}</td>
-      <td>${formatHHMM(j.entrada?.ts)}</td>
-      <td>${formatHHMM(j.saida_intervalo?.ts)}</td>
-      <td>${formatHHMM(j.retorno_intervalo?.ts)}</td>
-      <td>${formatHHMM(j.saida?.ts)}</td>
-      <td>${formatHHMM(j.entrada_he?.ts)}</td>
-      <td>${formatHHMM(j.saida_he?.ts)}</td>
-      <td>${loc || ""}</td>
-      <td>${rec}</td>
-      <td><button class="minBtn" onclick="editarJornada('${j.id}')">Modificar</button></td>
-    `;
-    tbody.appendChild(tr);
-  }
 }
 
-window.editarJornada = function(docId){
-  const j = ultimaTabela.find(x => x.id === docId);
-  if (!j) return alert("Jornada não encontrada.");
-
-  const val = (ts) => brDateTimeFromIso(ts);
-
-  openModal({
-    title: `Modificar Jornada — RE ${j.re}`,
-    bodyHtml: `
-      <div class="grid">
-        <div><label>ENTRADA</label><input id="fEntrada" placeholder="DD/MM/AAAA HH:MM" value="${val(j.entrada?.ts)}"></div>
-        <div><label>INÍCIO INTERVALO</label><input id="fSaiInt" placeholder="DD/MM/AAAA HH:MM" value="${val(j.saida_intervalo?.ts)}"></div>
-        <div><label>FIM INTERVALO</label><input id="fRetInt" placeholder="DD/MM/AAAA HH:MM" value="${val(j.retorno_intervalo?.ts)}"></div>
-        <div><label>SAÍDA</label><input id="fSaida" placeholder="DD/MM/AAAA HH:MM" value="${val(j.saida?.ts)}"></div>
-        <div><label>ENTRADA HE</label><input id="fEntHe" placeholder="DD/MM/AAAA HH:MM" value="${val(j.entrada_he?.ts)}"></div>
-        <div><label>SAÍDA HE</label><input id="fSaiHe" placeholder="DD/MM/AAAA HH:MM" value="${val(j.saida_he?.ts)}"></div>
-      </div>
-      <div class="small" style="margin-top:8px">Deixe em branco para remover o campo (apaga no banco).</div>
-    `,
-    onSave: async () => {
-      const campos = [
-        ["entrada.ts", document.getElementById("fEntrada").value],
-        ["saida_intervalo.ts", document.getElementById("fSaiInt").value],
-        ["retorno_intervalo.ts", document.getElementById("fRetInt").value],
-        ["saida.ts", document.getElementById("fSaida").value],
-        ["entrada_he.ts", document.getElementById("fEntHe").value],
-        ["saida_he.ts", document.getElementById("fSaiHe").value],
-      ];
-
-      const payload = { updatedAt: new Date().toISOString() };
-
-      for (const [path, txt] of campos){
-        const t = (txt || "").trim();
-        if (!t){
-          payload[path] = deleteField();
-          continue;
-        }
-        const iso = isoFromBrDateTime(t);
-        if (!iso) return alert(`Formato inválido. Use DD/MM/AAAA HH:MM`);
-        payload[path] = iso;
-      }
-
-      if (!confirm("Salvar alterações desta jornada?")) return;
-
-      await updateDoc(doc(db,"jornadas",docId), payload);
-      closeModal();
-      buscar();
-    }
-  });
-};
-
-// ===== OCORRÊNCIAS (dia) =====
-function ocDocId(re, ymd){ return `${re}_${ymd}`; }
-function nomePorRe(re){
-  const c = cacheColabs.find(x => (x.re || x.id) === re);
-  return c?.nome || "";
-}
-async function apagarJornadasDoDia(re, dataYmd){
-  const qJ = query(collection(db,"jornadas"), where("re","==",re));
-  const snap = await getDocs(qJ);
-  const all = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-
-  const doDia = all.filter(j => {
-    const d = (j?.entrada?.ts || "").toString().slice(0,10);
-    return d === dataYmd;
-  });
-
-  for (const j of doDia){
-    await deleteDoc(doc(db,"jornadas", j.id));
-  }
-  return doDia.length;
 }
 
-window.salvarOcorrencia = async function(){
-  try{
-    const re = (document.getElementById("ocRe").value || "").trim();
-    const data = document.getElementById("ocData").value;
-    const tipo = document.getElementById("ocTipo").value;
-    const motivo = (document.getElementById("ocMotivo").value || "").trim();
+window.abrirModal = function(id){
 
-    if (!re) return alert("Informe o RE.");
-    if (!data) return alert("Informe a data.");
-    if (!tipo) return alert("Selecione o tipo.");
+editandoId=id;
 
-    if (!confirm(`Salvar ocorrência?\nRE: ${re}\nData: ${brDateFromYmd(data)}\nTipo: ${tipo.toUpperCase()}\n\nIsso vai APAGAR registros do dia (se existirem).`)) return;
+const c = cacheColabs.find(x=>x.id===id);
 
-    await setDoc(doc(db,"ocorrencias", ocDocId(re, data)), {
-      re, data, tipo, motivo,
-      updatedAt: new Date().toISOString()
-    }, { merge:true });
+modalBody.innerHTML=`
 
-    const n = await apagarJornadasDoDia(re, data);
-    alert(`Ocorrência salva.\nRegistros apagados do dia: ${n}`);
+<div class="grid">
 
-    document.getElementById("ocMotivo").value = "";
-    document.getElementById("ocFiltroRe").value = re;
-    document.getElementById("ocFiltroData").value = data;
-    await carregarOcorrencias();
+<div>
 
-  }catch(e){
-    alert("Falha ao salvar ocorrência.");
-  }
-};
+<label>Nome</label>
 
-window.carregarOcorrencias = async function(){
-  try{
-    const filtroRe = (document.getElementById("ocFiltroRe").value || "").trim();
-    const filtroData = document.getElementById("ocFiltroData").value;
+<input id="mNome" value="${c.nome}">
 
-    const snap = await getDocs(collection(db,"ocorrencias"));
-    let list = snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }));
+</div>
 
-    list = list.map(o => ({
-      ...o,
-      re: (o.re || "").toString().trim(),
-      data: (o.data || "").toString().slice(0,10),
-      tipo: (o.tipo || "").toString(),
-      motivo: (o.motivo || "").toString(),
-      updatedAt: (o.updatedAt || "")
-    }));
+<div>
 
-    if (filtroRe) list = list.filter(o => o.re === filtroRe);
-    if (filtroData) list = list.filter(o => o.data === filtroData);
+<label>Escala</label>
 
-    list.sort((a,b) => (String(b.data||"")).localeCompare(String(a.data||"")) || String(b.updatedAt||"").localeCompare(String(a.updatedAt||"")));
+<select id="mEscala">
 
-    cacheOcorr = list;
+<option value="5x2">5x2</option>
+<option value="6x1">6x1</option>
+<option value="12x36">12x36</option>
 
-    const tbody = document.getElementById("tbodyOcorr");
-    tbody.innerHTML = "";
+</select>
 
-    for (const o of cacheOcorr){
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${brDateFromYmd(o.data||"")}</td>
-        <td>${o.re || ""}</td>
-        <td>${nomePorRe(o.re)}</td>
-        <td>${(o.tipo||"").toUpperCase()}</td>
-        <td>${o.motivo || ""}</td>
-        <td>${brDateTimeFromIso(o.updatedAt)}</td>
-        <td><button class="minBtn" onclick="editarOcorrencia('${o.id}')">Modificar</button></td>
-      `;
-      tbody.appendChild(tr);
-    }
+</div>
 
-  }catch(e){
-    alert("Falha ao carregar ocorrências.");
-  }
-};
+<div>
 
-window.editarOcorrencia = function(id){
-  const o = cacheOcorr.find(x => x.id === id);
-  if (!o) return alert("Ocorrência não encontrada.");
+<label>Data admissão</label>
 
-  openModal({
-    title: `Modificar Ocorrência — ${o.re} — ${brDateFromYmd(o.data)}`,
-    bodyHtml: `
-      <div class="grid">
-        <div>
-          <label>RE</label>
-          <input value="${o.re}" disabled>
-        </div>
-        <div>
-          <label>Data</label>
-          <input value="${o.data}" disabled>
-        </div>
-        <div>
-          <label>Tipo</label>
-          <select id="moTipo">
-            <option value="falta" ${o.tipo==="falta" ? "selected" : ""}>FALTA</option>
-            <option value="atestado" ${o.tipo==="atestado" ? "selected" : ""}>ATESTADO</option>
-            <option value="abono" ${o.tipo==="abono" ? "selected" : ""}>ABONO</option>
-          </select>
-        </div>
-        <div>
-          <label>Motivo</label>
-          <input id="moMotivo" value="${(o.motivo||"").replaceAll('"','&quot;')}">
-        </div>
-        <div class="small" style="grid-column:1 / -1">
-          <button class="btnDangerInline" id="btnExcluirOcorr">Excluir ocorrência</button>
-        </div>
-      </div>
-    `,
-    onSave: async () => {
-      const tipo = document.getElementById("moTipo").value;
-      const motivo = (document.getElementById("moMotivo").value || "").trim();
+<input type="date" id="mAdmissao" value="${c.dataAdmissao||""}">
 
-      if (!confirm("Salvar alteração desta ocorrência?")) return;
+</div>
 
-      await updateDoc(doc(db,"ocorrencias", id), {
-        tipo,
-        motivo,
-        updatedAt: new Date().toISOString()
-      });
+<div>
 
-      closeModal();
-      carregarOcorrencias();
-    }
-  });
+<label>Novo início plantão</label>
 
-  setTimeout(() => {
-    const btn = document.getElementById("btnExcluirOcorr");
-    if (!btn) return;
-    btn.onclick = async () => {
-      if (!confirm("Excluir esta ocorrência?")) return;
-      await deleteDoc(doc(db,"ocorrencias", id));
-      closeModal();
-      carregarOcorrencias();
-    };
-  }, 0);
-};
+<input type="date" id="mInicioPlantao">
 
-// ===== FÉRIAS (período) =====
-async function getColab(re){
-  const ref = doc(db,"colaboradores", re);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) return null;
-  return { id:snap.id, ...(snap.data()||{}) };
-}
-function rangeDays(iniYmd, fimYmd){
-  const out = [];
-  const [y1,m1,d1] = iniYmd.split("-").map(Number);
-  const [y2,m2,d2] = fimYmd.split("-").map(Number);
-  let cur = new Date(y1, m1-1, d1, 12, 0, 0);
-  const end = new Date(y2, m2-1, d2, 12, 0, 0);
-  while (cur <= end){
-    out.push(new Date(cur));
-    cur.setDate(cur.getDate()+1);
-  }
-  return out;
-}
-async function apagarJornadasNoPeriodo(re, iniYmd, fimYmd, escala, somenteDiasTrabalho){
-  const qJ = query(collection(db,"jornadas"), where("re","==",re));
-  const snap = await getDocs(qJ);
-  const all = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+</div>
 
-  const days = rangeDays(iniYmd, fimYmd);
-  const alvo = new Set();
-  for (const dt of days){
-    const ymd = dt.toISOString().slice(0,10);
-    if (somenteDiasTrabalho){
-      if (!isDiaTrabalho(dt, escala)) continue;
-    }
-    alvo.add(ymd);
-  }
+<div>
 
-  const apagar = all.filter(j => {
-    const d = (j?.entrada?.ts || "").toString().slice(0,10);
-    return alvo.has(d);
-  });
+<label>Hora entrada</label>
 
-  for (const j of apagar){
-    await deleteDoc(doc(db,"jornadas", j.id));
-  }
-  return apagar.length;
+<input type="time" id="mHoraEntrada" value="${c.horaEntrada||""}">
+
+</div>
+
+<div>
+
+<label>Hora saída</label>
+
+<input type="time" id="mHoraSaida" value="${c.horaSaida||""}">
+
+</div>
+
+</div>
+
+`;
+
+modalOverlay.style.display="flex";
+
 }
 
-window.salvarFerias = async function(){
-  const re = (document.getElementById("afRe").value || "").trim();
-  const inicio = document.getElementById("afInicio").value;
-  const fim = document.getElementById("afFim").value;
-  const aplicarSomenteDiasTrabalho = document.getElementById("afDiasUteis").checked;
-  const motivo = (document.getElementById("afMotivo").value || "").trim();
+window.fecharModal=function(){
 
-  if (!re) return alert("Informe o RE.");
-  if (!inicio || !fim) return alert("Informe início e fim.");
-  if (fim < inicio) return alert("Fim não pode ser menor que início.");
+modalOverlay.style.display="none";
 
-  const col = await getColab(re);
-  if (!col) return alert("Colaborador não encontrado.");
-  const escala = (col.escala || "5x2");
+}
 
-  if (!confirm(
-    `Salvar FÉRIAS?\nRE: ${re}\nNome: ${col.nome||""}\nPeríodo: ${brDateFromYmd(inicio)} até ${brDateFromYmd(fim)}\nSomente dias de trabalho: ${aplicarSomenteDiasTrabalho ? "SIM" : "NÃO"}\n\nIsso vai APAGAR jornadas dentro do período (conforme regra).`
-  )) return;
+window.salvarModal=async function(){
 
-  await addDoc(collection(db,"afastamentos"), {
-    re,
-    tipo: "ferias",
-    inicio,
-    fim,
-    aplicarSomenteDiasTrabalho,
-    motivo,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  });
+const nome=mNome.value;
 
-  const apagadas = await apagarJornadasNoPeriodo(re, inicio, fim, escala, aplicarSomenteDiasTrabalho);
-  alert(`Férias salvas.\nJornadas apagadas no período: ${apagadas}`);
+const escala=mEscala.value;
 
-  document.getElementById("afMotivo").value="";
-  carregarFerias();
-};
+const admissao=mAdmissao.value;
 
-window.carregarFerias = async function(){
-  const snap = await getDocs(collection(db,"afastamentos"));
-  cacheFerias = snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }))
-    .filter(x => String(x.tipo||"").toLowerCase() === "ferias")
-    .sort((a,b) => (String(b.inicio||"")).localeCompare(String(a.inicio||"")));
+const inicioPlantao=mInicioPlantao.value;
 
-  const tbody = document.getElementById("tbodyFerias");
-  tbody.innerHTML="";
+const horaEntrada=mHoraEntrada.value;
 
-  for (const f of cacheFerias){
-    const col = cacheColabs.find(c => (c.re||c.id) === f.re) || null;
-    const nome = col?.nome || "";
-    const periodo = `${brDateFromYmd(String(f.inicio||"").slice(0,10))} até ${brDateFromYmd(String(f.fim||"").slice(0,10))}`;
-    const du = (f.aplicarSomenteDiasTrabalho === true) ? "SIM" : "NÃO";
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${f.re || ""}</td>
-      <td>${nome}</td>
-      <td>${periodo}</td>
-      <td>${du}</td>
-      <td>${(f.motivo||"")}</td>
-      <td><button class="minBtn" onclick="editarFerias('${f.id}')">Modificar</button></td>
-    `;
-    tbody.appendChild(tr);
-  }
-};
+const horaSaida=mHoraSaida.value;
 
-window.editarFerias = function(id){
-  const f = cacheFerias.find(x => x.id === id);
-  if (!f) return alert("Férias não encontradas.");
+const ref = doc(db,"colaboradores",editandoId);
 
-  openModal({
-    title: `Modificar Férias — RE ${f.re}`,
-    bodyHtml: `
-      <div class="grid">
-        <div>
-          <label>RE</label>
-          <input id="mfRe" value="${f.re||""}" disabled>
-        </div>
-        <div>
-          <label>Tipo</label>
-          <input value="FÉRIAS" disabled>
-        </div>
-        <div>
-          <label>Início</label>
-          <input id="mfInicio" type="date" value="${String(f.inicio||"").slice(0,10)}">
-        </div>
-        <div>
-          <label>Fim</label>
-          <input id="mfFim" type="date" value="${String(f.fim||"").slice(0,10)}">
-        </div>
-        <div style="grid-column:1 / -1">
-          <label style="display:flex;align-items:center;gap:8px;">
-            <input id="mfDiasUteis" type="checkbox" ${f.aplicarSomenteDiasTrabalho===true ? "checked" : ""}>
-            Somente dias de trabalho
-          </label>
-        </div>
-        <div style="grid-column:1 / -1">
-          <label>Motivo</label>
-          <input id="mfMotivo" value="${(f.motivo||"").toString().replaceAll('"','&quot;')}">
-        </div>
-        <div class="small" style="grid-column:1 / -1">
-          <button class="btnDangerInline" id="btnExcluirFerias">Excluir período de férias</button>
-        </div>
-      </div>
-    `,
-    onSave: async () => {
-      const ini = document.getElementById("mfInicio").value;
-      const fim = document.getElementById("mfFim").value;
-      const du = document.getElementById("mfDiasUteis").checked;
-      const motivo = (document.getElementById("mfMotivo").value || "").trim();
+const snap = await getDoc(ref);
 
-      if (!ini || !fim) return alert("Informe início e fim.");
-      if (fim < ini) return alert("Fim não pode ser menor que início.");
+let historico=[];
 
-      if (!confirm("Salvar alteração do período de férias?")) return;
+if(snap.exists()){
 
-      await updateDoc(doc(db,"afastamentos", id), {
-        inicio: ini,
-        fim: fim,
-        aplicarSomenteDiasTrabalho: du,
-        motivo,
-        updatedAt: new Date().toISOString()
-      });
+historico=snap.data().plantaoHistorico||[];
 
-      closeModal();
-      carregarFerias();
-    }
-  });
+}
 
-  setTimeout(() => {
-    const btn = document.getElementById("btnExcluirFerias");
-    if (!btn) return;
-    btn.onclick = async () => {
-      if (!confirm("Excluir este período de férias?")) return;
-      await deleteDoc(doc(db,"afastamentos", id));
-      closeModal();
-      carregarFerias();
-    };
-  }, 0);
-};
+if(escala==="12x36" && inicioPlantao){
 
-// export
-window.exportar = function(){
-  let csv = "DataEntrada,Nome,RE,Entrada,InicioIntervalo,FimIntervalo,Saida,EntradaHE,SaidaHE,Coords,Local\n";
-  for (const j of ultimaTabela){
-    const loc = getBestLocationFromJornada(j);
-    const rec = reconhecerLocal(loc);
-    const linha = [
-      formatBRDate(j.entrada?.ts),
-      j.nome || "",
-      j.re || "",
-      formatHHMM(j.entrada?.ts),
-      formatHHMM(j.saida_intervalo?.ts),
-      formatHHMM(j.retorno_intervalo?.ts),
-      formatHHMM(j.saida?.ts),
-      formatHHMM(j.entrada_he?.ts),
-      formatHHMM(j.saida_he?.ts),
-      loc || "",
-      rec || ""
-    ].map(v => `"${String(v).replaceAll('"','""')}"`).join(",");
-    csv += linha + "\n";
-  }
-  const blob = new Blob([csv], { type:"text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "jornadas.csv";
-  a.click();
-};
+historico.push({
+
+inicio:inicioPlantao,
+
+createdAt:new Date().toISOString()
+
+});
+
+}
+
+await setDoc(ref,{
+
+nome,
+escala,
+dataAdmissao:admissao,
+horaEntrada,
+horaSaida,
+plantaoHistorico:historico,
+updatedAt:new Date().toISOString()
+
+},{merge:true});
+
+fecharModal();
+
+carregar();
+
+}
+
+carregar();
+
 </script>
+
 </body>
 </html>
