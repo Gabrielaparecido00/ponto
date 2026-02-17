@@ -291,19 +291,21 @@ const ETAPAS = {
   SAIDA_HE: "saida_he"
 };
 
+// ✅ UI: o colaborador vê "INTERVALO" (não "intrajornada")
 const etapaLabels = {
   [ETAPAS.ENTRADA]: "ENTRADA",
-  [ETAPAS.SAIDA_INTERVALO]: "INÍCIO INTRAJORNADA",
-  [ETAPAS.RETORNO_INTERVALO]: "FIM INTRAJORNADA",
+  [ETAPAS.SAIDA_INTERVALO]: "INÍCIO INTERVALO",
+  [ETAPAS.RETORNO_INTERVALO]: "FIM INTERVALO",
   [ETAPAS.SAIDA]: "SAÍDA",
   [ETAPAS.ENTRADA_HE]: "ENTRADA HE",
   [ETAPAS.SAIDA_HE]: "SAÍDA HE"
 };
 
+// ✅ textos de confirmação também em "intervalo"
 const etapaConfirms = {
   [ETAPAS.ENTRADA]: "Você está entrando no serviço?",
-  [ETAPAS.SAIDA_INTERVALO]: "Você está iniciando a intrajornada (intervalo)?",
-  [ETAPAS.RETORNO_INTERVALO]: "Você está encerrando a intrajornada (retorno do intervalo)?",
+  [ETAPAS.SAIDA_INTERVALO]: "Você está INICIANDO seu intervalo?",
+  [ETAPAS.RETORNO_INTERVALO]: "Você está ENCERRANDO seu intervalo (retorno)?",
   [ETAPAS.SAIDA]: "Você está encerrando o expediente?",
   [ETAPAS.ENTRADA_HE]: "Você está iniciando hora extra?",
   [ETAPAS.SAIDA_HE]: "Você está encerrando hora extra?"
@@ -389,20 +391,20 @@ function getEstadoEAcaoPermitida(j){
     if (!temSaiInt && !temRetInt){
       return {
         fase: "Após ENTRADA",
-        hint: "Escolha: iniciar intrajornada (intervalo) OU encerrar (SAÍDA).",
+        hint: "Escolha: iniciar INTERVALO ou encerrar (SAÍDA).",
         acoes: [ETAPAS.SAIDA_INTERVALO, ETAPAS.SAIDA]
       };
     }
     if (temSaiInt && !temRetInt){
       return {
-        fase: "Intrajornada em andamento",
-        hint: "Você só pode registrar: FIM INTRAJORNADA (retorno).",
+        fase: "Intervalo em andamento",
+        hint: "Você só pode registrar: FIM INTERVALO (retorno).",
         acoes: [ETAPAS.RETORNO_INTERVALO]
       };
     }
     if (temRetInt){
       return {
-        fase: "Após intrajornada",
+        fase: "Após intervalo",
         hint: "Você pode registrar: SAÍDA.",
         acoes: [ETAPAS.SAIDA]
       };
@@ -511,7 +513,7 @@ async function atualizarTela(){
     nomeMostrado.innerText = "Nome: " + c.nome;
     horarioMostrado.innerText = "Horário previsto: " + horarioTxt(c);
 
-    // ✅ bloqueio por férias (somente dias de trabalho)
+    // bloqueio por férias (somente dias de trabalho)
     const chk = await checarBloqueioFerias(re, c.escala);
     if (chk.bloqueado){
       const f = chk.ferias;
@@ -568,7 +570,7 @@ registrarBtn.addEventListener("click", async () => {
   clickLock = true;
   setTimeout(() => clickLock = false, 1200);
 
-  // ✅ evita reset do select: só força atualizar se ainda não carregou opções/colaborador
+  // evita reset do select: só força atualizar se ainda não carregou opções/colaborador
   if (!colaborador || acaoSelect.options.length <= 1){
     await atualizarTela();
   }
@@ -643,7 +645,7 @@ registrarBtn.addEventListener("click", async () => {
   payload[acao] = { ts: now.toISOString(), foto, location };
   payload.updatedAt = now.toISOString();
 
-  // flag intrajornada não realizada se sair direto
+  // flag (técnico) quando sai direto sem intervalo
   const temEntrada = !!jornadaAtiva?.entrada?.ts;
   const temSaiInt = !!jornadaAtiva?.saida_intervalo?.ts;
   const temRetInt = !!jornadaAtiva?.retorno_intervalo?.ts;
