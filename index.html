@@ -437,7 +437,10 @@ function getEstadoEAcaoPermitida(j){
   return { fase:"Estado incomum", hint:"Procure o admin.", acoes:[] };
 }
 
+// ✅ FIX: preserva seleção / auto-seleciona quando só tem 1 opção
 function montarSelectAcoes(acoes){
+  const prev = acaoSelect.value;
+
   acaoSelect.innerHTML = `<option value="">Selecione a marcação...</option>`;
   for (const a of acoes){
     const opt = document.createElement("option");
@@ -445,6 +448,13 @@ function montarSelectAcoes(acoes){
     opt.textContent = etapaLabels[a] || a;
     acaoSelect.appendChild(opt);
   }
+
+  if (prev && acoes.includes(prev)){
+    acaoSelect.value = prev;
+  } else if (acoes.length === 1){
+    acaoSelect.value = acoes[0];
+  }
+
   acaoSelect.disabled = acoes.length === 0;
 }
 
@@ -523,7 +533,7 @@ async function atualizarTela(){
     faseHintEl.innerText = st.hint;
     montarSelectAcoes(st.acoes);
 
-    // ✅ garante habilitação quando já carregou opções (inclusive ENTRADA)
+    // habilita inputs quando tem colaborador válido
     acaoSelect.disabled = (st.acoes.length === 0);
     registrarBtn.disabled = false;
     captureBtn.disabled = false;
@@ -531,13 +541,12 @@ async function atualizarTela(){
   }catch(e){
     console.error("ERRO atualizarTela:", e);
     alert("Erro ao carregar dados (colaborador/jornada/afastamentos). Abra o Console (F12) para ver o motivo.");
-    // trava por segurança
     montarSelectAcoes([]);
     setInputsEnabled(false);
   }
 }
 
-// ====== LISTENERS (MUDANÇA PRINCIPAL) ======
+// listeners
 reInput.addEventListener("blur", atualizarTela);
 reInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter"){
@@ -546,7 +555,7 @@ reInput.addEventListener("keydown", (e) => {
   }
 });
 
-// ✅ chama ao digitar (debounce)
+// debounce ao digitar
 let tRe = null;
 reInput.addEventListener("input", () => {
   clearTimeout(tRe);
@@ -559,18 +568,19 @@ registrarBtn.addEventListener("click", async () => {
   clickLock = true;
   setTimeout(() => clickLock = false, 1200);
 
-  // ✅ força carregar fase/opções antes de validar (não depende de blur/enter)
-  await atualizarTela();
+  // ✅ evita reset do select: só força atualizar se ainda não carregou opções/colaborador
+  if (!colaborador || acaoSelect.options.length <= 1){
+    await atualizarTela();
+  }
 
   const re = reInput.value.trim();
   if (!re) return alert("Digite o RE.");
 
   if (!colaborador){
-    // se ainda assim não carregou, é porque não achou o RE ou está bloqueado
     return alert("Colaborador não cadastrado, INATIVO ou bloqueado. Confira o RE.");
   }
 
-  // ✅ checa férias de novo (antiburlar)
+  // checa férias de novo
   const chk = await checarBloqueioFerias(re, colaborador.escala);
   if (chk.bloqueado){
     await atualizarTela();
@@ -588,7 +598,7 @@ registrarBtn.addEventListener("click", async () => {
   // foto
   const foto = canvas.toDataURL("image/jpeg", 0.4);
 
-  // pega jornada ativa e recalcula ações permitidas (pra não burlar)
+  // pega jornada ativa e recalcula ações permitidas (antiburlar)
   const jornadaAtiva = await obterJornadaAtivaDoRe(re);
   const st = getEstadoEAcaoPermitida(jornadaAtiva);
   if (!st.acoes.includes(acao)){
