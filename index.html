@@ -75,7 +75,7 @@
   <canvas id="photo" width="240" height="320"></canvas>
   <button type="button" id="captureBtn">Capturar Foto</button>
 
-  <button type="button" id="registrarBtn">Registrar</button>
+  <button type="button" id="registrarBtn" disabled>Registrar</button>
   <button type="button" class="secondary" onclick="window.location.href='meu_ponto.html'">Área do colaborador</button>
 
   <div id="timestamp"></div>
@@ -123,14 +123,36 @@ let colaborador = null; // {re,nome,ativo,escala,horaEntrada,horaSaida,dataAdmis
 let stream = null;
 let clickLock = false;
 
+// ✅ FORÇAR FOTO (estado)
+let hasPhoto = false;
+
+function resetPhoto(){
+  hasPhoto = false;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
 function showBlocked(msg){
   blockedBox.style.display = msg ? "block" : "none";
   blockedBox.textContent = msg || "";
 }
+
+function setRegisterEnabled(){
+  const temAcoes = acaoSelect && acaoSelect.options.length > 1;
+  const temAcaoSelecionada = !!acaoSelect.value;
+  registrarBtn.disabled = !(colaborador && temAcoes && temAcaoSelecionada && hasPhoto);
+}
+
 function setInputsEnabled(enabled){
-  acaoSelect.disabled = !enabled || (acaoSelect.options.length <= 1);
-  registrarBtn.disabled = !enabled;
+  const temAcoes = acaoSelect.options.length > 1;
+
+  acaoSelect.disabled = !enabled || !temAcoes;
   captureBtn.disabled = !enabled;
+
+  if (!enabled){
+    registrarBtn.disabled = true;
+  } else {
+    setRegisterEnabled();
+  }
 }
 
 // relógio
@@ -139,17 +161,39 @@ setInterval(() => {
 }, 1000);
 
 // câmera
-navigator.mediaDevices.getUserMedia({ video: true })
+navigator.mediaDevices.getUserMedia({
+  video: {
+    facingMode: "user" // ajuda no celular (frontal); no PC tanto faz
+  }
+})
   .then(s => stream = s)
   .catch(() => alert("Erro ao acessar câmera"));
 
+// ✅ CAPTURA SEM DISTORÇÃO (cover + crop central)
 captureBtn.addEventListener("click", async () => {
   if (!stream) return alert("Câmera não iniciada");
+
   const track = stream.getVideoTracks()[0];
   const imageCapture = new ImageCapture(track);
+
   try {
     const bitmap = await imageCapture.grabFrame();
-    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+    const cw = canvas.width, ch = canvas.height;
+    const bw = bitmap.width, bh = bitmap.height;
+
+    // cover: preenche canvas sem deformar, cortando excesso no centro
+    const scale = Math.max(cw / bw, ch / bh);
+    const sw = cw / scale;
+    const sh = ch / scale;
+    const sx = (bw - sw) / 2;
+    const sy = (bh - sh) / 2;
+
+    ctx.clearRect(0, 0, cw, ch);
+    ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, cw, ch);
+
+    hasPhoto = true;
+    setRegisterEnabled();
   } catch {
     alert("Erro ao capturar foto");
   }
@@ -326,7 +370,8 @@ function limparForm(){
   acaoSelect.disabled = true;
   showBlocked("");
   setInputsEnabled(true);
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  resetPhoto();
+  setRegisterEnabled();
 }
 
 function horarioTxt(c){
@@ -454,6 +499,9 @@ function montarSelectAcoes(acoes){
   }
 
   acaoSelect.disabled = acoes.length === 0;
+
+  // se mudou as opções, exige nova foto e revalida o botão registrar
+  setRegisterEnabled();
 }
 
 async function obterJornadaAtivaDoRe(re){
@@ -482,6 +530,10 @@ async function obterJornadaAtivaDoRe(re){
 
 async function atualizarTela(){
   try{
+    // ✅ ao atualizar RE/tela, exige nova foto
+    resetPhoto();
+    setRegisterEnabled();
+
     const re = reInput.value.trim();
     colaborador = null;
     nomeMostrado.innerText = "Nome: —";
@@ -497,11 +549,13 @@ async function atualizarTela(){
     const c = await buscarColaborador(re);
     if (!c || !c.nome){
       nomeMostrado.innerText = "Nome: (RE não cadastrado)";
+      setRegisterEnabled();
       return;
     }
     if (!c.ativo){
       nomeMostrado.innerText = `Nome: ${c.nome} (INATIVO)`;
       setInputsEnabled(false);
+      setRegisterEnabled();
       return;
     }
 
@@ -518,6 +572,7 @@ async function atualizarTela(){
       faseHintEl.innerText = "Registro não permitido antes da admissão.";
       montarSelectAcoes([]);
       setInputsEnabled(false);
+      setRegisterEnabled();
       return;
     }
 
@@ -537,6 +592,7 @@ async function atualizarTela(){
       faseHintEl.innerText = "Registro não permitido durante férias.";
       montarSelectAcoes([]);
       setInputsEnabled(false);
+      setRegisterEnabled();
       return;
     }
 
@@ -548,12 +604,14 @@ async function atualizarTela(){
     montarSelectAcoes(st.acoes);
 
     acaoSelect.disabled = (st.acoes.length === 0);
-    registrarBtn.disabled = false;
+    // capture habilitado, registrar só libera com ação + foto
     captureBtn.disabled = false;
+    setRegisterEnabled();
 
   }catch{
     montarSelectAcoes([]);
     setInputsEnabled(false);
+    setRegisterEnabled();
     alert("Erro ao carregar dados. Tente novamente.");
   }
 }
@@ -573,6 +631,10 @@ reInput.addEventListener("input", () => {
   tRe = setTimeout(() => atualizarTela(), 350);
 });
 
+acaoSelect.addEventListener("change", () => {
+  setRegisterEnabled();
+});
+
 // registrar
 registrarBtn.addEventListener("click", async () => {
   if (clickLock) return;
@@ -588,6 +650,11 @@ registrarBtn.addEventListener("click", async () => {
 
   if (!colaborador){
     return alert("Colaborador não cadastrado, INATIVO ou bloqueado. Confira o RE.");
+  }
+
+  // ✅ FORÇA FOTO
+  if (!hasPhoto){
+    return alert("Você precisa CAPTURAR A FOTO antes de registrar.");
   }
 
   // bloqueio pré-admissão (dupla checagem)
