@@ -118,7 +118,7 @@ const acaoSelect = document.getElementById("acaoSelect");
 const blockedBox = document.getElementById("blockedBox");
 
 // estado
-let colaborador = null; // {re,nome,ativo,escala,horaEntrada,horaSaida}
+let colaborador = null;
 let stream = null;
 let clickLock = false;
 
@@ -140,17 +140,17 @@ setInterval(() => {
 // câmera
 navigator.mediaDevices.getUserMedia({ video: true })
   .then(s => stream = s)
-  .catch(() => alert("Erro ao acessar câmera"));
+  .catch(() => alert("Não foi possível acessar a câmera. Verifique permissões do navegador."));
 
 captureBtn.addEventListener("click", async () => {
-  if (!stream) return alert("Câmera não iniciada");
+  if (!stream) return alert("Câmera não iniciada.");
   const track = stream.getVideoTracks()[0];
   const imageCapture = new ImageCapture(track);
   try {
     const bitmap = await imageCapture.grabFrame();
     ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   } catch {
-    alert("Erro ao capturar foto");
+    alert("Não foi possível capturar a foto. Tente novamente.");
   }
 });
 
@@ -167,7 +167,7 @@ function brDateFromYmd(ymd){
   return `${d}/${m}/${y}`;
 }
 function isFolgaByEscala(dateObj, escala){
-  const dow = dateObj.getDay(); // 0 dom, 6 sab
+  const dow = dateObj.getDay();
   const e = (escala || "5x2").toLowerCase();
   if (e === "5x2") return (dow === 0 || dow === 6);
   if (e === "6x1") return (dow === 0);
@@ -178,7 +178,7 @@ function isDiaTrabalho(dateObj, escala){
 }
 
 // ===== locais (cache) =====
-let cacheLocais = []; // [{nome,lat,lng,raio}]
+let cacheLocais = [];
 
 function haversineMeters(lat1, lon1, lat2, lon2){
   const R=6371000; const toRad=x=>x*Math.PI/180;
@@ -194,10 +194,9 @@ async function carregarLocaisSafe(){
       .map(d => ({ id:d.id, ...d.data() }))
       .filter(l => Number.isFinite(l.lat) && Number.isFinite(l.lng) && Number.isFinite(l.raio));
     return { ok:true, total: cacheLocais.length };
-  }catch(e){
-    console.error("ERRO ao carregar locais:", e);
+  }catch{
     cacheLocais = [];
-    return { ok:false, error:e };
+    return { ok:false };
   }
 }
 carregarLocaisSafe();
@@ -206,10 +205,10 @@ carregarLocaisSafe();
 async function getLocationStrict(){
   const resLocais = await carregarLocaisSafe();
   if (!resLocais.ok){
-    return { ok:false, message:"Não foi possível validar o posto (erro ao ler locais). Verifique regras do Firestore." };
+    return { ok:false, message:"Não foi possível validar o posto no momento. Tente novamente em instantes." };
   }
   if (!cacheLocais.length){
-    return { ok:false, message:"Nenhum local (posto) está cadastrado no sistema. Registro BLOQUEADO. Procure o administrador." };
+    return { ok:false, message:"Nenhum posto está cadastrado no sistema. Registro bloqueado. Procure o administrador." };
   }
 
   let pos;
@@ -249,7 +248,6 @@ async function getLocationStrict(){
 
   return { ok:true, locationStr:`${lat},${lng}`, posto:best.nome };
 }
-
 // ===== férias (afastamentos) =====
 async function carregarAfastamentosDoRe(re){
   const qA = query(collection(db,"afastamentos"), where("re","==",re));
@@ -280,7 +278,7 @@ async function checarBloqueioFerias(re, escala){
 }
 
 // ===== regras / etapas =====
-const TEMPO_MINIMO = 5 * 60 * 1000; // 5 min
+const TEMPO_MINIMO = 5 * 60 * 1000;
 
 const ETAPAS = {
   ENTRADA: "entrada",
@@ -291,7 +289,6 @@ const ETAPAS = {
   SAIDA_HE: "saida_he"
 };
 
-// ✅ UI: o colaborador vê "INTERVALO" (não "intrajornada")
 const etapaLabels = {
   [ETAPAS.ENTRADA]: "ENTRADA",
   [ETAPAS.SAIDA_INTERVALO]: "INÍCIO INTERVALO",
@@ -301,7 +298,6 @@ const etapaLabels = {
   [ETAPAS.SAIDA_HE]: "SAÍDA HE"
 };
 
-// ✅ textos de confirmação também em "intervalo"
 const etapaConfirms = {
   [ETAPAS.ENTRADA]: "Você está entrando no serviço?",
   [ETAPAS.SAIDA_INTERVALO]: "Você está INICIANDO seu intervalo?",
@@ -341,18 +337,22 @@ function horarioTxt(c){
 }
 
 async function buscarColaborador(re){
-  const ref = doc(db, "colaboradores", re);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) return null;
-  const data = snap.data() || {};
-  return {
-    re,
-    nome: (data.nome || "").trim(),
-    ativo: (data.ativo !== false),
-    escala: (data.escala || "5x2"),
-    horaEntrada: (data.horaEntrada || "").toString().trim(),
-    horaSaida: (data.horaSaida || "").toString().trim()
-  };
+  try{
+    const ref = doc(db, "colaboradores", re);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return null;
+    const data = snap.data() || {};
+    return {
+      re,
+      nome: (data.nome || "").trim(),
+      ativo: (data.ativo !== false),
+      escala: (data.escala || "5x2"),
+      horaEntrada: (data.horaEntrada || "").toString().trim(),
+      horaSaida: (data.horaSaida || "").toString().trim()
+    };
+  }catch{
+    return null;
+  }
 }
 
 function pickLastTs(j){
@@ -366,7 +366,6 @@ function pickLastTs(j){
   );
 }
 
-// define estado e ações permitidas
 function getEstadoEAcaoPermitida(j){
   if (!j) {
     return {
@@ -384,7 +383,7 @@ function getEstadoEAcaoPermitida(j){
   const temSaiHe = !!j?.saida_he?.ts;
 
   if (!temEntrada){
-    return { fase:"Jornada inválida", hint:"Falta ENTRADA. Procure o admin.", acoes:[ETAPAS.ENTRADA] };
+    return { fase:"Jornada inválida", hint:"Falta ENTRADA. Procure o administrador.", acoes:[ETAPAS.ENTRADA] };
   }
 
   if (!temSaida){
@@ -409,7 +408,7 @@ function getEstadoEAcaoPermitida(j){
         acoes: [ETAPAS.SAIDA]
       };
     }
-    return { fase:"Estado incomum", hint:"Procure o admin.", acoes:[] };
+    return { fase:"Estado incomum", hint:"Procure o administrador.", acoes:[] };
   }
 
   if (temSaida && !temEntHe && !temSaiHe){
@@ -436,10 +435,9 @@ function getEstadoEAcaoPermitida(j){
     };
   }
 
-  return { fase:"Estado incomum", hint:"Procure o admin.", acoes:[] };
+  return { fase:"Estado incomum", hint:"Procure o administrador.", acoes:[] };
 }
 
-// ✅ FIX: preserva seleção / auto-seleciona quando só tem 1 opção
 function montarSelectAcoes(acoes){
   const prev = acaoSelect.value;
 
@@ -461,27 +459,31 @@ function montarSelectAcoes(acoes){
 }
 
 async function obterJornadaAtivaDoRe(re){
-  const q = query(collection(db, "jornadas"), where("re", "==", re));
-  const snap = await getDocs(q);
-  const jornadas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+  try{
+    const qy = query(collection(db, "jornadas"), where("re", "==", re));
+    const snap = await getDocs(qy);
+    const jornadas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
 
-  jornadas.sort((a,b) => {
-    const ta = toDateAny(a.updatedAt) || toDateAny(a.entrada?.ts) || new Date(0);
-    const tb = toDateAny(b.updatedAt) || toDateAny(b.entrada?.ts) || new Date(0);
-    return tb - ta;
-  });
+    jornadas.sort((a,b) => {
+      const ta = toDateAny(a.updatedAt) || toDateAny(a.entrada?.ts) || new Date(0);
+      const tb = toDateAny(b.updatedAt) || toDateAny(b.entrada?.ts) || new Date(0);
+      return tb - ta;
+    });
 
-  for (const j of jornadas){
-    const temSaida = !!j?.saida?.ts;
-    const temEntHe = !!j?.entrada_he?.ts;
-    const temSaiHe = !!j?.saida_he?.ts;
+    for (const j of jornadas){
+      const temSaida = !!j?.saida?.ts;
+      const temEntHe = !!j?.entrada_he?.ts;
+      const temSaiHe = !!j?.saida_he?.ts;
 
-    if (!temSaida) return j;
-    if (temEntHe && !temSaiHe) return j;
-    if (temSaida && !temEntHe && !temSaiHe) return j;
+      if (!temSaida) return j;
+      if (temEntHe && !temSaiHe) return j;
+      if (temSaida && !temEntHe && !temSaiHe) return j;
+    }
+
+    return null;
+  }catch{
+    return null;
   }
-
-  return null;
 }
 
 async function atualizarTela(){
@@ -513,7 +515,6 @@ async function atualizarTela(){
     nomeMostrado.innerText = "Nome: " + c.nome;
     horarioMostrado.innerText = "Horário previsto: " + horarioTxt(c);
 
-    // bloqueio por férias (somente dias de trabalho)
     const chk = await checarBloqueioFerias(re, c.escala);
     if (chk.bloqueado){
       const f = chk.ferias;
@@ -535,14 +536,12 @@ async function atualizarTela(){
     faseHintEl.innerText = st.hint;
     montarSelectAcoes(st.acoes);
 
-    // habilita inputs quando tem colaborador válido
     acaoSelect.disabled = (st.acoes.length === 0);
     registrarBtn.disabled = false;
     captureBtn.disabled = false;
 
-  }catch(e){
-    console.error("ERRO atualizarTela:", e);
-    alert("Erro ao carregar dados (colaborador/jornada/afastamentos). Abra o Console (F12) para ver o motivo.");
+  }catch{
+    alert("Não foi possível carregar seus dados no momento. Tente novamente.");
     montarSelectAcoes([]);
     setInputsEnabled(false);
   }
@@ -557,7 +556,6 @@ reInput.addEventListener("keydown", (e) => {
   }
 });
 
-// debounce ao digitar
 let tRe = null;
 reInput.addEventListener("input", () => {
   clearTimeout(tRe);
@@ -570,7 +568,6 @@ registrarBtn.addEventListener("click", async () => {
   clickLock = true;
   setTimeout(() => clickLock = false, 1200);
 
-  // evita reset do select: só força atualizar se ainda não carregou opções/colaborador
   if (!colaborador || acaoSelect.options.length <= 1){
     await atualizarTela();
   }
@@ -579,10 +576,9 @@ registrarBtn.addEventListener("click", async () => {
   if (!re) return alert("Digite o RE.");
 
   if (!colaborador){
-    return alert("Colaborador não cadastrado, INATIVO ou bloqueado. Confira o RE.");
+    return alert("Colaborador não cadastrado, inativo ou bloqueado. Confira o RE.");
   }
 
-  // checa férias de novo
   const chk = await checarBloqueioFerias(re, colaborador.escala);
   if (chk.bloqueado){
     await atualizarTela();
@@ -592,77 +588,73 @@ registrarBtn.addEventListener("click", async () => {
   const acao = acaoSelect.value;
   if (!acao) return alert("Selecione qual marcação deseja registrar.");
 
-  // localização + posto obrigatório
   const loc = await getLocationStrict();
   if (!loc.ok) return alert(loc.message);
   const location = loc.locationStr;
 
-  // foto
   const foto = canvas.toDataURL("image/jpeg", 0.4);
 
-  // pega jornada ativa e recalcula ações permitidas (antiburlar)
   const jornadaAtiva = await obterJornadaAtivaDoRe(re);
   const st = getEstadoEAcaoPermitida(jornadaAtiva);
   if (!st.acoes.includes(acao)){
     await atualizarTela();
-    return alert("Ação não permitida na fase atual. Atualizei sua fase; selecione novamente.");
+    return alert("Ação não permitida na fase atual. Atualizamos sua fase; selecione novamente.");
   }
 
-  // confirmação
   const msg = etapaConfirms[acao] || "Confirmar registro?";
   if (!confirm(msg)) return;
 
-  // anti duplicidade
   const now = new Date();
   const lastTs = pickLastTs(jornadaAtiva);
   if (lastTs && (now - lastTs) < TEMPO_MINIMO){
     return alert("Registro duplicado detectado. Aguarde 5 minutos para registrar novamente.");
   }
 
-  // ENTRADA cria jornada nova
-  if (acao === ETAPAS.ENTRADA){
-    await addDoc(collection(db, "jornadas"), {
-      re,
-      nome: colaborador.nome,
-      status: "aberta",
-      entrada: { ts: now.toISOString(), foto, location },
-      updatedAt: now.toISOString()
-    });
-    alert("ENTRADA registrada com sucesso!");
+  try{
+    if (acao === ETAPAS.ENTRADA){
+      await addDoc(collection(db, "jornadas"), {
+        re,
+        nome: colaborador.nome,
+        status: "aberta",
+        entrada: { ts: now.toISOString(), foto, location },
+        updatedAt: now.toISOString()
+      });
+      alert("ENTRADA registrada com sucesso!");
+      limparForm();
+      return;
+    }
+
+    if (!jornadaAtiva || !jornadaAtiva.id){
+      await atualizarTela();
+      return alert("Não foi encontrada jornada ativa. Tente novamente.");
+    }
+
+    const ref = doc(db, "jornadas", jornadaAtiva.id);
+    const payload = {};
+
+    payload[acao] = { ts: now.toISOString(), foto, location };
+    payload.updatedAt = now.toISOString();
+
+    const temEntrada = !!jornadaAtiva?.entrada?.ts;
+    const temSaiInt = !!jornadaAtiva?.saida_intervalo?.ts;
+    const temRetInt = !!jornadaAtiva?.retorno_intervalo?.ts;
+    if (acao === ETAPAS.SAIDA && temEntrada && !temSaiInt && !temRetInt){
+      payload.flags = { ...(jornadaAtiva.flags || {}) };
+      payload.flags.intrajornada_nao_realizada = true;
+      payload.flags.intrajornada_registrado_em = now.toISOString();
+    }
+
+    if (acao === ETAPAS.SAIDA) payload.status = "fechada";
+    if (acao === ETAPAS.ENTRADA_HE) payload.status = "he_aberta";
+    if (acao === ETAPAS.SAIDA_HE) payload.status = "fechada";
+
+    await setDoc(ref, payload, { merge:true });
+
+    alert((etapaLabels[acao] || acao) + " registrada com sucesso!");
     limparForm();
-    return;
+  }catch{
+    alert("Não foi possível registrar a marcação agora. Tente novamente.");
   }
-
-  // demais ações precisam ter jornada
-  if (!jornadaAtiva || !jornadaAtiva.id){
-    await atualizarTela();
-    return alert("Não foi encontrada jornada ativa. Tente novamente.");
-  }
-
-  const ref = doc(db, "jornadas", jornadaAtiva.id);
-  const payload = {};
-
-  payload[acao] = { ts: now.toISOString(), foto, location };
-  payload.updatedAt = now.toISOString();
-
-  // flag (técnico) quando sai direto sem intervalo
-  const temEntrada = !!jornadaAtiva?.entrada?.ts;
-  const temSaiInt = !!jornadaAtiva?.saida_intervalo?.ts;
-  const temRetInt = !!jornadaAtiva?.retorno_intervalo?.ts;
-  if (acao === ETAPAS.SAIDA && temEntrada && !temSaiInt && !temRetInt){
-    payload.flags = { ...(jornadaAtiva.flags || {}) };
-    payload.flags.intrajornada_nao_realizada = true;
-    payload.flags.intrajornada_registrado_em = now.toISOString();
-  }
-
-  if (acao === ETAPAS.SAIDA) payload.status = "fechada";
-  if (acao === ETAPAS.ENTRADA_HE) payload.status = "he_aberta";
-  if (acao === ETAPAS.SAIDA_HE) payload.status = "fechada";
-
-  await setDoc(ref, payload, { merge:true });
-
-  alert((etapaLabels[acao] || acao) + " registrada com sucesso!");
-  limparForm();
 });
 </script>
 </body>
