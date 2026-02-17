@@ -355,7 +355,7 @@ window.login = async function(){
   const email = document.getElementById("email").value;
   const senha = document.getElementById("senha").value;
   try { await signInWithEmailAndPassword(auth, email, senha); }
-  catch(e){ alert("Erro no login: " + (e?.message || e)); console.error(e); }
+  catch(e){ alert("Não foi possível realizar o login. Verifique email e senha."); }
 };
 window.logout = function(){ signOut(auth); };
 
@@ -488,43 +488,51 @@ window.cadastrarColab = async function(){
 
   if (!confirm(`Cadastrar?\nRE: ${re}\nNome: ${nome}\nEscala: ${escala}\nHorário: ${horaEntrada||"—"}–${horaSaida||"—"}`)) return;
 
-  await setDoc(doc(db,"colaboradores",re), {
-    re, nome, cpf, escala, horaEntrada, horaSaida,
-    ativo:true, updatedAt:new Date().toISOString()
-  }, { merge:true });
+  try{
+    await setDoc(doc(db,"colaboradores",re), {
+      re, nome, cpf, escala, horaEntrada, horaSaida,
+      ativo:true, updatedAt:new Date().toISOString()
+    }, { merge:true });
 
-  document.getElementById("cadRe").value="";
-  document.getElementById("cadNome").value="";
-  document.getElementById("cadCpf").value="";
-  document.getElementById("cadEscala").value="5x2";
-  document.getElementById("cadHoraEntrada").value="";
-  document.getElementById("cadHoraSaida").value="";
-  carregarColaboradores();
+    document.getElementById("cadRe").value="";
+    document.getElementById("cadNome").value="";
+    document.getElementById("cadCpf").value="";
+    document.getElementById("cadEscala").value="5x2";
+    document.getElementById("cadHoraEntrada").value="";
+    document.getElementById("cadHoraSaida").value="";
+    carregarColaboradores();
+  }catch{
+    alert("Não foi possível cadastrar o colaborador. Tente novamente.");
+  }
 };
 
 window.carregarColaboradores = async function(){
-  const snap = await getDocs(collection(db,"colaboradores"));
-  cacheColabs = snap.docs.map(d => ({ id:d.id, ...d.data() }))
-    .sort((a,b)=> (a.nome||"").localeCompare(b.nome||""));
+  try{
+    const snap = await getDocs(collection(db,"colaboradores"));
+    cacheColabs = snap.docs.map(d => ({ id:d.id, ...d.data() }))
+      .sort((a,b)=> (a.nome||"").localeCompare(b.nome||""));
 
-  const tbody=document.getElementById("tbodyColab");
-  if (tbody){
-    tbody.innerHTML="";
-    for (const c of cacheColabs){
-      const status = (c.ativo === false) ? "Inativo" : "Ativo";
-      const escala = (c.escala || "5x2");
-      const tr=document.createElement("tr");
-      tr.innerHTML = `
-        <td>${c.re || c.id}</td>
-        <td>${c.nome || ""}</td>
-        <td>${c.cpf || ""}</td>
-        <td>${escala}</td>
-        <td>${horarioTxt(c)}</td>
-        <td>${status}</td>
-        <td><button class="minBtn" onclick="editarColab('${c.id}')">Modificar</button></td>
-      `;
-      tbody.appendChild(tr);
+    const tbody=document.getElementById("tbodyColab");
+    if (tbody){
+      tbody.innerHTML="";
+      for (const c of cacheColabs){
+        const status = (c.ativo === false) ? "Inativo" : "Ativo";
+        const escala = (c.escala || "5x2");
+        const tr=document.createElement("tr");
+        tr.innerHTML = `
+          <td>${c.re || c.id}</td>
+          <td>${c.nome || ""}</td>
+          <td>${c.cpf || ""}</td>
+          <td>${escala}</td>
+          <td>${horarioTxt(c)}</td>
+          <td>${status}</td>
+          <td><button class="minBtn" onclick="editarColab('${c.id}')">Modificar</button></td>
+        `;
+        tbody.appendChild(tr);
+      }
     }
+  }catch{
+    alert("Não foi possível carregar colaboradores.");
   }
 };
 
@@ -593,15 +601,19 @@ window.editarColab = function(reDocId){
 
       if (!confirm("Salvar alteração do colaborador?")) return;
 
-      await setDoc(doc(db,"colaboradores",reDocId), {
-        nome, cpf, ativo, escala, horaEntrada, horaSaida,
-        updatedAt:new Date().toISOString()
-      }, { merge:true });
+      try{
+        await setDoc(doc(db,"colaboradores",reDocId), {
+          nome, cpf, ativo, escala, horaEntrada, horaSaida,
+          updatedAt:new Date().toISOString()
+        }, { merge:true });
 
-      closeModal();
-      carregarColaboradores();
-      carregarFerias();
-      carregarOcorrencias();
+        closeModal();
+        carregarColaboradores();
+        carregarFerias();
+        carregarOcorrencias();
+      }catch{
+        alert("Não foi possível salvar as alterações. Tente novamente.");
+      }
     }
   });
 };
@@ -618,34 +630,42 @@ window.cadastrarLocal = async function(){
   }
   if (!confirm(`Cadastrar local?\n${nome}\n(${lat}, ${lng})\nRaio: ${raio}m`)) return;
 
-  await addDoc(collection(db,"locais"), { nome, lat, lng, raio, updatedAt:new Date().toISOString() });
+  try{
+    await addDoc(collection(db,"locais"), { nome, lat, lng, raio, updatedAt:new Date().toISOString() });
 
-  document.getElementById("locNome").value="";
-  document.getElementById("locLat").value="";
-  document.getElementById("locLng").value="";
-  document.getElementById("locRaio").value="";
-  carregarLocais();
+    document.getElementById("locNome").value="";
+    document.getElementById("locLat").value="";
+    document.getElementById("locLng").value="";
+    document.getElementById("locRaio").value="";
+    carregarLocais();
+  }catch{
+    alert("Não foi possível cadastrar o local. Tente novamente.");
+  }
 };
 
 window.carregarLocais = async function(){
-  const snap = await getDocs(collection(db,"locais"));
-  cacheLocais = snap.docs.map(d => ({ id:d.id, ...d.data() }))
-    .filter(l => Number.isFinite(l.lat) && Number.isFinite(l.lng) && Number.isFinite(l.raio))
-    .sort((a,b)=> (a.nome||"").localeCompare(b.nome||""));
+  try{
+    const snap = await getDocs(collection(db,"locais"));
+    cacheLocais = snap.docs.map(d => ({ id:d.id, ...d.data() }))
+      .filter(l => Number.isFinite(l.lat) && Number.isFinite(l.lng) && Number.isFinite(l.raio))
+      .sort((a,b)=> (a.nome||"").localeCompare(b.nome||""));
 
-  const tbody=document.getElementById("tbodyLocais");
-  tbody.innerHTML="";
+    const tbody=document.getElementById("tbodyLocais");
+    tbody.innerHTML="";
 
-  for (const l of cacheLocais){
-    const tr=document.createElement("tr");
-    tr.innerHTML = `
-      <td>${l.nome || ""}</td>
-      <td>${l.lat}</td>
-      <td>${l.lng}</td>
-      <td>${l.raio}</td>
-      <td><button class="minBtn" onclick="editarLocal('${l.id}')">Modificar</button></td>
-    `;
-    tbody.appendChild(tr);
+    for (const l of cacheLocais){
+      const tr=document.createElement("tr");
+      tr.innerHTML = `
+        <td>${l.nome || ""}</td>
+        <td>${l.lat}</td>
+        <td>${l.lng}</td>
+        <td>${l.raio}</td>
+        <td><button class="minBtn" onclick="editarLocal('${l.id}')">Modificar</button></td>
+      `;
+      tbody.appendChild(tr);
+    }
+  }catch{
+    alert("Não foi possível carregar locais.");
   }
 };
 
@@ -689,11 +709,14 @@ window.editarLocal = function(id){
       }
       if (!confirm("Salvar alterações do local?")) return;
 
-      await updateDoc(doc(db,"locais",id), { nome, lat, lng, raio, updatedAt:new Date().toISOString() });
-
-      closeModal();
-      carregarLocais();
-      buscar();
+      try{
+        await updateDoc(doc(db,"locais",id), { nome, lat, lng, raio, updatedAt:new Date().toISOString() });
+        closeModal();
+        carregarLocais();
+        buscar();
+      }catch{
+        alert("Não foi possível salvar alterações do local.");
+      }
     }
   });
 
@@ -702,10 +725,14 @@ window.editarLocal = function(id){
     if (!btn) return;
     btn.onclick = async () => {
       if (!confirm("Excluir este local?")) return;
-      await deleteDoc(doc(db,"locais",id));
-      closeModal();
-      carregarLocais();
-      buscar();
+      try{
+        await deleteDoc(doc(db,"locais",id));
+        closeModal();
+        carregarLocais();
+        buscar();
+      }catch{
+        alert("Não foi possível excluir o local.");
+      }
     };
   }, 0);
 };
@@ -717,23 +744,27 @@ window.buscar = async function(){
   const filtroRe = norm(document.getElementById("filtroRe").value);
   const filtroNome = norm(document.getElementById("filtroNome").value);
 
-  const snap = await getDocs(collection(db,"jornadas"));
-  let jornadas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+  try{
+    const snap = await getDocs(collection(db,"jornadas"));
+    let jornadas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
 
-  jornadas = jornadas.filter(j => {
-    const iso = (j.entrada?.ts || "").toString();
-    const d = iso ? iso.slice(0,10) : "";
-    if (!d) return false;
-    return d >= iniStr && d <= fimStr;
-  });
+    jornadas = jornadas.filter(j => {
+      const iso = (j.entrada?.ts || "").toString();
+      const d = iso ? iso.slice(0,10) : "";
+      if (!d) return false;
+      return d >= iniStr && d <= fimStr;
+    });
 
-  if (filtroRe) jornadas = jornadas.filter(j => norm(j.re) === filtroRe);
-  if (filtroNome) jornadas = jornadas.filter(j => norm(j.nome).includes(filtroNome));
+    if (filtroRe) jornadas = jornadas.filter(j => norm(j.re) === filtroRe);
+    if (filtroNome) jornadas = jornadas.filter(j => norm(j.nome).includes(filtroNome));
 
-  jornadas.sort((a,b) => (toDateAny(b.entrada?.ts)||new Date(0)) - (toDateAny(a.entrada?.ts)||new Date(0)));
+    jornadas.sort((a,b) => (toDateAny(b.entrada?.ts)||new Date(0)) - (toDateAny(a.entrada?.ts)||new Date(0)));
 
-  ultimaTabela = jornadas;
-  montarJornadas(jornadas);
+    ultimaTabela = jornadas;
+    montarJornadas(jornadas);
+  }catch{
+    alert("Não foi possível carregar jornadas.");
+  }
 };
 
 function montarJornadas(jornadas){
@@ -808,9 +839,13 @@ window.editarJornada = function(docId){
 
       if (!confirm("Salvar alterações desta jornada?")) return;
 
-      await updateDoc(doc(db,"jornadas",docId), payload);
-      closeModal();
-      buscar();
+      try{
+        await updateDoc(doc(db,"jornadas",docId), payload);
+        closeModal();
+        buscar();
+      }catch{
+        alert("Não foi possível salvar alterações desta jornada.");
+      }
     }
   });
 };
@@ -862,26 +897,23 @@ window.salvarOcorrencia = async function(){
 
     document.getElementById("ocMotivo").value = "";
 
-    // ✅ atualiza lista automaticamente
     document.getElementById("ocFiltroRe").value = re;
     document.getElementById("ocFiltroData").value = data;
     await carregarOcorrencias();
 
-  }catch(e){
-    console.error("ERRO salvarOcorrencia:", e);
-    alert("Falha ao salvar ocorrência: " + (e?.message || e));
+  }catch{
+    alert("Não foi possível salvar a ocorrência. Tente novamente.");
   }
 };
 
 window.carregarOcorrencias = async function(){
   try{
     const filtroRe = (document.getElementById("ocFiltroRe").value || "").trim();
-    const filtroData = document.getElementById("ocFiltroData").value; // YYYY-MM-DD
+    const filtroData = document.getElementById("ocFiltroData").value;
 
     const snap = await getDocs(collection(db,"ocorrencias"));
     let list = snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }));
 
-    // Normaliza campos mínimos
     list = list.map(o => ({
       ...o,
       re: (o.re || "").toString().trim(),
@@ -915,9 +947,8 @@ window.carregarOcorrencias = async function(){
       tbody.appendChild(tr);
     }
 
-  }catch(e){
-    console.error("ERRO carregarOcorrencias:", e);
-    alert("Falha ao carregar ocorrências: " + (e?.message || e));
+  }catch{
+    alert("Não foi possível carregar ocorrências.");
   }
 };
 
@@ -960,14 +991,18 @@ window.editarOcorrencia = function(id){
 
       if (!confirm("Salvar alteração desta ocorrência?")) return;
 
-      await updateDoc(doc(db,"ocorrencias", id), {
-        tipo,
-        motivo,
-        updatedAt: new Date().toISOString()
-      });
+      try{
+        await updateDoc(doc(db,"ocorrencias", id), {
+          tipo,
+          motivo,
+          updatedAt: new Date().toISOString()
+        });
 
-      closeModal();
-      carregarOcorrencias();
+        closeModal();
+        carregarOcorrencias();
+      }catch{
+        alert("Não foi possível salvar a ocorrência.");
+      }
     }
   });
 
@@ -976,19 +1011,27 @@ window.editarOcorrencia = function(id){
     if (!btn) return;
     btn.onclick = async () => {
       if (!confirm("Excluir esta ocorrência?")) return;
-      await deleteDoc(doc(db,"ocorrencias", id));
-      closeModal();
-      carregarOcorrencias();
+      try{
+        await deleteDoc(doc(db,"ocorrencias", id));
+        closeModal();
+        carregarOcorrencias();
+      }catch{
+        alert("Não foi possível excluir a ocorrência.");
+      }
     };
   }, 0);
 };
 
 // ===== FÉRIAS (afastamentos por período) =====
 async function getColab(re){
-  const ref = doc(db,"colaboradores", re);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) return null;
-  return { id:snap.id, ...(snap.data()||{}) };
+  try{
+    const ref = doc(db,"colaboradores", re);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return null;
+    return { id:snap.id, ...(snap.data()||{}) };
+  }catch{
+    return null;
+  }
 }
 
 function rangeDays(iniYmd, fimYmd){
@@ -1049,49 +1092,56 @@ window.salvarFerias = async function(){
     `Salvar FÉRIAS?\nRE: ${re}\nNome: ${col.nome||""}\nPeríodo: ${brDateFromYmd(inicio)} até ${brDateFromYmd(fim)}\nSomente dias de trabalho: ${aplicarSomenteDiasTrabalho ? "SIM" : "NÃO"}\n\nIsso vai APAGAR jornadas dentro do período (conforme regra).`
   )) return;
 
-  await addDoc(collection(db,"afastamentos"), {
-    re,
-    tipo: "ferias",
-    inicio,
-    fim,
-    aplicarSomenteDiasTrabalho,
-    motivo,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  });
+  try{
+    await addDoc(collection(db,"afastamentos"), {
+      re,
+      tipo: "ferias",
+      inicio,
+      fim,
+      aplicarSomenteDiasTrabalho,
+      motivo,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
 
-  const apagadas = await apagarJornadasNoPeriodo(re, inicio, fim, escala, aplicarSomenteDiasTrabalho);
+    const apagadas = await apagarJornadasNoPeriodo(re, inicio, fim, escala, aplicarSomenteDiasTrabalho);
 
-  alert(`Férias salvas.\nJornadas apagadas no período: ${apagadas}`);
-
-  document.getElementById("afMotivo").value="";
-  carregarFerias();
+    alert(`Férias salvas.\nJornadas apagadas no período: ${apagadas}`);
+    document.getElementById("afMotivo").value="";
+    carregarFerias();
+  }catch{
+    alert("Não foi possível salvar as férias. Tente novamente.");
+  }
 };
 
 window.carregarFerias = async function(){
-  const snap = await getDocs(collection(db,"afastamentos"));
-  cacheFerias = snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }))
-    .filter(x => String(x.tipo||"").toLowerCase() === "ferias")
-    .sort((a,b) => (String(b.inicio||"")).localeCompare(String(a.inicio||"")));
+  try{
+    const snap = await getDocs(collection(db,"afastamentos"));
+    cacheFerias = snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }))
+      .filter(x => String(x.tipo||"").toLowerCase() === "ferias")
+      .sort((a,b) => (String(b.inicio||"")).localeCompare(String(a.inicio||"")));
 
-  const tbody = document.getElementById("tbodyFerias");
-  tbody.innerHTML="";
+    const tbody = document.getElementById("tbodyFerias");
+    tbody.innerHTML="";
 
-  for (const f of cacheFerias){
-    const col = cacheColabs.find(c => (c.re||c.id) === f.re) || null;
-    const nome = col?.nome || "";
-    const periodo = `${brDateFromYmd(String(f.inicio||"").slice(0,10))} até ${brDateFromYmd(String(f.fim||"").slice(0,10))}`;
-    const du = (f.aplicarSomenteDiasTrabalho === true) ? "SIM" : "NÃO";
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${f.re || ""}</td>
-      <td>${nome}</td>
-      <td>${periodo}</td>
-      <td>${du}</td>
-      <td>${(f.motivo||"")}</td>
-      <td><button class="minBtn" onclick="editarFerias('${f.id}')">Modificar</button></td>
-    `;
-    tbody.appendChild(tr);
+    for (const f of cacheFerias){
+      const col = cacheColabs.find(c => (c.re||c.id) === f.re) || null;
+      const nome = col?.nome || "";
+      const periodo = `${brDateFromYmd(String(f.inicio||"").slice(0,10))} até ${brDateFromYmd(String(f.fim||"").slice(0,10))}`;
+      const du = (f.aplicarSomenteDiasTrabalho === true) ? "SIM" : "NÃO";
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${f.re || ""}</td>
+        <td>${nome}</td>
+        <td>${periodo}</td>
+        <td>${du}</td>
+        <td>${(f.motivo||"")}</td>
+        <td><button class="minBtn" onclick="editarFerias('${f.id}')">Modificar</button></td>
+      `;
+      tbody.appendChild(tr);
+    }
+  }catch{
+    alert("Não foi possível carregar férias.");
   }
 };
 
@@ -1145,16 +1195,20 @@ window.editarFerias = function(id){
 
       if (!confirm("Salvar alteração do período de férias?")) return;
 
-      await updateDoc(doc(db,"afastamentos", id), {
-        inicio: ini,
-        fim: fim,
-        aplicarSomenteDiasTrabalho: du,
-        motivo,
-        updatedAt: new Date().toISOString()
-      });
+      try{
+        await updateDoc(doc(db,"afastamentos", id), {
+          inicio: ini,
+          fim: fim,
+          aplicarSomenteDiasTrabalho: du,
+          motivo,
+          updatedAt: new Date().toISOString()
+        });
 
-      closeModal();
-      carregarFerias();
+        closeModal();
+        carregarFerias();
+      }catch{
+        alert("Não foi possível salvar alterações das férias.");
+      }
     }
   });
 
@@ -1163,9 +1217,13 @@ window.editarFerias = function(id){
     if (!btn) return;
     btn.onclick = async () => {
       if (!confirm("Excluir este período de férias?")) return;
-      await deleteDoc(doc(db,"afastamentos", id));
-      closeModal();
-      carregarFerias();
+      try{
+        await deleteDoc(doc(db,"afastamentos", id));
+        closeModal();
+        carregarFerias();
+      }catch{
+        alert("Não foi possível excluir o período de férias.");
+      }
     };
   }, 0);
 };
