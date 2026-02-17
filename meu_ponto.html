@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Área do Colaborador - Meu Ponto</title>
+<title>Área do Colaborador</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
 
@@ -15,30 +15,61 @@
   }
   .logo{ width:180px; display:block; margin:0 auto 10px; }
   h2{ text-align:center; margin:8px 0 12px; }
+
   .row{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; align-items:end; }
   input, select, button{
     padding:10px; border-radius:8px; border:1px solid #ccc;
     font-family:inherit;
   }
   input, select{ min-width:220px; }
+
   button{ cursor:pointer; background:#1f6feb; color:#fff; border:none; font-weight:700; }
   button.secondary{ background:#6c757d; }
   button:disabled{ opacity:.6; cursor:not-allowed; }
+
   .info{ text-align:center; margin:10px 0; font-weight:700; }
   .small{ text-align:center; font-size:12px; color:#666; margin-top:6px; }
+
   table{ width:100%; border-collapse:collapse; margin-top:14px; font-size:12px; }
   th,td{ border:1px solid #ddd; padding:8px; text-align:center; }
   th{ background:#fafafa; }
+
   .footer{ text-align:center; margin-top:14px; font-size:12px; color:#666; }
   .muted{ color:#999; }
 
-  /* Holerite box */
+  /* ===== Abas ===== */
+  .tabs{
+    display:flex;
+    gap:8px;
+    justify-content:center;
+    flex-wrap:wrap;
+    margin: 6px 0 14px;
+  }
+  .tabBtn{
+    background:#e9ecef;
+    color:#1a1a1a;
+    border:1px solid #dfe3e8;
+    border-radius:10px;
+    padding:10px 14px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .tabBtn.active{
+    background:#1f6feb;
+    color:#fff;
+    border-color:#1f6feb;
+  }
+  .section{ display:none; }
+  .section.active{ display:block; }
+
+  /* ===== Holerites ===== */
   .card{
-    margin-top:14px;
     border:1px solid #eee;
     border-radius:12px;
-    padding:12px;
+    padding:14px;
     background:#fbfbfb;
+    max-width:720px;
+    margin: 0 auto;
   }
   .card h3{
     margin:0 0 10px;
@@ -51,6 +82,7 @@
     margin-top:8px;
     color:#555;
     min-height:16px;
+    white-space:pre-line;
   }
 </style>
 </head>
@@ -81,55 +113,77 @@
   <div id="conteudo" style="display:none;">
     <div class="info" id="infoUser">—</div>
 
-    <div class="row">
-      <div>
-        <label>Mês</label><br>
-        <select id="mes"></select>
-      </div>
-      <div>
-        <label>Ano</label><br>
-        <select id="ano"></select>
-      </div>
-
-      <button id="btnCarregar">Carregar</button>
-      <button id="btnPdf">Exportar PDF</button>
+    <!-- Abas -->
+    <div class="tabs">
+      <button class="tabBtn active" id="tabFreq">Folha de Frequência</button>
+      <button class="tabBtn" id="tabHol">Holerites</button>
       <button class="secondary" id="btnVoltar2">Voltar ao Registro</button>
     </div>
 
-    <!-- ✅ HOLERITES -->
-    <div class="card">
-      <h3>Holerite (download)</h3>
+    <!-- ===== Folha de Frequência ===== -->
+    <div id="secFreq" class="section active">
       <div class="row">
-        <button id="btnBaixarHolerite">Baixar holerite do mês selecionado</button>
+        <div>
+          <label>Mês</label><br>
+          <select id="mes"></select>
+        </div>
+        <div>
+          <label>Ano</label><br>
+          <select id="ano"></select>
+        </div>
+
+        <button id="btnCarregar">Carregar</button>
+        <button id="btnPdf">Exportar PDF</button>
       </div>
-      <div class="statusLine" id="holStatus"></div>
-      <div class="small">
-        Formato do arquivo: <b>hol_{re}_{mm}_{aaaa}.pdf</b><br>
-        Caminho no Storage: <b>holerites/{re}/</b>
+
+      <div class="small" id="hintMes">
+        A jornada pertence ao dia da <b>ENTRADA</b>. Se virar o dia, a saída aparece com <b>(+1)</b>.
       </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Dia</th>
+            <th>Entrada</th>
+            <th>Início Intervalo</th>
+            <th>Fim Intervalo</th>
+            <th>Saída</th>
+            <th>Entrada HE</th>
+            <th>Saída HE</th>
+            <th>Posto</th>
+            <th>Obs</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
     </div>
 
-    <div class="small" id="hintMes">
-      A jornada pertence ao dia da <b>ENTRADA</b>. Se virar o dia, a saída aparece com <b>(+1)</b>.
-    </div>
+    <!-- ===== Holerites ===== -->
+    <div id="secHol" class="section">
+      <div class="card">
+        <h3>Baixar Holerite</h3>
 
-    <table>
-      <thead>
-        <tr>
-          <th>Data</th>
-          <th>Dia</th>
-          <th>Entrada</th>
-          <th>Início Intraj.</th>
-          <th>Fim Intraj.</th>
-          <th>Saída</th>
-          <th>Entrada HE</th>
-          <th>Saída HE</th>
-          <th>Posto</th>
-          <th>Obs</th>
-        </tr>
-      </thead>
-      <tbody id="tbody"></tbody>
-    </table>
+        <div class="row">
+          <div>
+            <label>Mês</label><br>
+            <select id="holMes"></select>
+          </div>
+          <div>
+            <label>Ano</label><br>
+            <select id="holAno"></select>
+          </div>
+          <button id="btnBaixarHolerite">Baixar PDF</button>
+        </div>
+
+        <div class="statusLine" id="holStatus"></div>
+
+        <div class="small">
+          Nome esperado: <b>hol_{re}_{mm}_{aaaa}.pdf</b><br>
+          Pasta no Storage: <b>holerites/{re}/</b>
+        </div>
+      </div>
+    </div>
 
     <div class="footer">
       Sistema desenvolvido por Gabriel Wandele, todos direitos reservados
@@ -174,22 +228,39 @@ const anoSel = document.getElementById("ano");
 const btnCarregar = document.getElementById("btnCarregar");
 const btnPdf = document.getElementById("btnPdf");
 
-// holerite
+const holMesSel = document.getElementById("holMes");
+const holAnoSel = document.getElementById("holAno");
 const btnBaixarHolerite = document.getElementById("btnBaixarHolerite");
 const holStatus = document.getElementById("holStatus");
 
 document.getElementById("btnVoltar1").onclick = voltar;
 document.getElementById("btnVoltar2").onclick = voltar;
 
+// Abas
+const tabFreq = document.getElementById("tabFreq");
+const tabHol = document.getElementById("tabHol");
+const secFreq = document.getElementById("secFreq");
+const secHol = document.getElementById("secHol");
+
+function setTab(which){
+  const freq = (which === "freq");
+  tabFreq.classList.toggle("active", freq);
+  tabHol.classList.toggle("active", !freq);
+  secFreq.classList.toggle("active", freq);
+  secHol.classList.toggle("active", !freq);
+}
+tabFreq.onclick = () => setTab("freq");
+tabHol.onclick = () => setTab("hol");
+
+function voltar(){ window.location.href = "index.html"; }
+
 // estado
 let user = null;                // {re,nome,cpf,escala,horaEntrada,horaSaida}
 let cacheLocais = [];
 let jornadasMes = [];
 let linhasMes = [];
-let mapOcorrencias = {};        // { "YYYY-MM-DD": {tipo,motivo,...} }
-let feriasList = [];            // [{inicio,fim,aplicarSomenteDiasTrabalho,motivo}]
-
-function voltar(){ window.location.href = "index.html"; }
+let mapOcorrencias = {};
+let feriasList = [];
 
 // helpers
 function pad2(n){ return String(n).padStart(2,"0"); }
@@ -225,7 +296,6 @@ function horarioTxt(c){
   if (he || hs) return `${he||"—"}–${hs||"—"}`;
   return "—";
 }
-function setHolStatus(msg){ holStatus.textContent = msg || ""; }
 
 // escala
 function isFolgaByEscala(dateObj, escala){
@@ -309,7 +379,7 @@ function labelOc(o){
   return (o.tipo || "").toString().toUpperCase();
 }
 
-// férias (afastamentos por período)
+// férias
 async function carregarFeriasDoRe(re){
   const qA = query(collection(db,"afastamentos"), where("re","==",re));
   const snap = await getDocs(qA);
@@ -335,35 +405,53 @@ function getFeriasNoDia(ymdKey, dateObj, escala){
   return null;
 }
 
-// selects mês/ano
-(function initMonthYear(){
+// selects mês/ano (reaproveita em holerite também)
+function popularMonthYear(selectMes, selectAno){
   const now = new Date();
   const y = now.getFullYear();
+
+  selectMes.innerHTML = "";
   for (let m=1;m<=12;m++){
     const opt = document.createElement("option");
     opt.value = String(m);
     opt.textContent = pad2(m);
     if (m === (now.getMonth()+1)) opt.selected = true;
-    mesSel.appendChild(opt);
+    selectMes.appendChild(opt);
   }
+
+  selectAno.innerHTML = "";
   for (let yy=y-3; yy<=y+1; yy++){
     const opt = document.createElement("option");
     opt.value = String(yy);
     opt.textContent = String(yy);
     if (yy === y) opt.selected = true;
-    anoSel.appendChild(opt);
+    selectAno.appendChild(opt);
   }
-})();
+}
+popularMonthYear(mesSel, anoSel);
+popularMonthYear(holMesSel, holAnoSel);
 
-// login
+// login + ações
 btnEntrar.addEventListener("click", entrar);
 btnCarregar.addEventListener("click", carregar);
 btnPdf.addEventListener("click", exportarPdf);
-mesSel.addEventListener("change", () => { setHolStatus(""); if (user) carregar(); });
-anoSel.addEventListener("change", () => { setHolStatus(""); if (user) carregar(); });
-
-// holerite download
 btnBaixarHolerite.addEventListener("click", baixarHoleriteDoMes);
+
+// sync selects: quando muda frequência, espelha no holerite (e vice-versa)
+function syncHolFromFreq(){
+  holMesSel.value = mesSel.value;
+  holAnoSel.value = anoSel.value;
+}
+function syncFreqFromHol(){
+  mesSel.value = holMesSel.value;
+  anoSel.value = holAnoSel.value;
+}
+mesSel.addEventListener("change", () => { if (user) carregar(); syncHolFromFreq(); });
+anoSel.addEventListener("change", () => { if (user) carregar(); syncHolFromFreq(); });
+holMesSel.addEventListener("change", () => { syncFreqFromHol(); });
+holAnoSel.addEventListener("change", () => { syncFreqFromHol(); });
+
+function setHolStatus(msg){ holStatus.textContent = msg || ""; }
 
 async function entrar(){
   const re = reEl.value.trim();
@@ -396,7 +484,13 @@ async function entrar(){
   loginBox.style.display = "none";
   conteudo.style.display = "block";
 
+  // começa na frequência
+  setTab("freq");
+
+  // garante holerite no mesmo mês/ano da frequência
+  syncHolFromFreq();
   setHolStatus("");
+
   await carregar();
 }
 
@@ -459,7 +553,7 @@ function obsJornada(j){
   if (dEnt && dSai && ymd(dEnt) !== ymd(dSai)) obs.push("Virou o dia");
   if (!j.saida?.ts) obs.push("Sem saída");
   if ((j.saida_intervalo?.ts && !j.retorno_intervalo?.ts) || (!j.saida_intervalo?.ts && j.retorno_intervalo?.ts)) {
-    obs.push("Intrajornada incompleta");
+    obs.push("Intervalo incompleto");
   }
   const posto = reconhecerLocal(getBestLocationFromJornada(j));
   if (posto === "Não reconhecido") obs.push("Fora do posto");
@@ -482,7 +576,6 @@ function renderTabela(){
 
     let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="-", obs="";
 
-    // prioridade: FÉRIAS > ocorrência > folga > jornada > falta
     if (ferias){
       obs = "FÉRIAS" + (ferias.motivo ? ` | ${ferias.motivo}` : "");
       if (ehFolga) obs += " (folga)";
@@ -529,18 +622,17 @@ function renderTabela(){
 }
 
 /* =========================
-   ✅ HOLERITE (DOWNLOAD)
+   HOLERITE (DOWNLOAD)
    ========================= */
 function buildHoleriteFileName(re, mes, ano){
-  // hol_{re}_{mm}_{aaaa}.pdf
   return `hol_${re}_${pad2(mes)}_${String(ano)}.pdf`;
 }
 
 async function baixarHoleriteDoMes(){
   if (!user?.re) return alert("Faça login primeiro.");
 
-  const mes = Number(mesSel.value);
-  const ano = Number(anoSel.value);
+  const mes = Number(holMesSel.value);
+  const ano = Number(holAnoSel.value);
 
   const fileName = buildHoleriteFileName(user.re, mes, ano);
   const path = `holerites/${user.re}/${fileName}`;
@@ -548,10 +640,8 @@ async function baixarHoleriteDoMes(){
   try{
     setHolStatus(`Procurando: ${fileName}...`);
 
-    // pega URL do Storage
     const url = await getDownloadURL(sRef(storage, path));
 
-    // baixa como blob e força download
     setHolStatus("Baixando...");
     const resp = await fetch(url);
     if (!resp.ok) throw new Error(`Falha no download (HTTP ${resp.status})`);
@@ -561,27 +651,25 @@ async function baixarHoleriteDoMes(){
 
     const a = document.createElement("a");
     a.href = blobUrl;
-    a.download = fileName; // força nome do arquivo
+    a.download = fileName;
     document.body.appendChild(a);
     a.click();
     a.remove();
 
     URL.revokeObjectURL(blobUrl);
-
     setHolStatus("✅ Holerite baixado com sucesso.");
   }catch(e){
     console.error("Erro holerite:", e);
-
-    // mensagens mais “humanas”
     const msg = String(e?.message || e);
+
     if (msg.includes("object-not-found")){
-      setHolStatus("❌ Holerite não encontrado para este mês/ano (arquivo não existe no Storage).");
-      alert("Holerite não encontrado. Confira se você subiu o PDF com o nome exato:\n\n" + fileName);
+      setHolStatus("❌ Holerite não encontrado para este mês/ano.");
+      alert("Holerite não encontrado.\nConfira se o arquivo está com o nome EXATO:\n\n" + fileName);
       return;
     }
     if (msg.includes("permission") || msg.includes("unauthorized")){
       setHolStatus("❌ Sem permissão para baixar (Storage Rules).");
-      alert("Sem permissão para baixar.\n\nComo você não usa Firebase Auth no colaborador, o Storage precisa estar com leitura pública (beta) OU você terá que migrar para Auth depois.");
+      alert("Sem permissão para baixar.\nSe você não usa Firebase Auth no colaborador, a leitura do Storage precisa estar liberada (beta) para funcionar.");
       return;
     }
 
@@ -590,9 +678,9 @@ async function baixarHoleriteDoMes(){
   }
 }
 
-// =========================
-// PDF (seu código original)
-// =========================
+/* =========================
+   PDF (seu original)
+   ========================= */
 async function loadImageAsDataURL(url){
   const res = await fetch(url);
   const blob = await res.blob();
@@ -663,7 +751,7 @@ async function exportarPdf(){
     docPdf.text("Sistema desenvolvido por Gabriel Wandele, todos direitos reservados", marginX, pageH - 10);
   }
 
-  const head = [[ "Data","Dia","Ent","Ini Intraj","Fim Intraj","Sai","HE Ent","HE Sai","Posto","Obs" ]];
+  const head = [[ "Data","Dia","Ent","Ini Int","Fim Int","Sai","HE Ent","HE Sai","Posto","Obs" ]];
 
   const body = linhasMes.map(linha => {
     const dataKey = `${ano}-${pad2(mes)}-${pad2(linha.dia)}`;
