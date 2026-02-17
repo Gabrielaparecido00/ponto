@@ -503,10 +503,15 @@ function setHoleriteBusy(busy){
 // ✅ admissão: checa se uma competência (ano/mes) é anterior à admissão
 function isCompetenciaAnteriorAdmissao(ano, mes, dataAdmissaoYmd){
   if (!dataAdmissaoYmd) return false;
+
   const adm = String(dataAdmissaoYmd).slice(0,10);
-  // compara com primeiro dia do mês
-  const comp = `${String(ano)}-${pad2(mes)}-01`;
-  return comp < adm;
+
+  // último dia do mês da competência
+  const lastDay = new Date(ano, mes, 0); // mes é 1..12
+  const compEnd = lastDay.toISOString().slice(0,10);
+
+  // só é "anterior" se o mês inteiro acabou antes da admissão
+  return compEnd < adm;
 }
 
 // login
