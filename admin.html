@@ -6,11 +6,10 @@
 <title>Painel Admin</title>
 
 <style>
-  *{ box-sizing:border-box; }
-  body { font-family: Arial; background:#f5f5f5; text-align:center; padding:16px; }
+  body { font-family: Arial; background:#f5f5f5; text-align:center; }
   .container { background:#fff; padding:20px; margin:20px auto; max-width:1300px; border-radius:10px; }
-  .logo { width:260px; margin-bottom: 10px; max-width:90vw; height:auto; }
-  input, button, select { padding:10px; margin:5px; border-radius:10px; border:1px solid #ccc; }
+  .logo { width:260px; margin-bottom: 10px; }
+  input, button, select { padding:10px; margin:5px; }
   button { cursor:pointer; }
   .row { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:end; margin-top:10px; }
   table { width:100%; border-collapse:collapse; margin-top:18px; font-size:13px; }
@@ -137,8 +136,8 @@
           <th>Nome</th>
           <th>RE</th>
           <th>Entrada</th>
-          <th>Início Intraj.</th>
-          <th>Fim Intraj.</th>
+          <th>Início Intervalo</th>
+          <th>Fim Intervalo</th>
           <th>Saída</th>
           <th>Entrada HE</th>
           <th>Saída HE</th>
@@ -169,7 +168,6 @@
       <input id="cadHoraEntrada" type="time" title="Hora prevista de entrada">
       <input id="cadHoraSaida" type="time" title="Hora prevista de saída">
 
-      <!-- ✅ NOVO: admissão -->
       <input id="cadAdmissao" type="date" title="Data de admissão">
 
       <button onclick="cadastrarColab()">Cadastrar</button>
@@ -416,8 +414,6 @@ function horarioTxt(c){
   if (he || hs) return `${he||"—"}–${hs||"—"}`;
   return "—";
 }
-
-// escala
 function isFolgaByEscala(dateObj, escala){
   const dow = dateObj.getDay();
   const e = (escala || "5x2").toLowerCase();
@@ -427,9 +423,6 @@ function isFolgaByEscala(dateObj, escala){
 }
 function isDiaTrabalho(dateObj, escala){
   return !isFolgaByEscala(dateObj, escala);
-}
-function isWithinRange(ymd, ini, fim){
-  return !!(ymd && ini && fim && ymd >= ini && ymd <= fim);
 }
 
 // localização/posto
@@ -487,23 +480,22 @@ window.cadastrarColab = async function(){
   const escala = document.getElementById("cadEscala").value;
   const horaEntrada = (document.getElementById("cadHoraEntrada").value || "").trim();
   const horaSaida = (document.getElementById("cadHoraSaida").value || "").trim();
-
-  // ✅ admissão
-  const dataAdmissao = (document.getElementById("cadAdmissao").value || "").trim();
-  const dataAdmissaoFinal = dataAdmissao || new Date().toISOString().slice(0,10);
+  const dataAdmissao = (document.getElementById("cadAdmissao").value || "").trim(); // YYYY-MM-DD
 
   if (!re || !nome) return alert("Preencha RE e Nome.");
   cpf = cpf.replace(/\D/g,"");
   if (!cpf || cpf.length < 4) return alert("CPF é obrigatório (mínimo 4 dígitos).");
+  if (!dataAdmissao) return alert("Data de admissão é obrigatória.");
 
   if (!confirm(
-    `Cadastrar?\nRE: ${re}\nNome: ${nome}\nEscala: ${escala}\nHorário: ${horaEntrada||"—"}–${horaSaida||"—"}\nAdmissão: ${brDateFromYmd(dataAdmissaoFinal)}`
+    `Cadastrar?\nRE: ${re}\nNome: ${nome}\nEscala: ${escala}\nHorário: ${horaEntrada||"—"}–${horaSaida||"—"}\nAdmissão: ${brDateFromYmd(dataAdmissao)}`
   )) return;
 
   await setDoc(doc(db,"colaboradores",re), {
     re, nome, cpf, escala, horaEntrada, horaSaida,
-    dataAdmissao: dataAdmissaoFinal,
-    ativo:true, updatedAt:new Date().toISOString()
+    dataAdmissao, // ✅ NOVO
+    ativo:true,
+    updatedAt:new Date().toISOString()
   }, { merge:true });
 
   document.getElementById("cadRe").value="";
@@ -513,7 +505,6 @@ window.cadastrarColab = async function(){
   document.getElementById("cadHoraEntrada").value="";
   document.getElementById("cadHoraSaida").value="";
   document.getElementById("cadAdmissao").value="";
-
   carregarColaboradores();
 };
 
@@ -528,7 +519,7 @@ window.carregarColaboradores = async function(){
     for (const c of cacheColabs){
       const status = (c.ativo === false) ? "Inativo" : "Ativo";
       const escala = (c.escala || "5x2");
-      const adm = String(c.dataAdmissao || "").slice(0,10);
+      const adm = (c.dataAdmissao ? brDateFromYmd(String(c.dataAdmissao).slice(0,10)) : "—");
       const tr=document.createElement("tr");
       tr.innerHTML = `
         <td>${c.re || c.id}</td>
@@ -536,7 +527,7 @@ window.carregarColaboradores = async function(){
         <td>${c.cpf || ""}</td>
         <td>${escala}</td>
         <td>${horarioTxt(c)}</td>
-        <td>${adm ? brDateFromYmd(adm) : "—"}</td>
+        <td>${adm}</td>
         <td>${status}</td>
         <td><button class="minBtn" onclick="editarColab('${c.id}')">Modificar</button></td>
       `;
@@ -592,9 +583,8 @@ window.editarColab = function(reDocId){
           <input id="mHoraSaida" type="time" value="${(c.horaSaida||"").toString().trim()}">
         </div>
 
-        <!-- ✅ NOVO: admissão -->
         <div style="grid-column:1 / -1">
-          <label>Data de admissão</label>
+          <label>Data de admissão (obrigatório)</label>
           <input id="mAdmissao" type="date" value="${String(c.dataAdmissao||"").slice(0,10)}">
         </div>
 
@@ -610,23 +600,19 @@ window.editarColab = function(reDocId){
       const escala = document.getElementById("mEscala").value;
       const horaEntrada = (document.getElementById("mHoraEntrada").value || "").trim();
       const horaSaida = (document.getElementById("mHoraSaida").value || "").trim();
-
       const dataAdmissao = (document.getElementById("mAdmissao").value || "").trim();
 
       if (!nome) return alert("Nome não pode ficar vazio.");
       if (!cpf || cpf.length < 4) return alert("CPF é obrigatório (mínimo 4 dígitos).");
-      if (dataAdmissao && !/^\d{4}-\d{2}-\d{2}$/.test(dataAdmissao)) return alert("Data de admissão inválida.");
+      if (!dataAdmissao) return alert("Data de admissão é obrigatória.");
 
       if (!confirm("Salvar alteração do colaborador?")) return;
 
-      const payload = {
+      await setDoc(doc(db,"colaboradores",reDocId), {
         nome, cpf, ativo, escala, horaEntrada, horaSaida,
+        dataAdmissao, // ✅ NOVO
         updatedAt:new Date().toISOString()
-      };
-      if (dataAdmissao) payload.dataAdmissao = dataAdmissao;
-      else payload.dataAdmissao = deleteField();
-
-      await setDoc(doc(db,"colaboradores",reDocId), payload, { merge:true });
+      }, { merge:true });
 
       closeModal();
       carregarColaboradores();
@@ -805,8 +791,8 @@ window.editarJornada = function(docId){
     bodyHtml: `
       <div class="grid">
         <div><label>ENTRADA</label><input id="fEntrada" placeholder="DD/MM/AAAA HH:MM" value="${val(j.entrada?.ts)}"></div>
-        <div><label>INÍCIO INTRAJ.</label><input id="fSaiInt" placeholder="DD/MM/AAAA HH:MM" value="${val(j.saida_intervalo?.ts)}"></div>
-        <div><label>FIM INTRAJ.</label><input id="fRetInt" placeholder="DD/MM/AAAA HH:MM" value="${val(j.retorno_intervalo?.ts)}"></div>
+        <div><label>INÍCIO INTERVALO</label><input id="fSaiInt" placeholder="DD/MM/AAAA HH:MM" value="${val(j.saida_intervalo?.ts)}"></div>
+        <div><label>FIM INTERVALO</label><input id="fRetInt" placeholder="DD/MM/AAAA HH:MM" value="${val(j.retorno_intervalo?.ts)}"></div>
         <div><label>SAÍDA</label><input id="fSaida" placeholder="DD/MM/AAAA HH:MM" value="${val(j.saida?.ts)}"></div>
         <div><label>ENTRADA HE</label><input id="fEntHe" placeholder="DD/MM/AAAA HH:MM" value="${val(j.entrada_he?.ts)}"></div>
         <div><label>SAÍDA HE</label><input id="fSaiHe" placeholder="DD/MM/AAAA HH:MM" value="${val(j.saida_he?.ts)}"></div>
@@ -832,7 +818,7 @@ window.editarJornada = function(docId){
           continue;
         }
         const iso = isoFromBrDateTime(t);
-        if (!iso) return alert(`Formato inválido em ${path}. Use DD/MM/AAAA HH:MM`);
+        if (!iso) return alert(`Formato inválido. Use DD/MM/AAAA HH:MM`);
         payload[path] = iso;
       }
 
@@ -847,12 +833,10 @@ window.editarJornada = function(docId){
 
 // ===== OCORRÊNCIAS (dia) =====
 function ocDocId(re, ymd){ return `${re}_${ymd}`; }
-
 function nomePorRe(re){
   const c = cacheColabs.find(x => (x.re || x.id) === re);
   return c?.nome || "";
 }
-
 async function apagarJornadasDoDia(re, dataYmd){
   const qJ = query(collection(db,"jornadas"), where("re","==",re));
   const snap = await getDocs(qJ);
@@ -880,7 +864,7 @@ window.salvarOcorrencia = async function(){
     if (!data) return alert("Informe a data.");
     if (!tipo) return alert("Selecione o tipo.");
 
-    if (!confirm(`Salvar ocorrência?\nRE: ${re}\nData: ${brDateFromYmd(data)}\nTipo: ${tipo}\n\nIsso vai APAGAR registros do dia (se existirem).`)) return;
+    if (!confirm(`Salvar ocorrência?\nRE: ${re}\nData: ${brDateFromYmd(data)}\nTipo: ${tipo.toUpperCase()}\n\nIsso vai APAGAR registros do dia (se existirem).`)) return;
 
     await setDoc(doc(db,"ocorrencias", ocDocId(re, data)), {
       re, data, tipo, motivo,
@@ -895,7 +879,7 @@ window.salvarOcorrencia = async function(){
     document.getElementById("ocFiltroData").value = data;
     await carregarOcorrencias();
 
-  }catch{
+  }catch(e){
     alert("Falha ao salvar ocorrência.");
   }
 };
@@ -941,7 +925,7 @@ window.carregarOcorrencias = async function(){
       tbody.appendChild(tr);
     }
 
-  }catch{
+  }catch(e){
     alert("Falha ao carregar ocorrências.");
   }
 };
@@ -1008,14 +992,13 @@ window.editarOcorrencia = function(id){
   }, 0);
 };
 
-// ===== FÉRIAS (afastamentos por período) =====
+// ===== FÉRIAS (período) =====
 async function getColab(re){
   const ref = doc(db,"colaboradores", re);
   const snap = await getDoc(ref);
   if (!snap.exists()) return null;
   return { id:snap.id, ...(snap.data()||{}) };
 }
-
 function rangeDays(iniYmd, fimYmd){
   const out = [];
   const [y1,m1,d1] = iniYmd.split("-").map(Number);
@@ -1028,7 +1011,6 @@ function rangeDays(iniYmd, fimYmd){
   }
   return out;
 }
-
 async function apagarJornadasNoPeriodo(re, iniYmd, fimYmd, escala, somenteDiasTrabalho){
   const qJ = query(collection(db,"jornadas"), where("re","==",re));
   const snap = await getDocs(qJ);
@@ -1086,7 +1068,6 @@ window.salvarFerias = async function(){
   });
 
   const apagadas = await apagarJornadasNoPeriodo(re, inicio, fim, escala, aplicarSomenteDiasTrabalho);
-
   alert(`Férias salvas.\nJornadas apagadas no período: ${apagadas}`);
 
   document.getElementById("afMotivo").value="";
@@ -1197,7 +1178,7 @@ window.editarFerias = function(id){
 
 // export
 window.exportar = function(){
-  let csv = "DataEntrada,Nome,RE,Entrada,InicioIntraj,FimIntraj,Saida,EntradaHE,SaidaHE,Coords,Local\n";
+  let csv = "DataEntrada,Nome,RE,Entrada,InicioIntervalo,FimIntervalo,Saida,EntradaHE,SaidaHE,Coords,Local\n";
   for (const j of ultimaTabela){
     const loc = getBestLocationFromJornada(j);
     const rec = reconhecerLocal(loc);
