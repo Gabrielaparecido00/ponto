@@ -8,15 +8,16 @@
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
-  body { font-family:'Montserrat', Arial, sans-serif; background:#f0f0f0; padding:20px; }
+  *{ box-sizing:border-box; }
+  body { font-family:'Montserrat', Arial, sans-serif; background:#f0f0f0; padding:16px; }
   .container{
-    max-width:520px; margin:auto; background:#fff; padding:20px; border-radius:12px;
+    max-width:520px; margin:auto; background:#fff; padding:18px; border-radius:12px;
     box-shadow:0 2px 10px rgba(0,0,0,0.10);
   }
-  .logo{ width:220px; display:block; margin:0 auto 14px; }
+  .logo{ width:220px; display:block; margin:0 auto 14px; max-width:90vw; height:auto; }
   h2{ text-align:center; margin:8px 0 14px; }
   input, button, select{
-    width:100%; padding:10px; border-radius:8px; border:1px solid #ccc; margin-bottom:10px;
+    width:100%; padding:10px; border-radius:10px; border:1px solid #ccc; margin-bottom:10px;
     font-family:inherit;
   }
   button{ background:#4CAF50; color:#fff; font-weight:700; cursor:pointer; border:none; }
@@ -24,7 +25,7 @@
   button.secondary{ background:#1f6feb; }
   button.secondary:hover{ background:#1a5dd6; }
   button:disabled{ opacity:.6; cursor:not-allowed; }
-  canvas{ width:100%; border:1px solid #ccc; border-radius:8px; }
+  canvas{ width:100%; border:1px solid #ccc; border-radius:10px; }
   #timestamp{ text-align:center; margin-top:10px; font-weight:700; }
   #nomeMostrado{ font-weight:700; text-align:center; margin:8px 0 6px; }
   #horarioMostrado{ text-align:center; margin:0 0 10px; font-size:12px; color:#444; }
@@ -118,7 +119,7 @@ const acaoSelect = document.getElementById("acaoSelect");
 const blockedBox = document.getElementById("blockedBox");
 
 // estado
-let colaborador = null;
+let colaborador = null; // {re,nome,ativo,escala,horaEntrada,horaSaida,dataAdmissao}
 let stream = null;
 let clickLock = false;
 
@@ -140,21 +141,21 @@ setInterval(() => {
 // câmera
 navigator.mediaDevices.getUserMedia({ video: true })
   .then(s => stream = s)
-  .catch(() => alert("Não foi possível acessar a câmera. Verifique permissões do navegador."));
+  .catch(() => alert("Erro ao acessar câmera"));
 
 captureBtn.addEventListener("click", async () => {
-  if (!stream) return alert("Câmera não iniciada.");
+  if (!stream) return alert("Câmera não iniciada");
   const track = stream.getVideoTracks()[0];
   const imageCapture = new ImageCapture(track);
   try {
     const bitmap = await imageCapture.grabFrame();
     ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   } catch {
-    alert("Não foi possível capturar a foto. Tente novamente.");
+    alert("Erro ao capturar foto");
   }
 });
 
-// ===== helpers data/escala =====
+// helpers
 function pad2(n){ return String(n).padStart(2,"0"); }
 function todayYmd(){
   const d = new Date();
@@ -177,8 +178,8 @@ function isDiaTrabalho(dateObj, escala){
   return !isFolgaByEscala(dateObj, escala);
 }
 
-// ===== locais (cache) =====
-let cacheLocais = [];
+// locais (cache)
+let cacheLocais = []; // [{nome,lat,lng,raio}]
 
 function haversineMeters(lat1, lon1, lat2, lon2){
   const R=6371000; const toRad=x=>x*Math.PI/180;
@@ -201,14 +202,13 @@ async function carregarLocaisSafe(){
 }
 carregarLocaisSafe();
 
-// localização obrigatória + precisa estar dentro de um local cadastrado
 async function getLocationStrict(){
   const resLocais = await carregarLocaisSafe();
   if (!resLocais.ok){
-    return { ok:false, message:"Não foi possível validar o posto no momento. Tente novamente em instantes." };
+    return { ok:false, message:"Não foi possível validar o posto no momento. Tente novamente." };
   }
   if (!cacheLocais.length){
-    return { ok:false, message:"Nenhum posto está cadastrado no sistema. Registro bloqueado. Procure o administrador." };
+    return { ok:false, message:"Nenhum local (posto) está cadastrado no sistema. Registro BLOQUEADO. Procure o administrador." };
   }
 
   let pos;
@@ -248,7 +248,8 @@ async function getLocationStrict(){
 
   return { ok:true, locationStr:`${lat},${lng}`, posto:best.nome };
 }
-// ===== férias (afastamentos) =====
+
+// férias
 async function carregarAfastamentosDoRe(re){
   const qA = query(collection(db,"afastamentos"), where("re","==",re));
   const snap = await getDocs(qA);
@@ -277,7 +278,7 @@ async function checarBloqueioFerias(re, escala){
   return { bloqueado:false, ferias:null };
 }
 
-// ===== regras / etapas =====
+// regras / etapas
 const TEMPO_MINIMO = 5 * 60 * 1000;
 
 const ETAPAS = {
@@ -337,22 +338,19 @@ function horarioTxt(c){
 }
 
 async function buscarColaborador(re){
-  try{
-    const ref = doc(db, "colaboradores", re);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) return null;
-    const data = snap.data() || {};
-    return {
-      re,
-      nome: (data.nome || "").trim(),
-      ativo: (data.ativo !== false),
-      escala: (data.escala || "5x2"),
-      horaEntrada: (data.horaEntrada || "").toString().trim(),
-      horaSaida: (data.horaSaida || "").toString().trim()
-    };
-  }catch{
-    return null;
-  }
+  const ref = doc(db, "colaboradores", re);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
+  const data = snap.data() || {};
+  return {
+    re,
+    nome: (data.nome || "").trim(),
+    ativo: (data.ativo !== false),
+    escala: (data.escala || "5x2"),
+    horaEntrada: (data.horaEntrada || "").toString().trim(),
+    horaSaida: (data.horaSaida || "").toString().trim(),
+    dataAdmissao: String(data.dataAdmissao || "").slice(0,10)
+  };
 }
 
 function pickLastTs(j){
@@ -383,7 +381,7 @@ function getEstadoEAcaoPermitida(j){
   const temSaiHe = !!j?.saida_he?.ts;
 
   if (!temEntrada){
-    return { fase:"Jornada inválida", hint:"Falta ENTRADA. Procure o administrador.", acoes:[ETAPAS.ENTRADA] };
+    return { fase:"Jornada inválida", hint:"Falta ENTRADA. Procure o admin.", acoes:[ETAPAS.ENTRADA] };
   }
 
   if (!temSaida){
@@ -397,7 +395,7 @@ function getEstadoEAcaoPermitida(j){
     if (temSaiInt && !temRetInt){
       return {
         fase: "Intervalo em andamento",
-        hint: "Você só pode registrar: FIM INTERVALO (retorno).",
+        hint: "Você só pode registrar: FIM INTERVALO.",
         acoes: [ETAPAS.RETORNO_INTERVALO]
       };
     }
@@ -408,13 +406,13 @@ function getEstadoEAcaoPermitida(j){
         acoes: [ETAPAS.SAIDA]
       };
     }
-    return { fase:"Estado incomum", hint:"Procure o administrador.", acoes:[] };
+    return { fase:"Estado incomum", hint:"Procure o admin.", acoes:[] };
   }
 
   if (temSaida && !temEntHe && !temSaiHe){
     return {
       fase: "Expediente encerrado",
-      hint: "Opcional: iniciar HORA EXTRA (ENTRADA HE) ou iniciar uma nova ENTRADA (nova jornada).",
+      hint: "Opcional: iniciar HORA EXTRA (ENTRADA HE) ou iniciar nova ENTRADA.",
       acoes: [ETAPAS.ENTRADA_HE, ETAPAS.ENTRADA]
     };
   }
@@ -430,12 +428,12 @@ function getEstadoEAcaoPermitida(j){
   if (temSaiHe){
     return {
       fase: "Jornada finalizada",
-      hint: "Você pode iniciar uma nova ENTRADA (nova jornada).",
+      hint: "Você pode iniciar uma nova ENTRADA.",
       acoes: [ETAPAS.ENTRADA]
     };
   }
 
-  return { fase:"Estado incomum", hint:"Procure o administrador.", acoes:[] };
+  return { fase:"Estado incomum", hint:"Procure o admin.", acoes:[] };
 }
 
 function montarSelectAcoes(acoes){
@@ -459,31 +457,27 @@ function montarSelectAcoes(acoes){
 }
 
 async function obterJornadaAtivaDoRe(re){
-  try{
-    const qy = query(collection(db, "jornadas"), where("re", "==", re));
-    const snap = await getDocs(qy);
-    const jornadas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+  const q = query(collection(db, "jornadas"), where("re", "==", re));
+  const snap = await getDocs(q);
+  const jornadas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
 
-    jornadas.sort((a,b) => {
-      const ta = toDateAny(a.updatedAt) || toDateAny(a.entrada?.ts) || new Date(0);
-      const tb = toDateAny(b.updatedAt) || toDateAny(b.entrada?.ts) || new Date(0);
-      return tb - ta;
-    });
+  jornadas.sort((a,b) => {
+    const ta = toDateAny(a.updatedAt) || toDateAny(a.entrada?.ts) || new Date(0);
+    const tb = toDateAny(b.updatedAt) || toDateAny(b.entrada?.ts) || new Date(0);
+    return tb - ta;
+  });
 
-    for (const j of jornadas){
-      const temSaida = !!j?.saida?.ts;
-      const temEntHe = !!j?.entrada_he?.ts;
-      const temSaiHe = !!j?.saida_he?.ts;
+  for (const j of jornadas){
+    const temSaida = !!j?.saida?.ts;
+    const temEntHe = !!j?.entrada_he?.ts;
+    const temSaiHe = !!j?.saida_he?.ts;
 
-      if (!temSaida) return j;
-      if (temEntHe && !temSaiHe) return j;
-      if (temSaida && !temEntHe && !temSaiHe) return j;
-    }
-
-    return null;
-  }catch{
-    return null;
+    if (!temSaida) return j;
+    if (temEntHe && !temSaiHe) return j;
+    if (temSaida && !temEntHe && !temSaiHe) return j;
   }
+
+  return null;
 }
 
 async function atualizarTela(){
@@ -511,10 +505,27 @@ async function atualizarTela(){
       return;
     }
 
+    // ✅ BLOQUEIO PRÉ-ADMISSÃO
+    const adm = (c.dataAdmissao || "").slice(0,10);
+    const hoje = todayYmd();
+    if (adm && hoje < adm){
+      colaborador = c;
+      nomeMostrado.innerText = "Nome: " + c.nome;
+      horarioMostrado.innerText = "Horário previsto: " + horarioTxt(c);
+
+      showBlocked(`🚫 BLOQUEADO: Sua admissão é em ${brDateFromYmd(adm)}.\nRegistro liberado somente a partir desta data.`);
+      faseAtualEl.innerText = "Fase atual: PRÉ-ADMISSÃO";
+      faseHintEl.innerText = "Registro não permitido antes da admissão.";
+      montarSelectAcoes([]);
+      setInputsEnabled(false);
+      return;
+    }
+
     colaborador = c;
     nomeMostrado.innerText = "Nome: " + c.nome;
     horarioMostrado.innerText = "Horário previsto: " + horarioTxt(c);
 
+    // férias
     const chk = await checarBloqueioFerias(re, c.escala);
     if (chk.bloqueado){
       const f = chk.ferias;
@@ -541,9 +552,9 @@ async function atualizarTela(){
     captureBtn.disabled = false;
 
   }catch{
-    alert("Não foi possível carregar seus dados no momento. Tente novamente.");
     montarSelectAcoes([]);
     setInputsEnabled(false);
+    alert("Erro ao carregar dados. Tente novamente.");
   }
 }
 
@@ -576,7 +587,15 @@ registrarBtn.addEventListener("click", async () => {
   if (!re) return alert("Digite o RE.");
 
   if (!colaborador){
-    return alert("Colaborador não cadastrado, inativo ou bloqueado. Confira o RE.");
+    return alert("Colaborador não cadastrado, INATIVO ou bloqueado. Confira o RE.");
+  }
+
+  // bloqueio pré-admissão (dupla checagem)
+  const adm = (colaborador.dataAdmissao || "").slice(0,10);
+  const hoje = todayYmd();
+  if (adm && hoje < adm){
+    await atualizarTela();
+    return;
   }
 
   const chk = await checarBloqueioFerias(re, colaborador.escala);
@@ -598,7 +617,7 @@ registrarBtn.addEventListener("click", async () => {
   const st = getEstadoEAcaoPermitida(jornadaAtiva);
   if (!st.acoes.includes(acao)){
     await atualizarTela();
-    return alert("Ação não permitida na fase atual. Atualizamos sua fase; selecione novamente.");
+    return alert("Ação não permitida na fase atual. Atualizei sua fase; selecione novamente.");
   }
 
   const msg = etapaConfirms[acao] || "Confirmar registro?";
@@ -610,51 +629,47 @@ registrarBtn.addEventListener("click", async () => {
     return alert("Registro duplicado detectado. Aguarde 5 minutos para registrar novamente.");
   }
 
-  try{
-    if (acao === ETAPAS.ENTRADA){
-      await addDoc(collection(db, "jornadas"), {
-        re,
-        nome: colaborador.nome,
-        status: "aberta",
-        entrada: { ts: now.toISOString(), foto, location },
-        updatedAt: now.toISOString()
-      });
-      alert("ENTRADA registrada com sucesso!");
-      limparForm();
-      return;
-    }
-
-    if (!jornadaAtiva || !jornadaAtiva.id){
-      await atualizarTela();
-      return alert("Não foi encontrada jornada ativa. Tente novamente.");
-    }
-
-    const ref = doc(db, "jornadas", jornadaAtiva.id);
-    const payload = {};
-
-    payload[acao] = { ts: now.toISOString(), foto, location };
-    payload.updatedAt = now.toISOString();
-
-    const temEntrada = !!jornadaAtiva?.entrada?.ts;
-    const temSaiInt = !!jornadaAtiva?.saida_intervalo?.ts;
-    const temRetInt = !!jornadaAtiva?.retorno_intervalo?.ts;
-    if (acao === ETAPAS.SAIDA && temEntrada && !temSaiInt && !temRetInt){
-      payload.flags = { ...(jornadaAtiva.flags || {}) };
-      payload.flags.intrajornada_nao_realizada = true;
-      payload.flags.intrajornada_registrado_em = now.toISOString();
-    }
-
-    if (acao === ETAPAS.SAIDA) payload.status = "fechada";
-    if (acao === ETAPAS.ENTRADA_HE) payload.status = "he_aberta";
-    if (acao === ETAPAS.SAIDA_HE) payload.status = "fechada";
-
-    await setDoc(ref, payload, { merge:true });
-
-    alert((etapaLabels[acao] || acao) + " registrada com sucesso!");
+  if (acao === ETAPAS.ENTRADA){
+    await addDoc(collection(db, "jornadas"), {
+      re,
+      nome: colaborador.nome,
+      status: "aberta",
+      entrada: { ts: now.toISOString(), foto, location },
+      updatedAt: now.toISOString()
+    });
+    alert("ENTRADA registrada com sucesso!");
     limparForm();
-  }catch{
-    alert("Não foi possível registrar a marcação agora. Tente novamente.");
+    return;
   }
+
+  if (!jornadaAtiva || !jornadaAtiva.id){
+    await atualizarTela();
+    return alert("Não foi encontrada jornada ativa. Tente novamente.");
+  }
+
+  const ref = doc(db, "jornadas", jornadaAtiva.id);
+  const payload = {};
+
+  payload[acao] = { ts: now.toISOString(), foto, location };
+  payload.updatedAt = now.toISOString();
+
+  const temEntrada = !!jornadaAtiva?.entrada?.ts;
+  const temSaiInt = !!jornadaAtiva?.saida_intervalo?.ts;
+  const temRetInt = !!jornadaAtiva?.retorno_intervalo?.ts;
+  if (acao === ETAPAS.SAIDA && temEntrada && !temSaiInt && !temRetInt){
+    payload.flags = { ...(jornadaAtiva.flags || {}) };
+    payload.flags.intrajornada_nao_realizada = true;
+    payload.flags.intrajornada_registrado_em = now.toISOString();
+  }
+
+  if (acao === ETAPAS.SAIDA) payload.status = "fechada";
+  if (acao === ETAPAS.ENTRADA_HE) payload.status = "he_aberta";
+  if (acao === ETAPAS.SAIDA_HE) payload.status = "fechada";
+
+  await setDoc(ref, payload, { merge:true });
+
+  alert((etapaLabels[acao] || acao) + " registrada com sucesso!");
+  limparForm();
 });
 </script>
 </body>
