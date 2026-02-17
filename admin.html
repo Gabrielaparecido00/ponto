@@ -574,11 +574,18 @@ function openModal({title, bodyHtml, onSave}){
 
 // ===== SYNC 12x36 -> colaborador.plantaoHistorico =====
 async function syncPlantaoHistoricoToColaborador(re){
-  const qP = query(collection(db,"plantoes12x36"), where("re","==",re), orderBy("vigencia","asc"));
+  // ✅ sem orderBy -> não exige índice composto
+  const qP = query(collection(db,"plantoes12x36"), where("re","==",re));
   const snap = await getDocs(qP);
-  const list = snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }))
+
+  let list = snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }));
+
+  // ✅ ordena no JS (vigencia asc)
+  list.sort((a,b) => String(a.vigencia||"").localeCompare(String(b.vigencia||"")));
+
+  const historico = list
     .map(p => ({
-      inicio: String(p.vigencia||"").slice(0,10), // IMPORTANT: colaborador.html usa "inicio"
+      inicio: String(p.vigencia||"").slice(0,10), // colaborador usa "inicio"
       base: String(p.base||"trabalha").toLowerCase(), // trabalha|folga
       obs: String(p.obs||""),
       updatedAt: String(p.updatedAt||"")
@@ -586,7 +593,7 @@ async function syncPlantaoHistoricoToColaborador(re){
     .filter(p => /^\d{4}-\d{2}-\d{2}$/.test(p.inicio));
 
   await setDoc(doc(db,"colaboradores",re), {
-    plantaoHistorico: list,
+    plantaoHistorico: historico,
     updatedAt: new Date().toISOString()
   }, { merge:true });
 }
