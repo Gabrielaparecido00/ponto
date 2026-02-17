@@ -29,10 +29,6 @@
   input, select, button{
     padding:10px; border-radius:10px; border:1px solid #ccc;
     font-family:inherit;
-  }
-
-  /* ✅ mobile-first: tudo ocupa largura total no celular */
-  input, select, button{
     width:100%;
     min-width:0;
   }
@@ -46,13 +42,11 @@
   .info{ text-align:center; margin:10px 0; font-weight:700; }
   .small{ text-align:center; font-size:12px; color:#666; margin-top:6px; }
 
-  /* desktop/tablet: inputs podem ficar lado a lado */
   @media (min-width: 840px){
     input, select{ width:auto; min-width:220px; }
     button{ width:auto; }
   }
 
-  /* ===== Abas ===== */
   .tabs{
     display:flex;
     gap:8px;
@@ -78,11 +72,7 @@
   .section{ display:none; }
   .section.active{ display:block; }
 
-  /* ===== Tabela ===== */
-  .tableWrap{
-    width:100%;
-    overflow:auto; /* PC ok */
-  }
+  .tableWrap{ width:100%; overflow:auto; }
 
   table{ width:100%; border-collapse:collapse; margin-top:14px; font-size:12px; }
   th,td{ border:1px solid #ddd; padding:8px; text-align:center; }
@@ -91,7 +81,6 @@
   .footer{ text-align:center; margin-top:14px; font-size:12px; color:#666; }
   .muted{ color:#999; }
 
-  /* ===== Holerites ===== */
   .card{
     border:1px solid #eee;
     border-radius:12px;
@@ -114,17 +103,14 @@
     white-space:pre-line;
   }
 
-  /* ✅ Smartphone: tabela vira "cards" */
   @media (max-width: 720px){
     .container{ padding:14px; }
-
     .tableWrap{ overflow:visible; }
 
     table, thead, tbody, th, td, tr{
       display:block;
       width:100%;
     }
-
     thead{ display:none; }
 
     tbody tr{
@@ -180,14 +166,12 @@
   <div id="conteudo" style="display:none;">
     <div class="info" id="infoUser">—</div>
 
-    <!-- Abas -->
     <div class="tabs">
       <button class="tabBtn active" id="tabFreq">Folha de Frequência</button>
       <button class="tabBtn" id="tabHol">Holerites</button>
       <button class="secondary" id="btnVoltar2">Voltar ao Registro</button>
     </div>
 
-    <!-- ===== Folha de Frequência ===== -->
     <div id="secFreq" class="section active">
       <div class="row">
         <div>
@@ -228,7 +212,6 @@
       </div>
     </div>
 
-    <!-- ===== Holerites ===== -->
     <div id="secHol" class="section">
       <div class="card">
         <h3>Baixar Holerite</h3>
@@ -255,7 +238,6 @@
   </div>
 </div>
 
-<!-- jsPDF -->
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
@@ -319,7 +301,7 @@ tabHol.onclick = () => setTab("hol");
 function voltar(){ window.location.href = "index.html"; }
 
 // estado
-let user = null;                // {re,nome,cpf,escala,horaEntrada,horaSaida}
+let user = null; // {re,nome,cpf,escala,horaEntrada,horaSaida,dataAdmissao}
 let cacheLocais = [];
 let jornadasMes = [];
 let linhasMes = [];
@@ -359,6 +341,20 @@ function horarioTxt(c){
   if (he && hs) return `${he}–${hs}`;
   if (he || hs) return `${he||"—"}–${hs||"—"}`;
   return "—";
+}
+function brDateFromYmd(ymdKey){
+  if (!ymdKey) return "";
+  const [y,m,d] = ymdKey.split("-");
+  if (!y || !m || !d) return ymdKey;
+  return `${d}/${m}/${y}`;
+}
+
+// ✅ admissão: helper
+function isBeforeAdmission(dateObj){
+  const adm = (user?.dataAdmissao || "").slice(0,10);
+  if (!adm) return false;
+  const k = dateObj.toISOString().slice(0,10);
+  return k < adm;
 }
 
 // escala
@@ -417,7 +413,7 @@ async function carregarLocais(){
 }
 
 // ocorrências
-function ocDocId(re, ymd){ return `${re}_${ymd}`; }
+function ocDocId(re, ymdKey){ return `${re}_${ymdKey}`; }
 async function carregarOcorrenciasMesPorDocId(re, ano, mes, last){
   const map = {};
   for (let dia=1; dia<=last; dia++){
@@ -429,7 +425,7 @@ async function carregarOcorrenciasMesPorDocId(re, ano, mes, last){
         map[dataKey] = { id:snap.id, ...(snap.data()||{}) };
       }
     }catch{
-      // silencioso (usuário final)
+      // silencioso
     }
   }
   return map;
@@ -469,7 +465,7 @@ function getFeriasNoDia(ymdKey, dateObj, escala){
   return null;
 }
 
-// selects mês/ano (reaproveita em holerite também)
+// selects mês/ano
 function popularMonthYear(selectMes, selectAno){
   const now = new Date();
   const y = now.getFullYear();
@@ -495,13 +491,12 @@ function popularMonthYear(selectMes, selectAno){
 popularMonthYear(mesSel, anoSel);
 popularMonthYear(holMesSel, holAnoSel);
 
-// login + ações
+// eventos
 btnEntrar.addEventListener("click", entrar);
 btnCarregar.addEventListener("click", carregar);
 btnPdf.addEventListener("click", exportarPdf);
 btnBaixarHolerite.addEventListener("click", baixarHoleriteDoMes);
 
-// sync selects: quando muda frequência, espelha no holerite
 function syncHolFromFreq(){
   holMesSel.value = mesSel.value;
   holAnoSel.value = anoSel.value;
@@ -539,6 +534,7 @@ async function entrar(){
   const escala = (data.escala || "5x2");
   const horaEntrada = (data.horaEntrada || "").toString().trim();
   const horaSaida = (data.horaSaida || "").toString().trim();
+  const dataAdmissao = String(data.dataAdmissao || "").slice(0,10);
 
   if (!ativo) return alert("Seu cadastro está INATIVO. Procure o administrador.");
   if (!cpf || cpf.replace(/\D/g,"").length < 4) return alert("CPF não cadastrado corretamente. Procure o administrador.");
@@ -546,16 +542,14 @@ async function entrar(){
   const senhaCorreta = cpf.replace(/\D/g,"").slice(0,4);
   if (senha !== senhaCorreta) return alert("Senha incorreta.");
 
-  user = { re, nome, cpf, escala, horaEntrada, horaSaida };
+  user = { re, nome, cpf, escala, horaEntrada, horaSaida, dataAdmissao };
 
-  try{
-    await carregarLocais();
-  }catch{
-    // se falhar, ainda deixa usar a tela; posto pode ficar "Não disponível"
-    cacheLocais = [];
-  }
+  try{ await carregarLocais(); }catch{ cacheLocais = []; }
 
-  infoUser.textContent = `${user.nome} — RE ${user.re} — Escala ${user.escala} — Horário ${horarioTxt(user)}`;
+  infoUser.textContent =
+    `${user.nome} — RE ${user.re} — Escala ${user.escala} — Horário ${horarioTxt(user)}`
+    + (user.dataAdmissao ? ` — Admissão ${brDateFromYmd(user.dataAdmissao)}` : "");
+
   loginBox.style.display = "none";
   conteudo.style.display = "block";
 
@@ -572,7 +566,6 @@ async function carregar(){
   const mes = Number(mesSel.value);
   const ano = Number(anoSel.value);
 
-  // jornadas
   let jornadas = [];
   try{
     const qJ = query(collection(db, "jornadas"), where("re", "==", user.re));
@@ -590,17 +583,11 @@ async function carregar(){
 
   const last = daysInMonth(ano, mes);
 
-  // ocorrências
   mapOcorrencias = await carregarOcorrenciasMesPorDocId(user.re, ano, mes, last);
 
-  // férias
-  try{
-    feriasList = await carregarFeriasDoRe(user.re);
-  }catch{
-    feriasList = [];
-  }
+  try{ feriasList = await carregarFeriasDoRe(user.re); }
+  catch{ feriasList = []; }
 
-  // map dia -> jornadas
   const mapDia = {};
   for (const j of jornadasMes){
     const dEnt = toDateAny(j.entrada?.ts);
@@ -651,7 +638,9 @@ function renderTabela(){
 
     let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="-", obs="";
 
-    if (ferias){
+    if (isBeforeAdmission(linha.dateObj)){
+      obs = "— (não admitido)";
+    } else if (ferias){
       obs = "FÉRIAS" + (ferias.motivo ? ` | ${ferias.motivo}` : "");
       if (ehFolga) obs += " (folga)";
     } else if (oc){
@@ -680,11 +669,9 @@ function renderTabela(){
     }
 
     const tr = document.createElement("tr");
-
-    // ✅ data-label para modo "cards" no celular
     tr.innerHTML = `
       <td data-label="Data">${brDate(linha.dateObj)}</td>
-      <td data-label="Dia" class="${(j1 || ehFolga || oc || ferias) ? "" : "muted"}">${weekday(linha.dateObj)}</td>
+      <td data-label="Dia" class="${(j1 || ehFolga || oc || ferias || isBeforeAdmission(linha.dateObj)) ? "" : "muted"}">${weekday(linha.dateObj)}</td>
       <td data-label="Entrada">${entrada}</td>
       <td data-label="Início intervalo">${saiInt}</td>
       <td data-label="Fim intervalo">${retInt}</td>
@@ -698,9 +685,7 @@ function renderTabela(){
   }
 }
 
-/* =========================
-   HOLERITE (DOWNLOAD)
-   ========================= */
+/* HOLERITE */
 function buildHoleriteFileName(re, mes, ano){
   return `hol_${re}_${pad2(mes)}_${String(ano)}.pdf`;
 }
@@ -753,9 +738,7 @@ async function baixarHoleriteDoMes(){
   }
 }
 
-/* =========================
-   PDF
-   ========================= */
+/* PDF */
 async function loadImageAsDataURL(url){
   const res = await fetch(url);
   const blob = await res.blob();
@@ -819,6 +802,11 @@ async function exportarPdf(){
     docPdf.text(`RE: ${user.re}`, marginX, y); y += 12;
     docPdf.text(`Escala: ${user.escala}`, marginX, y); y += 12;
     docPdf.text(`Horário: ${horarioTxt(user)}`, marginX, y); y += 12;
+    if (user.dataAdmissao){
+      docPdf.text(`Admissão: ${brDateFromYmd(user.dataAdmissao)}`, marginX, y); y += 12;
+    } else {
+      docPdf.text(`Admissão: —`, marginX, y); y += 12;
+    }
     docPdf.text(`Competência: ${mesTxt}/${ano}`, marginX, y); y += 12;
   }
   function drawFooter(){
@@ -837,7 +825,9 @@ async function exportarPdf(){
 
     let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="-", obs="";
 
-    if (ferias){
+    if (isBeforeAdmission(linha.dateObj)){
+      obs = "— (não admitido)";
+    } else if (ferias){
       obs = "FÉRIAS" + (ferias.motivo ? ` | ${ferias.motivo}` : "");
       if (ehFolga) obs += " (folga)";
     } else if (oc){
