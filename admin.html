@@ -25,8 +25,9 @@
     box-shadow:0 2px 10px rgba(0,0,0,0.08);
   }
   .logo{ width:220px; display:block; margin:0 auto 8px; max-width:90vw; height:auto; }
-  h2{ margin:8px 0 10px; }
-  h3{ margin:10px 0 8px; text-align:left; }
+
+  h2{ margin:8px 0 10px; text-align:center; }
+  h3{ margin:10px 0 8px; text-align:center; } /* ✅ centralizado */
   .small{ font-size:12px; color:#666; text-align:left; }
 
   input, select, button{
@@ -93,7 +94,7 @@
   .section{ display:none; }
   .section.active{ display:block; }
 
-  /* MODAL (POPUP) - agora cabe na tela com scroll interno */
+  /* MODAL (POPUP) - cabe na tela com scroll interno */
   .modalOverlay{
     position:fixed;
     inset:0;
@@ -107,14 +108,14 @@
   .modal{
     background:#fff;
     width:min(920px, 96vw);
-    max-height:92vh;               /* ✅ limite de altura */
-    overflow:auto;                /* ✅ scroll interno */
+    max-height:92vh;
+    overflow:auto;
     border-radius:12px;
     padding:14px;
     box-shadow:0 10px 30px rgba(0,0,0,0.22);
     text-align:left;
   }
-  .modal h3{ margin:0 0 10px; }
+  .modal h3{ margin:0 0 10px; text-align:left; }
   .modal .grid{
     display:grid;
     grid-template-columns: 1fr 1fr;
@@ -126,7 +127,7 @@
     margin-top:4px;
   }
   .modal .actions{
-    position:sticky;              /* ✅ ações sempre visíveis */
+    position:sticky;
     bottom:0;
     background:#fff;
     padding-top:10px;
@@ -152,6 +153,19 @@
     font-size:12px;
     cursor:pointer;
     color:#a10000;
+  }
+
+  /* ✅ filtro colaboradores */
+  .filterBar{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    justify-content:center;
+    margin-top:10px;
+  }
+  .filterBar input{
+    min-width:220px;
+    width:min(320px, 90vw);
   }
 
   @media (max-width: 820px){
@@ -228,13 +242,14 @@
     </table>
   </div>
 
-  <!-- ✅ EXPORTAÇÃO RH (ABA SEPARADA) -->
+  <!-- EXPORTAÇÃO RH -->
   <div id="secExportRH" class="section">
     <h3>Exportação RH</h3>
     <div class="small">
       Gera um único XLSX com 3 abas: <b>Resumo</b>, <b>Diário</b> e <b>Escala</b>.<br>
       Usa horário planejado (por dia da semana) para separar <b>Hora Normal</b> vs <b>HE</b>.<br>
-      <b>Exporta apenas colaboradores ATIVOS.</b>
+      <b>FT (Folga Trabalhada) NÃO é HE</b>: se trabalhar na folga, vai para FT e não entra em HE.<br>
+      <b>Exporta apenas colaboradores ATIVOS (ativo === true).</b>
     </div>
 
     <div class="row">
@@ -254,10 +269,10 @@
     <div class="small">
       Regras rápidas:
       <ul style="margin:8px 0 0 16px; padding:0; text-align:left;">
-        <li>Ocorrência/ Férias têm prioridade e entram no Diário.</li>
+        <li>Ocorrência / Férias têm prioridade e entram no Diário.</li>
         <li>Sem horário planejado no dia: o trabalhado vira <b>Normal</b> (para não inventar HE).</li>
-        <li>Trabalho em folga: vira <b>FT</b> e conta como extra.</li>
-        <li>Campo HE (entrada_he/saida_he) soma como extra.</li>
+        <li>Trabalho em folga: vira <b>FT</b> (Folga Trabalhada) e <b>não</b> conta como HE.</li>
+        <li>Campo HE (entrada_he/saida_he): conta como <b>HE</b> apenas em dia de trabalho; em folga vira <b>FT</b>.</li>
       </ul>
     </div>
   </div>
@@ -285,6 +300,13 @@
 
       <button onclick="cadastrarColab()">Cadastrar</button>
       <button onclick="carregarColaboradores()">Atualizar lista</button>
+    </div>
+
+    <!-- ✅ BUSCADOR -->
+    <div class="filterBar">
+      <input id="colabFiltroRe" placeholder="Buscar por RE..." inputmode="numeric">
+      <input id="colabFiltroNome" placeholder="Buscar por Nome...">
+      <button class="minBtn" onclick="limparFiltroColab()">Limpar</button>
     </div>
 
     <table>
@@ -375,7 +397,7 @@
     </table>
   </div>
 
-  <!-- FÉRIAS (PERÍODO) -->
+  <!-- FÉRIAS -->
   <div id="secAfast" class="section">
     <h3>Férias (por período)</h3>
     <div class="small">
@@ -467,7 +489,7 @@
   </div>
 </div>
 
-<!-- XLSX (SheetJS) -->
+<!-- XLSX -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <script type="module">
@@ -562,11 +584,11 @@ onAuthStateChanged(auth, user => {
   loginDiv.style.display = user ? "none" : "block";
   painelDiv.style.display = user ? "block" : "none";
   if (user){
-    // ativa visual do botão inicial
     const b = document.getElementById("btnJornadas");
     if (b) b.classList.add("activeBtn");
     carregarLocais();
     carregarColaboradores();
+    setupFiltroColab();
   }
 });
 
@@ -693,7 +715,7 @@ function isFolgaByEscala(dateObj, escala, plantaoHistorico){
     const plantao = getPlantaoReferencia(dateObj, plantaoHistorico || []);
     if (!plantao) return false;
     const baseYmd = String(plantao.inicio||"").slice(0,10);
-    const baseTipo = String(plantao.base||"trabalha").toLowerCase(); // trabalha|folga
+    const baseTipo = String(plantao.base||"trabalha").toLowerCase();
     const base = new Date(baseYmd + "T00:00:00");
     const atual = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 12, 0, 0);
     const diffDias = Math.floor((atual - base) / 86400000);
@@ -765,15 +787,51 @@ window.cadastrarColab = async function(){
   carregarColaboradores();
 };
 
+// ✅ filtros colaboradores
+function getColabFiltros(){
+  const fr = norm(document.getElementById("colabFiltroRe")?.value || "");
+  const fn = norm(document.getElementById("colabFiltroNome")?.value || "");
+  return { fr, fn };
+}
+function aplicarFiltroColab(list){
+  const { fr, fn } = getColabFiltros();
+  let out = list;
+  if (fr) out = out.filter(c => norm(c.re || c.id) === fr || norm(c.re || c.id).includes(fr));
+  if (fn) out = out.filter(c => norm(c.nome).includes(fn));
+  return out;
+}
+window.limparFiltroColab = function(){
+  const a = document.getElementById("colabFiltroRe");
+  const b = document.getElementById("colabFiltroNome");
+  if (a) a.value = "";
+  if (b) b.value = "";
+  carregarColaboradores();
+};
+function setupFiltroColab(){
+  const a = document.getElementById("colabFiltroRe");
+  const b = document.getElementById("colabFiltroNome");
+  if (!a || !b) return;
+  if (a.dataset.bound === "1") return;
+  a.dataset.bound = "1";
+  b.dataset.bound = "1";
+  const handler = () => carregarColaboradores();
+  a.addEventListener("input", handler);
+  b.addEventListener("input", handler);
+}
+
 window.carregarColaboradores = async function(){
   const snap = await getDocs(collection(db,"colaboradores"));
   cacheColabs = snap.docs.map(d => ({ id:d.id, ...d.data() }))
     .sort((a,b)=> (a.nome||"").localeCompare(b.nome||""));
 
+  setupFiltroColab();
+
   const tbody=document.getElementById("tbodyColab");
   if (tbody){
     tbody.innerHTML="";
-    for (const c of cacheColabs){
+    const list = aplicarFiltroColab(cacheColabs);
+
+    for (const c of list){
       const status = (c.ativo === false) ? "Inativo" : "Ativo";
       const escala = (c.escala || "5x2");
       const adm = (c.dataAdmissao ? brDateFromYmd(String(c.dataAdmissao).slice(0,10)) : "—");
@@ -793,7 +851,7 @@ window.carregarColaboradores = async function(){
   }
 };
 
-// ===== horário por semana (modal) - mantém igual ao que já tinha
+// ===== horário por semana (modal) + BLOQUEIOS por escala
 function normalizeWeekSchedule(raw){
   const out = {};
   for (let d=0; d<=6; d++){
@@ -814,32 +872,43 @@ function diasPadraoPorEscala(escala){
   if (e.includes("12") && e.includes("36")) return [0,1,2,3,4,5,6];
   return [1,2,3,4,5];
 }
+function diasBloqueadosPorEscala(escala){
+  const e = (escala||"5x2").toLowerCase();
+  if (e === "5x2") return new Set([0,6]); // Dom e Sáb bloqueados
+  if (e === "6x1") return new Set([0]);   // Dom bloqueado
+  return new Set();                       // 12x36 e outros: sem bloqueio
+}
 function weekLabel(d){ return ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"][d] || String(d); }
 
 function buildHorarioSemanaHtml(horariosSemana, escala){
   const hs = normalizeWeekSchedule(horariosSemana);
   const marcadosDefault = new Set(diasPadraoPorEscala(escala));
+  const bloqueados = diasBloqueadosPorEscala(escala);
 
   const rows = [];
   for (let d=0; d<=6; d++){
     const cur = hs[String(d)];
+    const isBlocked = bloqueados.has(d);
+    const checked = (marcadosDefault.has(d) && !isBlocked);
+
     rows.push(`
-      <div style="border:1px solid #eee; border-radius:10px; padding:10px;">
+      <div style="border:1px solid #eee; border-radius:10px; padding:10px; ${isBlocked ? "opacity:.65" : ""}">
         <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
           <label style="display:flex; gap:8px; align-items:center; margin:0;">
-            <input type="checkbox" class="wkChk" data-d="${d}" ${marcadosDefault.has(d) ? "checked" : ""}>
+            <input type="checkbox" class="wkChk" data-d="${d}" ${checked ? "checked" : ""} ${isBlocked ? "disabled" : ""}>
             <b>${weekLabel(d)}</b>
           </label>
-          <span class="small">se desmarcar, vira folga planejada</span>
+          <span class="small">${isBlocked ? "BLOQUEADO pela escala" : "se desmarcar, vira folga planejada"}</span>
         </div>
+
         <div style="display:flex; gap:8px; margin-top:8px;">
           <div style="flex:1;">
             <label>Entrada</label>
-            <input type="time" class="wkIn" data-d="${d}" value="${cur?.in || ""}">
+            <input type="time" class="wkIn" data-d="${d}" value="${isBlocked ? "" : (cur?.in || "")}" ${isBlocked ? "disabled" : ""}>
           </div>
           <div style="flex:1;">
             <label>Saída</label>
-            <input type="time" class="wkOut" data-d="${d}" value="${cur?.out || ""}">
+            <input type="time" class="wkOut" data-d="${d}" value="${isBlocked ? "" : (cur?.out || "")}" ${isBlocked ? "disabled" : ""}>
           </div>
         </div>
       </div>
@@ -850,13 +919,14 @@ function buildHorarioSemanaHtml(horariosSemana, escala){
     <div style="grid-column:1 / -1; margin-top:8px; padding:12px; border:1px solid #eee; border-radius:12px;">
       <div style="font-weight:700; margin-bottom:6px;">Horários por dia da semana (cálculo RH)</div>
       <div class="small" style="margin-bottom:10px;">
-        1) Marque os dias • 2) Preencha o primeiro dia • 3) Clique “Replicar” • 4) Ajuste dia a dia.
+        1) Marque os dias • 2) Preencha o primeiro dia • 3) Clique “Replicar” • 4) Ajuste dia a dia.<br>
+        <b>5x2:</b> Sáb/Dom ficam bloqueados.
       </div>
 
       <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px;">
         <button type="button" class="minBtn" id="btnAutoDias">Marcar dias pela escala</button>
         <button type="button" class="minBtn" id="btnReplicar">Replicar do primeiro dia marcado</button>
-        <span class="small">* Para 12x36, isso só define “horário de plantão”; o calendário vem do histórico.</span>
+        <span class="small">* Para 12x36, isso define apenas “horário base”; o calendário vem do histórico.</span>
       </div>
 
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;" id="wkGrid">
@@ -872,8 +942,8 @@ function readHorarioSemanaFromModal(){
     const d = chk.getAttribute("data-d");
     const enabled = chk.checked;
 
-    const inEl = document.querySelector(`.wkIn[data-d="${d}"]`);
-    const outEl = document.querySelector(`.wkOut[data-d="${d}"]`);
+    const inEl = document.querySelector(\`.wkIn[data-d="\${d}"]\`);
+    const outEl = document.querySelector(\`.wkOut[data-d="\${d}"]\`);
 
     const i = (inEl?.value || "").trim();
     const o = (outEl?.value || "").trim();
@@ -984,47 +1054,54 @@ window.editarColab = function(reDocId){
     const btnRep = document.getElementById("btnReplicar");
 
     function applyAutoDias(){
-  const esc = escSel?.value || escalaAtual;
-  const days = new Set(diasPadraoPorEscala(esc));
-  const blocked = diasBloqueadosPorEscala(esc);
+      const esc = escSel?.value || escalaAtual;
+      const days = new Set(diasPadraoPorEscala(esc));
+      const blocked = diasBloqueadosPorEscala(esc);
 
-  for (let d=0; d<=6; d++){
-    const chk = document.querySelector(`.wkChk[data-d="${d}"]`);
-    const i = document.querySelector(`.wkIn[data-d="${d}"]`);
-    const o = document.querySelector(`.wkOut[data-d="${d}"]`);
+      for (let d=0; d<=6; d++){
+        const chk = document.querySelector(\`.wkChk[data-d="\${d}"]\`);
+        const i = document.querySelector(\`.wkIn[data-d="\${d}"]\`);
+        const o = document.querySelector(\`.wkOut[data-d="\${d}"]\`);
+        const isBlocked = blocked.has(d);
 
-    const isBlocked = blocked.has(d);
+        if (chk){
+          chk.disabled = isBlocked;
+          chk.checked = (!isBlocked && days.has(d));
+        }
+        if (i){
+          i.disabled = isBlocked;
+          if (isBlocked) i.value = "";
+          else if (!days.has(d)) i.value = "";
+        }
+        if (o){
+          o.disabled = isBlocked;
+          if (isBlocked) o.value = "";
+          else if (!days.has(d)) o.value = "";
+        }
+      }
+    }
 
-    if (chk){
-      chk.disabled = isBlocked;
-      chk.checked = (!isBlocked && days.has(d));
-    }
-    if (i){
-      i.disabled = isBlocked;
-      if (isBlocked) i.value = "";
-    }
-    if (o){
-      o.disabled = isBlocked;
-      if (isBlocked) o.value = "";
-    }
-  }
-}
     function replicateFromFirst(){
+      const esc = escSel?.value || escalaAtual;
+      const blocked = diasBloqueadosPorEscala(esc);
+
       let first = null;
       for (let d=0; d<=6; d++){
-        const chk = document.querySelector(`.wkChk[data-d="${d}"]`);
+        if (blocked.has(d)) continue;
+        const chk = document.querySelector(\`.wkChk[data-d="\${d}"]\`);
         if (!chk || !chk.checked) continue;
-        const i = document.querySelector(`.wkIn[data-d="${d}"]`)?.value || "";
-        const o = document.querySelector(`.wkOut[data-d="${d}"]`)?.value || "";
+        const i = document.querySelector(\`.wkIn[data-d="\${d}"]\`)?.value || "";
+        const o = document.querySelector(\`.wkOut[data-d="\${d}"]\`)?.value || "";
         if (i && o){ first = { in:i, out:o }; break; }
       }
       if (!first) return alert("Preencha o horário (entrada/saída) no primeiro dia marcado antes de replicar.");
 
       for (let d=0; d<=6; d++){
-        const chk = document.querySelector(`.wkChk[data-d="${d}"]`);
+        if (blocked.has(d)) continue;
+        const chk = document.querySelector(\`.wkChk[data-d="\${d}"]\`);
         if (!chk || !chk.checked) continue;
-        const i = document.querySelector(`.wkIn[data-d="${d}"]`);
-        const o = document.querySelector(`.wkOut[data-d="${d}"]`);
+        const i = document.querySelector(\`.wkIn[data-d="\${d}"]\`);
+        const o = document.querySelector(\`.wkOut[data-d="\${d}"]\`);
         if (i && !i.value) i.value = first.in;
         if (o && !o.value) o.value = first.out;
       }
@@ -1033,13 +1110,14 @@ window.editarColab = function(reDocId){
     if (btnAuto) btnAuto.onclick = applyAutoDias;
     if (btnRep) btnRep.onclick = replicateFromFirst;
 
+    // se desmarcar, limpa horários (apenas nos não-bloqueados)
     for (let d=0; d<=6; d++){
-      const chk = document.querySelector(`.wkChk[data-d="${d}"]`);
+      const chk = document.querySelector(\`.wkChk[data-d="\${d}"]\`);
       if (!chk) continue;
       chk.addEventListener("change", () => {
         if (!chk.checked){
-          const i = document.querySelector(`.wkIn[data-d="${d}"]`);
-          const o = document.querySelector(`.wkOut[data-d="${d}"]`);
+          const i = document.querySelector(\`.wkIn[data-d="\${d}"]\`);
+          const o = document.querySelector(\`.wkOut[data-d="\${d}"]\`);
           if (i) i.value = "";
           if (o) o.value = "";
         }
@@ -1715,6 +1793,7 @@ window.exportar = function(){
 
 // ============================================
 // ✅ EXPORTAÇÃO RH (XLSX) - SOMENTE ATIVOS
+// ✅ HE separado de FT (folga trabalhada)
 // ============================================
 function setRhStatus(msg){
   const el = document.getElementById("rhStatus");
@@ -1832,10 +1911,10 @@ window.exportarRHXLSX = async function(){
       getDocs(collection(db,"afastamentos"))
     ]);
 
-    // ✅ SOMENTE ATIVOS
+    // ✅ SOMENTE ATIVOS (RÍGIDO)
     const colaboradores = snapCol.docs
       .map(d => ({ id:d.id, ...(d.data()||{}) }))
-      .filter(c => c.ativo !== false)
+      .filter(c => c.ativo === true)
       .sort((a,b)=> (a.nome||"").localeCompare(b.nome||""));
 
     const jornadasAll = snapJor.docs.map(d => ({ id:d.id, ...(d.data()||{}) }));
@@ -1859,21 +1938,24 @@ window.exportarRHXLSX = async function(){
     const sheetDiario = [];
     const sheetEscala = [];
 
+    // ✅ Resumo com HE e FT separados
     sheetResumo.push([
       "RE","Nome","CPF","Escala","Admissão",
       "Minutos Normais","Horas Normais",
       "Minutos HE","Horas HE",
-      "Minutos Trabalhados Total","Horas Total",
-      "Faltas","Atestados","Abonos","Férias","Folgas","Folga Trabalhada (FT)",
+      "Minutos FT","Horas FT",
+      "Minutos Total","Horas Total",
+      "Faltas","Atestados","Abonos","Férias","Folgas",
       "Dias Trabalhados","Dias Planejados Trabalhar"
     ]);
 
+    // ✅ Diário: Normal / HE / FT separados
     sheetDiario.push([
       "RE","Nome","Data","Dia",
       "Escala (dia)","Planejado (HH:MM)","Status",
       "Entrada","Saída","Intervalo (min)","Trabalhado (min)",
-      "Normal (min)","HE (min)",
-      "Entrada HE","Saída HE","HE (min) (campo HE)",
+      "Normal (min)","HE (min)","FT (min)","Total (min)",
+      "Entrada HE","Saída HE","HE campo (min)",
       "Posto","Obs"
     ]);
 
@@ -1890,8 +1972,8 @@ window.exportarRHXLSX = async function(){
       const escala = safeStr(col.escala || "5x2");
       const adm = safeStr(col.dataAdmissao||"").slice(0,10);
 
-      let sumNormal = 0, sumExtra = 0, sumWorked = 0;
-      let qtdFalta = 0, qtdAtestado = 0, qtdAbono = 0, qtdFerias = 0, qtdFolga = 0, qtdFT = 0;
+      let sumNormal = 0, sumHE = 0, sumFT = 0, sumTotal = 0;
+      let qtdFalta = 0, qtdAtestado = 0, qtdAbono = 0, qtdFerias = 0, qtdFolgas = 0;
       let diasTrabalhados = 0, diasPlanejadosTrabalhar = 0;
 
       for (const dt of days){
@@ -1922,7 +2004,7 @@ window.exportarRHXLSX = async function(){
             re,nome,formatDayBR(ymdKey),weekdayPtShort(dt),
             escalaDia, planejadoTxt, "FÉRIAS",
             "","","","",
-            "","",
+            "","", "", "",
             "","","",
             "", safeStr(fer.motivo||"")
           ]);
@@ -1939,7 +2021,7 @@ window.exportarRHXLSX = async function(){
             re,nome,formatDayBR(ymdKey),weekdayPtShort(dt),
             escalaDia, planejadoTxt, (t||"").toUpperCase(),
             "","","","",
-            "","",
+            "","", "", "",
             "","","",
             "", safeStr(oc.motivo||"")
           ]);
@@ -1949,11 +2031,25 @@ window.exportarRHXLSX = async function(){
         const j = getJornadaOfDay(re, ymdKey, jornadasMes);
         if (!j){
           if (!isTrabalha){
-            qtdFolga++;
-            sheetDiario.push([re,nome,formatDayBR(ymdKey),weekdayPtShort(dt),escalaDia,planejadoTxt,"FOLGA","","","","","", "","","","", "", ""]);
+            qtdFolgas++;
+            sheetDiario.push([
+              re,nome,formatDayBR(ymdKey),weekdayPtShort(dt),
+              escalaDia,planejadoTxt,"FOLGA",
+              "","","","",
+              "","", "", "",
+              "","","",
+              "", ""
+            ]);
           } else {
             qtdFalta++;
-            sheetDiario.push([re,nome,formatDayBR(ymdKey),weekdayPtShort(dt),escalaDia,planejadoTxt,"FALTA","","","","","", "","","","", "", ""]);
+            sheetDiario.push([
+              re,nome,formatDayBR(ymdKey),weekdayPtShort(dt),
+              escalaDia,planejadoTxt,"FALTA",
+              "","","","",
+              "","", "", "",
+              "","","",
+              "", ""
+            ]);
           }
           continue;
         }
@@ -1963,27 +2059,31 @@ window.exportarRHXLSX = async function(){
         const worked = workedInfo.worked;
         const intervaloMin = workedInfo.intervalo;
 
-        let normalMin = 0, extraMin = 0;
+        let normalMin = 0, heMin = 0, ftMin = 0;
 
         if (!isTrabalha){
-          qtdFT++;
-          qtdFolga++;
-          extraMin += worked;
+          // ✅ Folga: tudo vira FT (inclusive campo HE)
+          qtdFolgas++;
+          ftMin = Math.max(0, worked + heFieldMin);
         } else {
-          if (planejadoMin == null) normalMin += worked;
-          else {
-            normalMin += Math.min(worked, planejadoMin);
-            extraMin  += Math.max(0, worked - planejadoMin);
+          // ✅ Dia de trabalho: Normal + HE (o excedente + campo HE)
+          if (planejadoMin == null){
+            normalMin = worked;
+            heMin = heFieldMin;
+          } else {
+            normalMin = Math.min(worked, planejadoMin);
+            heMin = Math.max(0, worked - planejadoMin) + heFieldMin;
           }
         }
 
-        extraMin += heFieldMin;
+        const totalMin = normalMin + heMin + ftMin;
 
         sumNormal += normalMin;
-        sumExtra  += extraMin;
-        sumWorked += (worked + heFieldMin);
+        sumHE += heMin;
+        sumFT += ftMin;
+        sumTotal += totalMin;
 
-        if ((worked + heFieldMin) > 0) diasTrabalhados++;
+        if (totalMin > 0) diasTrabalhados++;
 
         const posto = reconhecerLocal(getBestLocationFromJornada(j));
         const obs = [
@@ -1996,13 +2096,15 @@ window.exportarRHXLSX = async function(){
           re, nome,
           formatDayBR(ymdKey), weekdayPtShort(dt),
           escalaDia, planejadoTxt,
-          (!isTrabalha ? "FT" : "TRABALHOU"),
+          (!isTrabalha ? "FT (FOLGA TRAB.)" : "TRABALHOU"),
           formatHHMM(j?.entrada?.ts),
           formatHHMM(j?.saida?.ts),
           intervaloMin,
           worked,
           normalMin,
-          extraMin,
+          heMin,
+          ftMin,
+          totalMin,
           formatHHMM(j?.entrada_he?.ts),
           formatHHMM(j?.saida_he?.ts),
           heFieldMin,
@@ -2015,9 +2117,10 @@ window.exportarRHXLSX = async function(){
         re, nome, cpf, escala,
         adm ? brDateFromYmd(adm) : "",
         sumNormal, minutesToHHMM(sumNormal),
-        sumExtra, minutesToHHMM(sumExtra),
-        sumWorked, minutesToHHMM(sumWorked),
-        qtdFalta, qtdAtestado, qtdAbono, qtdFerias, qtdFolga, qtdFT,
+        sumHE, minutesToHHMM(sumHE),
+        sumFT, minutesToHHMM(sumFT),
+        sumTotal, minutesToHHMM(sumTotal),
+        qtdFalta, qtdAtestado, qtdAbono, qtdFerias, qtdFolgas,
         diasTrabalhados, diasPlanejadosTrabalhar
       ]);
     }
@@ -2030,7 +2133,6 @@ window.exportarRHXLSX = async function(){
     const filename = `RH_${mes2}-${ano}.xlsx`;
     XLSX.writeFile(wb, filename);
     setRhStatus(`✅ Exportado com sucesso: ${filename}`);
-
   }catch(e){
     console.error(e);
     setRhStatus("❌ Falha ao exportar. Veja o console.");
