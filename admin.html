@@ -25,9 +25,8 @@
     box-shadow:0 2px 10px rgba(0,0,0,0.08);
   }
   .logo{ width:220px; display:block; margin:0 auto 8px; max-width:90vw; height:auto; }
-
-  h2{ margin:8px 0 10px; text-align:center; }
-  h3{ margin:10px 0 8px; text-align:center; } /* ✅ centralizado */
+  h2{ margin:8px 0 10px; }
+  h3{ margin:10px 0 8px; text-align:left; }
   .small{ font-size:12px; color:#666; text-align:left; }
 
   input, select, button{
@@ -64,6 +63,7 @@
     vertical-align:top;
   }
   th{ background:#fafafa; }
+  thead th{ text-align:center; } /* ✅ cabeçalhos mais “bonitos” */
 
   .menu{
     display:flex;
@@ -94,7 +94,7 @@
   .section{ display:none; }
   .section.active{ display:block; }
 
-  /* MODAL (POPUP) - cabe na tela com scroll interno */
+  /* MODAL (POPUP) */
   .modalOverlay{
     position:fixed;
     inset:0;
@@ -115,17 +115,15 @@
     box-shadow:0 10px 30px rgba(0,0,0,0.22);
     text-align:left;
   }
-  .modal h3{ margin:0 0 10px; text-align:left; }
+  .modal h3{ margin:0 0 10px; }
   .modal .grid{
     display:grid;
     grid-template-columns: 1fr 1fr;
     gap:10px;
   }
   .modal label{ font-size:12px; color:#555; }
-  .modal input, .modal select{
-    width:100%;
-    margin-top:4px;
-  }
+  .modal input, .modal select{ width:100%; margin-top:4px; }
+
   .modal .actions{
     position:sticky;
     bottom:0;
@@ -155,19 +153,6 @@
     color:#a10000;
   }
 
-  /* ✅ filtro colaboradores */
-  .filterBar{
-    display:flex;
-    flex-wrap:wrap;
-    gap:10px;
-    justify-content:center;
-    margin-top:10px;
-  }
-  .filterBar input{
-    min-width:220px;
-    width:min(320px, 90vw);
-  }
-
   @media (max-width: 820px){
     table{ font-size:12px; }
     th, td{ padding:6px; }
@@ -182,9 +167,9 @@
 <div id="loginDiv" class="container">
   <img src="GW.png" class="logo" />
   <h2>Login Admin</h2>
-  <input id="email" placeholder="Email"><br><br>
-  <input id="senha" type="password" placeholder="Senha"><br><br>
-  <button onclick="login()">Entrar</button>
+  <input id="email" placeholder="Email" autocomplete="username"><br><br>
+  <input id="senha" type="password" placeholder="Senha" autocomplete="current-password"><br><br>
+  <button id="btnLogin" onclick="login()">Entrar</button>
 </div>
 
 <!-- PAINEL -->
@@ -247,9 +232,9 @@
     <h3>Exportação RH</h3>
     <div class="small">
       Gera um único XLSX com 3 abas: <b>Resumo</b>, <b>Diário</b> e <b>Escala</b>.<br>
-      Usa horário planejado (por dia da semana) para separar <b>Hora Normal</b> vs <b>HE</b>.<br>
-      <b>FT (Folga Trabalhada) NÃO é HE</b>: se trabalhar na folga, vai para FT e não entra em HE.<br>
-      <b>Exporta apenas colaboradores ATIVOS (ativo === true).</b>
+      <b>HE</b> é só excedente do planejado em dia de trabalho + campo HE.<br>
+      <b>FT</b> é trabalho em folga e NÃO conta como HE.<br>
+      <b>Exporta apenas colaboradores ATIVOS.</b>
     </div>
 
     <div class="row">
@@ -263,24 +248,20 @@
     </div>
 
     <div class="small" id="rhStatus" style="margin-top:10px;"></div>
-
-    <hr class="hr">
-
-    <div class="small">
-      Regras rápidas:
-      <ul style="margin:8px 0 0 16px; padding:0; text-align:left;">
-        <li>Ocorrência / Férias têm prioridade e entram no Diário.</li>
-        <li>Sem horário planejado no dia: o trabalhado vira <b>Normal</b> (para não inventar HE).</li>
-        <li>Trabalho em folga: vira <b>FT</b> (Folga Trabalhada) e <b>não</b> conta como HE.</li>
-        <li>Campo HE (entrada_he/saida_he): conta como <b>HE</b> apenas em dia de trabalho; em folga vira <b>FT</b>.</li>
-      </ul>
-    </div>
   </div>
 
   <!-- COLABORADORES -->
   <div id="secColab" class="section">
     <h3>Colaboradores</h3>
     <div class="small">CPF é obrigatório • Sem excluir colaborador • Cadastre escala, horário previsto e data de admissão</div>
+
+    <!-- ✅ buscador -->
+    <div class="row">
+      <input id="colabBuscaRe" placeholder="Buscar por RE" inputmode="numeric">
+      <input id="colabBuscaNome" placeholder="Buscar por Nome">
+      <button onclick="aplicarFiltroColab()">Buscar</button>
+      <button class="secondary" onclick="limparFiltroColab()">Limpar</button>
+    </div>
 
     <div class="row">
       <input id="cadRe" placeholder="RE" inputmode="numeric">
@@ -300,13 +281,6 @@
 
       <button onclick="cadastrarColab()">Cadastrar</button>
       <button onclick="carregarColaboradores()">Atualizar lista</button>
-    </div>
-
-    <!-- ✅ BUSCADOR -->
-    <div class="filterBar">
-      <input id="colabFiltroRe" placeholder="Buscar por RE..." inputmode="numeric">
-      <input id="colabFiltroNome" placeholder="Buscar por Nome...">
-      <button class="minBtn" onclick="limparFiltroColab()">Limpar</button>
     </div>
 
     <table>
@@ -492,16 +466,13 @@
 <!-- XLSX -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import {
-  getFirestore, doc, setDoc, getDocs, collection, updateDoc, addDoc,
-  deleteDoc, deleteField, query, where, getDoc
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import {
-  getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+<!-- ✅ Firebase COMPAT (global) — resolve “login is not defined” -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
+<script>
+/* ========= FIREBASE CONFIG ========= */
 const firebaseConfig = {
   apiKey: "AIzaSyD--zpWLbLg5X82oGTyz6SuPFQV0sd7NWc",
   authDomain: "controle-ponto-f539b.firebaseapp.com",
@@ -512,9 +483,9 @@ const firebaseConfig = {
   measurementId: "G-P81H3C4SFK"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
 
 const loginDiv = document.getElementById("loginDiv");
 const painelDiv = document.getElementById("painelDiv");
@@ -526,7 +497,7 @@ let cacheFerias = [];
 let cacheOcorr = [];
 let cachePlantoes = [];
 
-// ===== RH selects (mês/ano) =====
+/* ========= RH SELECTS ========= */
 function pad2(n){ return String(n).padStart(2,"0"); }
 function initRhSelectors(){
   const mesSel = document.getElementById("rhMes");
@@ -556,8 +527,8 @@ function initRhSelectors(){
 }
 initRhSelectors();
 
-// ===== menu
-window.showSection = function(id, btnEl){
+/* ========= MENU ========= */
+function showSection(id, btnEl){
   document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
   document.getElementById(id).classList.add("active");
 
@@ -569,30 +540,58 @@ window.showSection = function(id, btnEl){
   if (id === "secAfast") { carregarColaboradores().then(carregarFerias); }
   if (id === "secOcorr") { carregarColaboradores().then(carregarOcorrencias); }
   if (id === "secPlantoes") { carregarColaboradores().then(carregarPlantoes12x36); }
-};
+}
+window.showSection = showSection;
 
-// ===== auth
-window.login = async function(){
-  const email = document.getElementById("email").value;
-  const senha = document.getElementById("senha").value;
-  try { await signInWithEmailAndPassword(auth, email, senha); }
-  catch(e){ alert("Erro no login."); }
-};
-window.logout = function(){ signOut(auth); };
+/* ========= AUTH (GLOBAL) ========= */
+function login(){
+  const btn = document.getElementById("btnLogin");
+  btn.disabled = true;
+  btn.innerText = "Entrando...";
 
-onAuthStateChanged(auth, user => {
-  loginDiv.style.display = user ? "none" : "block";
-  painelDiv.style.display = user ? "block" : "none";
-  if (user){
-    const b = document.getElementById("btnJornadas");
-    if (b) b.classList.add("activeBtn");
-    carregarLocais();
-    carregarColaboradores();
-    setupFiltroColab();
+  const email = (document.getElementById("email").value || "").trim();
+  const senha = (document.getElementById("senha").value || "").trim();
+
+  if(!email || !senha){
+    alert("Informe email e senha.");
+    btn.disabled = false;
+    btn.innerText = "Entrar";
+    return;
+  }
+
+  auth.signInWithEmailAndPassword(email, senha)
+    .catch(function(){
+      alert("Email ou senha inválidos.");
+    })
+    .finally(function(){
+      btn.disabled = false;
+      btn.innerText = "Entrar";
+    });
+}
+window.login = login;
+
+function logout(){
+  auth.signOut();
+}
+window.logout = logout;
+
+auth.onAuthStateChanged(function(user){
+  if(user){
+    loginDiv.style.display = "none";
+    painelDiv.style.display = "block";
+    try{
+      const b = document.getElementById("btnJornadas");
+      if (b) b.classList.add("activeBtn");
+      carregarLocais();
+      carregarColaboradores();
+    }catch{}
+  }else{
+    loginDiv.style.display = "block";
+    painelDiv.style.display = "none";
   }
 });
 
-// ===== helpers
+/* ========= HELPERS ========= */
 function norm(s){ return (s||"").toString().trim().toLowerCase(); }
 function toDateAny(ts){
   if (!ts) return null;
@@ -612,9 +611,9 @@ function formatBRDate(ts){
 }
 function brDateFromYmd(ymd){
   if (!ymd) return "";
-  const [y,m,d] = ymd.split("-");
-  if (!y||!m||!d) return ymd;
-  return `${d}/${m}/${y}`;
+  const p = String(ymd).slice(0,10).split("-");
+  if (p.length!==3) return ymd;
+  return `${p[2]}/${p[1]}/${p[0]}`;
 }
 function isoFromBrDateTime(str){
   const m = (str||"").trim().match(/^(\d{2})\/(\d{2})\/(\d{4})\s+([01]\d|2[0-3]):([0-5]\d)$/);
@@ -632,8 +631,8 @@ function brDateTimeFromIso(ts){
   return `${data} ${hora}`;
 }
 function horarioTxt(c){
-  const he = (c?.horaEntrada||"").trim();
-  const hs = (c?.horaSaida||"").trim();
+  const he = (c && c.horaEntrada ? String(c.horaEntrada).trim() : "");
+  const hs = (c && c.horaSaida ? String(c.horaSaida).trim() : "");
   if (he && hs) return `${he}–${hs}`;
   if (he || hs) return `${he||"—"}–${hs||"—"}`;
   return "—";
@@ -643,23 +642,26 @@ function ymd(d){
   return d.toISOString().slice(0,10);
 }
 
-// ===== modal
+/* ========= MODAL ========= */
 const overlay=document.getElementById("modalOverlay");
 const titleEl=document.getElementById("modalTitle");
 const bodyEl=document.getElementById("modalBody");
 const saveBtn=document.getElementById("modalSaveBtn");
 
-window.closeModal=function(){ overlay.style.display="none"; bodyEl.innerHTML=""; saveBtn.onclick=null; };
-window.closeModalIfBackdrop=function(e){ if (e.target===overlay) closeModal(); };
+function closeModal(){ overlay.style.display="none"; bodyEl.innerHTML=""; saveBtn.onclick=null; }
+function closeModalIfBackdrop(e){ if (e.target===overlay) closeModal(); }
 
-function openModal({title, bodyHtml, onSave}){
-  titleEl.innerText=title;
-  bodyEl.innerHTML=bodyHtml;
+window.closeModal = closeModal;
+window.closeModalIfBackdrop = closeModalIfBackdrop;
+
+function openModal(obj){
+  titleEl.innerText = obj.title || "Editar";
+  bodyEl.innerHTML = obj.bodyHtml || "";
   overlay.style.display="flex";
-  saveBtn.onclick=onSave || null;
+  saveBtn.onclick = obj.onSave || null;
 }
 
-// ===== localização/posto
+/* ========= LOCAIS ========= */
 function haversineMeters(lat1, lon1, lat2, lon2){
   const R=6371000; const toRad=x=>x*Math.PI/180;
   const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
@@ -676,37 +678,179 @@ function parseLocation(str){
 }
 function getBestLocationFromJornada(j){
   const steps=["saida_he","entrada_he","saida","retorno_intervalo","saida_intervalo","entrada"];
-  for (const s of steps){ const loc=j?.[s]?.location; if (loc) return loc; }
+  for (let i=0;i<steps.length;i++){
+    const s=steps[i];
+    const loc = j && j[s] && j[s].location ? j[s].location : "";
+    if (loc) return loc;
+  }
   return "";
 }
 function reconhecerLocal(locationStr){
   const p=parseLocation(locationStr);
   if (!p) return "Não disponível";
   let best=null;
-  for (const l of cacheLocais){
+  for (let i=0;i<cacheLocais.length;i++){
+    const l=cacheLocais[i];
     const d=haversineMeters(p.lat,p.lng,l.lat,l.lng);
-    if (d<=l.raio){ if (!best || d<best.d) best={nome:l.nome,d}; }
+    if (d<=l.raio){
+      if (!best || d<best.d) best={nome:l.nome,d:d};
+    }
   }
   return best ? best.nome : "Não reconhecido";
 }
 
-// ===== 12x36 helpers
+function cadastrarLocal(){
+  const nome = (document.getElementById("locNome").value || "").trim();
+  const lat = Number((document.getElementById("locLat").value || "").trim());
+  const lng = Number((document.getElementById("locLng").value || "").trim());
+  const raio = Number((document.getElementById("locRaio").value || "").trim());
+
+  if (!nome || !Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(raio)){
+    alert("Preencha Nome, Latitude, Longitude e Raio.");
+    return;
+  }
+  if (!confirm(`Cadastrar local?\n${nome}\n(${lat}, ${lng})\nRaio: ${raio}m`)) return;
+
+  db.collection("locais").add({ nome, lat, lng, raio, updatedAt:new Date().toISOString() })
+    .then(function(){
+      document.getElementById("locNome").value="";
+      document.getElementById("locLat").value="";
+      document.getElementById("locLng").value="";
+      document.getElementById("locRaio").value="";
+      carregarLocais();
+    })
+    .catch(function(){
+      alert("Não foi possível cadastrar o local.");
+    });
+}
+window.cadastrarLocal = cadastrarLocal;
+
+function carregarLocais(){
+  return db.collection("locais").get()
+    .then(function(snap){
+      cacheLocais = snap.docs.map(function(d){
+        const data = d.data() || {};
+        return { id:d.id, nome:data.nome, lat:data.lat, lng:data.lng, raio:data.raio, updatedAt:data.updatedAt };
+      })
+      .filter(function(l){
+        return Number.isFinite(l.lat) && Number.isFinite(l.lng) && Number.isFinite(l.raio);
+      })
+      .sort(function(a,b){
+        return String(a.nome||"").localeCompare(String(b.nome||""));
+      });
+
+      const tbody=document.getElementById("tbodyLocais");
+      if (!tbody) return;
+
+      tbody.innerHTML="";
+      cacheLocais.forEach(function(l){
+        const tr=document.createElement("tr");
+        tr.innerHTML = `
+          <td>${l.nome || ""}</td>
+          <td>${l.lat}</td>
+          <td>${l.lng}</td>
+          <td>${l.raio}</td>
+          <td><button class="minBtn" onclick="editarLocal('${l.id}')">Modificar</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    })
+    .catch(function(){
+      alert("Não foi possível carregar locais.");
+    });
+}
+window.carregarLocais = carregarLocais;
+
+function editarLocal(id){
+  const l = cacheLocais.find(function(x){ return x.id===id; });
+  if (!l){ alert("Local não encontrado."); return; }
+
+  openModal({
+    title: "Modificar local",
+    bodyHtml: `
+      <div class="grid">
+        <div style="grid-column:1 / -1">
+          <label>Nome</label>
+          <input id="mlNome" value="${(l.nome||"").replaceAll('"','&quot;')}">
+        </div>
+        <div>
+          <label>Latitude</label>
+          <input id="mlLat" value="${l.lat}">
+        </div>
+        <div>
+          <label>Longitude</label>
+          <input id="mlLng" value="${l.lng}">
+        </div>
+        <div style="grid-column:1 / -1">
+          <label>Raio (m)</label>
+          <input id="mlRaio" value="${l.raio}">
+        </div>
+        <div class="small" style="grid-column:1 / -1">
+          <button class="btnDangerInline" id="btnExcluirLocal">Excluir local</button>
+        </div>
+      </div>
+    `,
+    onSave: function(){
+      const nome = (document.getElementById("mlNome").value || "").trim();
+      const lat = Number((document.getElementById("mlLat").value || "").trim());
+      const lng = Number((document.getElementById("mlLng").value || "").trim());
+      const raio = Number((document.getElementById("mlRaio").value || "").trim());
+
+      if (!nome || !Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(raio)){
+        alert("Preencha corretamente Nome, Latitude, Longitude e Raio.");
+        return;
+      }
+      if (!confirm("Salvar alterações do local?")) return;
+
+      db.collection("locais").doc(id).update({ nome, lat, lng, raio, updatedAt:new Date().toISOString() })
+        .then(function(){
+          closeModal();
+          carregarLocais();
+          buscar();
+        })
+        .catch(function(){
+          alert("Não foi possível salvar o local.");
+        });
+    }
+  });
+
+  setTimeout(function(){
+    const btn = document.getElementById("btnExcluirLocal");
+    if (!btn) return;
+    btn.onclick = function(){
+      if (!confirm("Excluir este local?")) return;
+      db.collection("locais").doc(id).delete()
+        .then(function(){
+          closeModal();
+          carregarLocais();
+          buscar();
+        })
+        .catch(function(){
+          alert("Não foi possível excluir o local.");
+        });
+    };
+  }, 0);
+}
+window.editarLocal = editarLocal;
+
+/* ========= 12x36 helpers ========= */
 function getPlantaoReferencia(dateObj, historico){
   if (!Array.isArray(historico) || !historico.length) return null;
   const key = ymd(dateObj);
   let best = null;
-  for (const p of historico){
-    const ini = String(p?.inicio || p?.vigencia || "").slice(0,10);
+  for (let i=0;i<historico.length;i++){
+    const p = historico[i];
+    const ini = String((p && (p.inicio || p.vigencia)) || "").slice(0,10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(ini)) continue;
     if (ini <= key){
-      if (!best || ini > String(best.inicio||"")) best = { ...p, inicio: ini };
+      if (!best || ini > String(best.inicio||"")) best = Object.assign({}, p, { inicio: ini });
     }
   }
   return best;
 }
 function isFolgaByEscala(dateObj, escala, plantaoHistorico){
   const dow = dateObj.getDay();
-  const e = (escala || "5x2").toLowerCase();
+  const e = String(escala || "5x2").toLowerCase();
   if (e === "5x2") return (dow === 0 || dow === 6);
   if (e === "6x1") return (dow === 0);
 
@@ -728,187 +872,158 @@ function isDiaTrabalho(dateObj, escala, plantaoHistorico){
   return !isFolgaByEscala(dateObj, escala, plantaoHistorico);
 }
 
-// ===== SYNC 12x36 -> colaborador.plantaoHistorico
-async function syncPlantaoHistoricoToColaborador(re){
-  const qP = query(collection(db,"plantoes12x36"), where("re","==",re));
-  const snap = await getDocs(qP);
-  let list = snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }));
-  list.sort((a,b) => String(a.vigencia||"").localeCompare(String(b.vigencia||"")));
-
-  const historico = list
-    .map(p => ({
-      inicio: String(p.vigencia||"").slice(0,10),
-      base: String(p.base||"trabalha").toLowerCase(),
-      obs: String(p.obs||""),
-      updatedAt: String(p.updatedAt||"")
-    }))
-    .filter(p => /^\d{4}-\d{2}-\d{2}$/.test(p.inicio));
-
-  await setDoc(doc(db,"colaboradores",re), {
-    plantaoHistorico: historico,
-    updatedAt: new Date().toISOString()
-  }, { merge:true });
-}
-
-// ===== COLABORADORES
-window.cadastrarColab = async function(){
-  const re = document.getElementById("cadRe").value.trim();
-  const nome = document.getElementById("cadNome").value.trim();
-  let cpf = document.getElementById("cadCpf").value.trim();
+/* ========= COLABORADORES ========= */
+function cadastrarColab(){
+  const re = (document.getElementById("cadRe").value || "").trim();
+  const nome = (document.getElementById("cadNome").value || "").trim();
+  let cpf = (document.getElementById("cadCpf").value || "").trim();
   const escala = document.getElementById("cadEscala").value;
   const horaEntrada = (document.getElementById("cadHoraEntrada").value || "").trim();
   const horaSaida = (document.getElementById("cadHoraSaida").value || "").trim();
   const dataAdmissao = (document.getElementById("cadAdmissao").value || "").trim();
 
-  if (!re || !nome) return alert("Preencha RE e Nome.");
+  if (!re || !nome){ alert("Preencha RE e Nome."); return; }
   cpf = cpf.replace(/\D/g,"");
-  if (!cpf || cpf.length < 4) return alert("CPF é obrigatório (mínimo 4 dígitos).");
-  if (!dataAdmissao) return alert("Data de admissão é obrigatória.");
+  if (!cpf || cpf.length < 4){ alert("CPF é obrigatório (mínimo 4 dígitos)."); return; }
+  if (!dataAdmissao){ alert("Data de admissão é obrigatória."); return; }
 
   if (!confirm(
     `Cadastrar?\nRE: ${re}\nNome: ${nome}\nEscala: ${escala}\nHorário (info): ${horaEntrada||"—"}–${horaSaida||"—"}\nAdmissão: ${brDateFromYmd(dataAdmissao)}`
   )) return;
 
-  await setDoc(doc(db,"colaboradores",re), {
+  db.collection("colaboradores").doc(re).set({
     re, nome, cpf, escala, horaEntrada, horaSaida,
     dataAdmissao,
     horariosSemana: {},
     ativo:true,
     updatedAt:new Date().toISOString()
-  }, { merge:true });
-
-  document.getElementById("cadRe").value="";
-  document.getElementById("cadNome").value="";
-  document.getElementById("cadCpf").value="";
-  document.getElementById("cadEscala").value="5x2";
-  document.getElementById("cadHoraEntrada").value="";
-  document.getElementById("cadHoraSaida").value="";
-  document.getElementById("cadAdmissao").value="";
-  carregarColaboradores();
-};
-
-// ✅ filtros colaboradores
-function getColabFiltros(){
-  const fr = norm(document.getElementById("colabFiltroRe")?.value || "");
-  const fn = norm(document.getElementById("colabFiltroNome")?.value || "");
-  return { fr, fn };
+  }, { merge:true })
+  .then(function(){
+    document.getElementById("cadRe").value="";
+    document.getElementById("cadNome").value="";
+    document.getElementById("cadCpf").value="";
+    document.getElementById("cadEscala").value="5x2";
+    document.getElementById("cadHoraEntrada").value="";
+    document.getElementById("cadHoraSaida").value="";
+    document.getElementById("cadAdmissao").value="";
+    carregarColaboradores();
+  })
+  .catch(function(){
+    alert("Não foi possível cadastrar o colaborador.");
+  });
 }
-function aplicarFiltroColab(list){
-  const { fr, fn } = getColabFiltros();
-  let out = list;
-  if (fr) out = out.filter(c => norm(c.re || c.id) === fr || norm(c.re || c.id).includes(fr));
-  if (fn) out = out.filter(c => norm(c.nome).includes(fn));
-  return out;
+window.cadastrarColab = cadastrarColab;
+
+function carregarColaboradores(){
+  return db.collection("colaboradores").get()
+    .then(function(snap){
+      cacheColabs = snap.docs.map(function(d){
+        const data = d.data() || {};
+        return Object.assign({ id:d.id }, data);
+      })
+      .sort(function(a,b){
+        return String(a.nome||"").localeCompare(String(b.nome||""));
+      });
+
+      renderTabelaColab(cacheColabs);
+    })
+    .catch(function(){
+      alert("Não foi possível carregar colaboradores.");
+    });
 }
-window.limparFiltroColab = function(){
-  const a = document.getElementById("colabFiltroRe");
-  const b = document.getElementById("colabFiltroNome");
-  if (a) a.value = "";
-  if (b) b.value = "";
-  carregarColaboradores();
-};
-function setupFiltroColab(){
-  const a = document.getElementById("colabFiltroRe");
-  const b = document.getElementById("colabFiltroNome");
-  if (!a || !b) return;
-  if (a.dataset.bound === "1") return;
-  a.dataset.bound = "1";
-  b.dataset.bound = "1";
-  const handler = () => carregarColaboradores();
-  a.addEventListener("input", handler);
-  b.addEventListener("input", handler);
-}
+window.carregarColaboradores = carregarColaboradores;
 
-window.carregarColaboradores = async function(){
-  const snap = await getDocs(collection(db,"colaboradores"));
-  cacheColabs = snap.docs.map(d => ({ id:d.id, ...d.data() }))
-    .sort((a,b)=> (a.nome||"").localeCompare(b.nome||""));
-
-  setupFiltroColab();
-
+function renderTabelaColab(lista){
   const tbody=document.getElementById("tbodyColab");
-  if (tbody){
-    tbody.innerHTML="";
-    const list = aplicarFiltroColab(cacheColabs);
+  if (!tbody) return;
+  tbody.innerHTML="";
 
-    for (const c of list){
-      const status = (c.ativo === false) ? "Inativo" : "Ativo";
-      const escala = (c.escala || "5x2");
-      const adm = (c.dataAdmissao ? brDateFromYmd(String(c.dataAdmissao).slice(0,10)) : "—");
-      const tr=document.createElement("tr");
-      tr.innerHTML = `
-        <td>${c.re || c.id}</td>
-        <td>${c.nome || ""}</td>
-        <td>${c.cpf || ""}</td>
-        <td>${escala}</td>
-        <td>${horarioTxt(c)}</td>
-        <td>${adm}</td>
-        <td>${status}</td>
-        <td><button class="minBtn" onclick="editarColab('${c.id}')">Modificar</button></td>
-      `;
-      tbody.appendChild(tr);
-    }
-  }
-};
+  (lista || []).forEach(function(c){
+    const status = (c.ativo === false) ? "Inativo" : "Ativo";
+    const escala = (c.escala || "5x2");
+    const adm = (c.dataAdmissao ? brDateFromYmd(String(c.dataAdmissao).slice(0,10)) : "—");
+    const tr=document.createElement("tr");
+    tr.innerHTML = `
+      <td>${c.re || c.id}</td>
+      <td>${c.nome || ""}</td>
+      <td>${c.cpf || ""}</td>
+      <td>${escala}</td>
+      <td>${horarioTxt(c)}</td>
+      <td>${adm}</td>
+      <td>${status}</td>
+      <td><button class="minBtn" onclick="editarColab('${c.id}')">Modificar</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
 
-// ===== horário por semana (modal) + BLOQUEIOS por escala
+function aplicarFiltroColab(){
+  const re = norm(document.getElementById("colabBuscaRe").value);
+  const nome = norm(document.getElementById("colabBuscaNome").value);
+
+  let lista = cacheColabs.slice();
+
+  if (re) lista = lista.filter(function(c){ return norm(c.re || c.id) === re; });
+  if (nome) lista = lista.filter(function(c){ return norm(c.nome).includes(nome); });
+
+  renderTabelaColab(lista);
+}
+window.aplicarFiltroColab = aplicarFiltroColab;
+
+function limparFiltroColab(){
+  document.getElementById("colabBuscaRe").value = "";
+  document.getElementById("colabBuscaNome").value = "";
+  renderTabelaColab(cacheColabs);
+}
+window.limparFiltroColab = limparFiltroColab;
+
+/* ===== horário por semana (modal) ===== */
 function normalizeWeekSchedule(raw){
   const out = {};
   for (let d=0; d<=6; d++){
     const k = String(d);
-    const v = raw?.[k];
+    const v = raw && raw[k] ? raw[k] : null;
     if (!v) { out[k] = null; continue; }
-    const i = (v.in || v.entrada || "").toString().trim();
-    const o = (v.out || v.saida || "").toString().trim();
+    const i = String(v.in || v.entrada || "").trim();
+    const o = String(v.out || v.saida || "").trim();
     if (!i || !o) out[k] = null;
     else out[k] = { in:i, out:o };
   }
   return out;
 }
 function diasPadraoPorEscala(escala){
-  const e = (escala||"5x2").toLowerCase();
+  const e = String(escala||"5x2").toLowerCase();
   if (e==="5x2") return [1,2,3,4,5];
   if (e==="6x1") return [1,2,3,4,5,6];
   if (e.includes("12") && e.includes("36")) return [0,1,2,3,4,5,6];
   return [1,2,3,4,5];
-}
-function diasBloqueadosPorEscala(escala){
-  const e = (escala||"5x2").toLowerCase();
-  if (e === "5x2") return new Set([0,6]); // Dom e Sáb bloqueados
-  if (e === "6x1") return new Set([0]);   // Dom bloqueado
-  return new Set();                       // 12x36 e outros: sem bloqueio
 }
 function weekLabel(d){ return ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"][d] || String(d); }
 
 function buildHorarioSemanaHtml(horariosSemana, escala){
   const hs = normalizeWeekSchedule(horariosSemana);
   const marcadosDefault = new Set(diasPadraoPorEscala(escala));
-  const bloqueados = diasBloqueadosPorEscala(escala);
 
   const rows = [];
   for (let d=0; d<=6; d++){
     const cur = hs[String(d)];
-    const isBlocked = bloqueados.has(d);
-    const checked = (marcadosDefault.has(d) && !isBlocked);
-
     rows.push(`
-      <div style="border:1px solid #eee; border-radius:10px; padding:10px; ${isBlocked ? "opacity:.65" : ""}">
+      <div style="border:1px solid #eee; border-radius:10px; padding:10px;">
         <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
           <label style="display:flex; gap:8px; align-items:center; margin:0;">
-            <input type="checkbox" class="wkChk" data-d="${d}" ${checked ? "checked" : ""} ${isBlocked ? "disabled" : ""}>
+            <input type="checkbox" class="wkChk" data-d="${d}" ${marcadosDefault.has(d) ? "checked" : ""}>
             <b>${weekLabel(d)}</b>
           </label>
-          <span class="small">${isBlocked ? "BLOQUEADO pela escala" : "se desmarcar, vira folga planejada"}</span>
+          <span class="small">se desmarcar, vira folga planejada</span>
         </div>
-
         <div style="display:flex; gap:8px; margin-top:8px;">
           <div style="flex:1;">
             <label>Entrada</label>
-            <input type="time" class="wkIn" data-d="${d}" value="${isBlocked ? "" : (cur?.in || "")}" ${isBlocked ? "disabled" : ""}>
+            <input type="time" class="wkIn" data-d="${d}" value="${cur && cur.in ? cur.in : ""}">
           </div>
           <div style="flex:1;">
             <label>Saída</label>
-            <input type="time" class="wkOut" data-d="${d}" value="${isBlocked ? "" : (cur?.out || "")}" ${isBlocked ? "disabled" : ""}>
+            <input type="time" class="wkOut" data-d="${d}" value="${cur && cur.out ? cur.out : ""}">
           </div>
         </div>
       </div>
@@ -919,14 +1034,13 @@ function buildHorarioSemanaHtml(horariosSemana, escala){
     <div style="grid-column:1 / -1; margin-top:8px; padding:12px; border:1px solid #eee; border-radius:12px;">
       <div style="font-weight:700; margin-bottom:6px;">Horários por dia da semana (cálculo RH)</div>
       <div class="small" style="margin-bottom:10px;">
-        1) Marque os dias • 2) Preencha o primeiro dia • 3) Clique “Replicar” • 4) Ajuste dia a dia.<br>
-        <b>5x2:</b> Sáb/Dom ficam bloqueados.
+        1) Marque os dias • 2) Preencha o primeiro dia • 3) Clique “Replicar” • 4) Ajuste dia a dia.
       </div>
 
       <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px;">
         <button type="button" class="minBtn" id="btnAutoDias">Marcar dias pela escala</button>
         <button type="button" class="minBtn" id="btnReplicar">Replicar do primeiro dia marcado</button>
-        <span class="small">* Para 12x36, isso define apenas “horário base”; o calendário vem do histórico.</span>
+        <span class="small">* Para 12x36, isso só define “horário de plantão”; o calendário vem do histórico.</span>
       </div>
 
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;" id="wkGrid">
@@ -938,15 +1052,16 @@ function buildHorarioSemanaHtml(horariosSemana, escala){
 function readHorarioSemanaFromModal(){
   const hs = {};
   const chks = Array.from(document.querySelectorAll(".wkChk"));
-  for (const chk of chks){
+  for (let i=0;i<chks.length;i++){
+    const chk = chks[i];
     const d = chk.getAttribute("data-d");
     const enabled = chk.checked;
 
-    const inEl = document.querySelector(\`.wkIn[data-d="\${d}"]\`);
-    const outEl = document.querySelector(\`.wkOut[data-d="\${d}"]\`);
+    const inEl = document.querySelector('.wkIn[data-d="'+d+'"]');
+    const outEl = document.querySelector('.wkOut[data-d="'+d+'"]');
 
-    const i = (inEl?.value || "").trim();
-    const o = (outEl?.value || "").trim();
+    const iv = (inEl && inEl.value ? inEl.value : "").trim();
+    const ov = (outEl && outEl.value ? outEl.value : "").trim();
 
     if (!enabled){
       hs[String(d)] = null;
@@ -954,15 +1069,15 @@ function readHorarioSemanaFromModal(){
       if (outEl) outEl.value="";
       continue;
     }
-    if (!i || !o) hs[String(d)] = null;
-    else hs[String(d)] = { in:i, out:o };
+    if (!iv || !ov) hs[String(d)] = null;
+    else hs[String(d)] = { in:iv, out:ov };
   }
   return hs;
 }
 
-window.editarColab = function(reDocId){
-  const c = cacheColabs.find(x => x.id === reDocId);
-  if (!c) return alert("Colaborador não encontrado.");
+function editarColab(reDocId){
+  const c = cacheColabs.find(function(x){ return x.id === reDocId; });
+  if (!c){ alert("Colaborador não encontrado."); return; }
 
   const escalaAtual = (c.escala || "5x2");
 
@@ -972,24 +1087,24 @@ window.editarColab = function(reDocId){
       <div class="grid">
         <div>
           <label>RE</label>
-          <input id="mRe" value="${c.re || c.id}" disabled>
+          <input id="mRe" value="${(c.re || c.id)}" disabled>
         </div>
         <div>
           <label>CPF (obrigatório)</label>
-          <input id="mCpf" value="${c.cpf || ""}" placeholder="Somente números">
+          <input id="mCpf" value="${(c.cpf || "").replaceAll('"','&quot;')}" placeholder="Somente números">
         </div>
 
         <div style="grid-column:1 / -1">
           <label>Nome</label>
-          <input id="mNome" value="${c.nome || ""}">
+          <input id="mNome" value="${(c.nome || "").replaceAll('"','&quot;')}">
         </div>
 
         <div>
           <label>Escala</label>
           <select id="mEscala">
-            <option value="5x2" ${(escalaAtual)==="5x2" ? "selected" : ""}>5x2 (Seg-Sex)</option>
-            <option value="6x1" ${(escalaAtual)==="6x1" ? "selected" : ""}>6x1 (Folga Dom)</option>
-            <option value="12x36" ${(escalaAtual)==="12x36" ? "selected" : ""}>12x36 (1 trabalha / 1 folga)</option>
+            <option value="5x2" ${escalaAtual==="5x2" ? "selected" : ""}>5x2 (Seg-Sex)</option>
+            <option value="6x1" ${escalaAtual==="6x1" ? "selected" : ""}>6x1 (Folga Dom)</option>
+            <option value="12x36" ${escalaAtual==="12x36" ? "selected" : ""}>12x36 (1 trabalha / 1 folga)</option>
           </select>
         </div>
 
@@ -1003,11 +1118,11 @@ window.editarColab = function(reDocId){
 
         <div>
           <label>Hora entrada prevista (info)</label>
-          <input id="mHoraEntrada" type="time" value="${(c.horaEntrada||"").toString().trim()}">
+          <input id="mHoraEntrada" type="time" value="${String(c.horaEntrada||"").trim()}">
         </div>
         <div>
           <label>Hora saída prevista (info)</label>
-          <input id="mHoraSaida" type="time" value="${(c.horaSaida||"").toString().trim()}">
+          <input id="mHoraSaida" type="time" value="${String(c.horaSaida||"").trim()}">
         </div>
 
         <div style="grid-column:1 / -1">
@@ -1018,9 +1133,9 @@ window.editarColab = function(reDocId){
         ${buildHorarioSemanaHtml(c.horariosSemana || {}, escalaAtual)}
       </div>
     `,
-    onSave: async () => {
-      const nome = document.getElementById("mNome").value.trim();
-      let cpf = document.getElementById("mCpf").value.trim().replace(/\D/g,"");
+    onSave: function(){
+      const nome = (document.getElementById("mNome").value || "").trim();
+      let cpf = (document.getElementById("mCpf").value || "").trim().replace(/\D/g,"");
       const ativo = document.getElementById("mAtivo").value === "true";
       const escala = document.getElementById("mEscala").value;
       const horaEntrada = (document.getElementById("mHoraEntrada").value || "").trim();
@@ -1028,80 +1143,66 @@ window.editarColab = function(reDocId){
       const dataAdmissao = (document.getElementById("mAdmissao").value || "").trim();
       const horariosSemana = readHorarioSemanaFromModal();
 
-      if (!nome) return alert("Nome não pode ficar vazio.");
-      if (!cpf || cpf.length < 4) return alert("CPF é obrigatório (mínimo 4 dígitos).");
-      if (!dataAdmissao) return alert("Data de admissão é obrigatória.");
+      if (!nome){ alert("Nome não pode ficar vazio."); return; }
+      if (!cpf || cpf.length < 4){ alert("CPF é obrigatório (mínimo 4 dígitos)."); return; }
+      if (!dataAdmissao){ alert("Data de admissão é obrigatória."); return; }
       if (!confirm("Salvar alteração do colaborador?")) return;
 
-      await setDoc(doc(db,"colaboradores",reDocId), {
+      db.collection("colaboradores").doc(reDocId).set({
         nome, cpf, ativo, escala, horaEntrada, horaSaida,
         dataAdmissao,
         horariosSemana,
         updatedAt:new Date().toISOString()
-      }, { merge:true });
-
-      closeModal();
-      carregarColaboradores();
-      carregarFerias();
-      carregarOcorrencias();
-      carregarPlantoes12x36();
+      }, { merge:true })
+      .then(function(){
+        closeModal();
+        carregarColaboradores();
+        carregarFerias();
+        carregarOcorrencias();
+        carregarPlantoes12x36();
+      })
+      .catch(function(){
+        alert("Não foi possível salvar o colaborador.");
+      });
     }
   });
 
-  setTimeout(() => {
+  setTimeout(function(){
     const escSel = document.getElementById("mEscala");
     const btnAuto = document.getElementById("btnAutoDias");
     const btnRep = document.getElementById("btnReplicar");
 
     function applyAutoDias(){
-      const esc = escSel?.value || escalaAtual;
+      const esc = (escSel && escSel.value ? escSel.value : escalaAtual);
       const days = new Set(diasPadraoPorEscala(esc));
-      const blocked = diasBloqueadosPorEscala(esc);
-
       for (let d=0; d<=6; d++){
-        const chk = document.querySelector(\`.wkChk[data-d="\${d}"]\`);
-        const i = document.querySelector(\`.wkIn[data-d="\${d}"]\`);
-        const o = document.querySelector(\`.wkOut[data-d="\${d}"]\`);
-        const isBlocked = blocked.has(d);
-
-        if (chk){
-          chk.disabled = isBlocked;
-          chk.checked = (!isBlocked && days.has(d));
-        }
-        if (i){
-          i.disabled = isBlocked;
-          if (isBlocked) i.value = "";
-          else if (!days.has(d)) i.value = "";
-        }
-        if (o){
-          o.disabled = isBlocked;
-          if (isBlocked) o.value = "";
-          else if (!days.has(d)) o.value = "";
+        const chk = document.querySelector('.wkChk[data-d="'+d+'"]');
+        if (chk) chk.checked = days.has(d);
+        if (!days.has(d)){
+          const i = document.querySelector('.wkIn[data-d="'+d+'"]');
+          const o = document.querySelector('.wkOut[data-d="'+d+'"]');
+          if (i) i.value = "";
+          if (o) o.value = "";
         }
       }
     }
 
     function replicateFromFirst(){
-      const esc = escSel?.value || escalaAtual;
-      const blocked = diasBloqueadosPorEscala(esc);
-
       let first = null;
       for (let d=0; d<=6; d++){
-        if (blocked.has(d)) continue;
-        const chk = document.querySelector(\`.wkChk[data-d="\${d}"]\`);
+        const chk = document.querySelector('.wkChk[data-d="'+d+'"]');
         if (!chk || !chk.checked) continue;
-        const i = document.querySelector(\`.wkIn[data-d="\${d}"]\`)?.value || "";
-        const o = document.querySelector(\`.wkOut[data-d="\${d}"]\`)?.value || "";
+        const i = (document.querySelector('.wkIn[data-d="'+d+'"]') || {}).value || "";
+        const o = (document.querySelector('.wkOut[data-d="'+d+'"]') || {}).value || "";
         if (i && o){ first = { in:i, out:o }; break; }
       }
-      if (!first) return alert("Preencha o horário (entrada/saída) no primeiro dia marcado antes de replicar.");
+      if (!first){ alert("Preencha o horário no primeiro dia marcado antes de replicar."); return; }
 
       for (let d=0; d<=6; d++){
-        if (blocked.has(d)) continue;
-        const chk = document.querySelector(\`.wkChk[data-d="\${d}"]\`);
+        const chk = document.querySelector('.wkChk[data-d="'+d+'"]');
         if (!chk || !chk.checked) continue;
-        const i = document.querySelector(\`.wkIn[data-d="\${d}"]\`);
-        const o = document.querySelector(\`.wkOut[data-d="\${d}"]\`);
+        const i = document.querySelector('.wkIn[data-d="'+d+'"]');
+        const o = document.querySelector('.wkOut[data-d="'+d+'"]');
         if (i && !i.value) i.value = first.in;
         if (o && !o.value) o.value = first.out;
       }
@@ -1110,156 +1211,67 @@ window.editarColab = function(reDocId){
     if (btnAuto) btnAuto.onclick = applyAutoDias;
     if (btnRep) btnRep.onclick = replicateFromFirst;
 
-    // se desmarcar, limpa horários (apenas nos não-bloqueados)
     for (let d=0; d<=6; d++){
-      const chk = document.querySelector(\`.wkChk[data-d="\${d}"]\`);
+      const chk = document.querySelector('.wkChk[data-d="'+d+'"]');
       if (!chk) continue;
-      chk.addEventListener("change", () => {
+      chk.addEventListener("change", function(){
         if (!chk.checked){
-          const i = document.querySelector(\`.wkIn[data-d="\${d}"]\`);
-          const o = document.querySelector(\`.wkOut[data-d="\${d}"]\`);
+          const i = document.querySelector('.wkIn[data-d="'+d+'"]');
+          const o = document.querySelector('.wkOut[data-d="'+d+'"]');
           if (i) i.value = "";
           if (o) o.value = "";
         }
       });
     }
   }, 0);
-};
+}
+window.editarColab = editarColab;
 
-// ===== LOCAIS
-window.cadastrarLocal = async function(){
-  const nome = document.getElementById("locNome").value.trim();
-  const lat = Number(document.getElementById("locLat").value.trim());
-  const lng = Number(document.getElementById("locLng").value.trim());
-  const raio = Number(document.getElementById("locRaio").value.trim());
-
-  if (!nome || !Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(raio)){
-    return alert("Preencha Nome, Latitude, Longitude e Raio.");
-  }
-  if (!confirm(`Cadastrar local?\n${nome}\n(${lat}, ${lng})\nRaio: ${raio}m`)) return;
-
-  await addDoc(collection(db,"locais"), { nome, lat, lng, raio, updatedAt:new Date().toISOString() });
-
-  document.getElementById("locNome").value="";
-  document.getElementById("locLat").value="";
-  document.getElementById("locLng").value="";
-  document.getElementById("locRaio").value="";
-  carregarLocais();
-};
-
-window.carregarLocais = async function(){
-  const snap = await getDocs(collection(db,"locais"));
-  cacheLocais = snap.docs.map(d => ({ id:d.id, ...d.data() }))
-    .filter(l => Number.isFinite(l.lat) && Number.isFinite(l.lng) && Number.isFinite(l.raio))
-    .sort((a,b)=> (a.nome||"").localeCompare(b.nome||""));
-
-  const tbody=document.getElementById("tbodyLocais");
-  tbody.innerHTML="";
-
-  for (const l of cacheLocais){
-    const tr=document.createElement("tr");
-    tr.innerHTML = `
-      <td>${l.nome || ""}</td>
-      <td>${l.lat}</td>
-      <td>${l.lng}</td>
-      <td>${l.raio}</td>
-      <td><button class="minBtn" onclick="editarLocal('${l.id}')">Modificar</button></td>
-    `;
-    tbody.appendChild(tr);
-  }
-};
-
-window.editarLocal = function(id){
-  const l = cacheLocais.find(x => x.id === id);
-  if (!l) return alert("Local não encontrado.");
-
-  openModal({
-    title: "Modificar local",
-    bodyHtml: `
-      <div class="grid">
-        <div style="grid-column:1 / -1">
-          <label>Nome</label>
-          <input id="mlNome" value="${l.nome || ""}">
-        </div>
-        <div>
-          <label>Latitude</label>
-          <input id="mlLat" value="${l.lat}">
-        </div>
-        <div>
-          <label>Longitude</label>
-          <input id="mlLng" value="${l.lng}">
-        </div>
-        <div style="grid-column:1 / -1">
-          <label>Raio (m)</label>
-          <input id="mlRaio" value="${l.raio}">
-        </div>
-        <div class="small" style="grid-column:1 / -1">
-          <button class="btnDangerInline" id="btnExcluirLocal">Excluir local</button>
-        </div>
-      </div>
-    `,
-    onSave: async () => {
-      const nome = document.getElementById("mlNome").value.trim();
-      const lat = Number(document.getElementById("mlLat").value.trim());
-      const lng = Number(document.getElementById("mlLng").value.trim());
-      const raio = Number(document.getElementById("mlRaio").value.trim());
-
-      if (!nome || !Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(raio)){
-        return alert("Preencha corretamente Nome, Latitude, Longitude e Raio.");
-      }
-      if (!confirm("Salvar alterações do local?")) return;
-
-      await updateDoc(doc(db,"locais",id), { nome, lat, lng, raio, updatedAt:new Date().toISOString() });
-      closeModal();
-      carregarLocais();
-      buscar();
-    }
-  });
-
-  setTimeout(() => {
-    const btn = document.getElementById("btnExcluirLocal");
-    if (!btn) return;
-    btn.onclick = async () => {
-      if (!confirm("Excluir este local?")) return;
-      await deleteDoc(doc(db,"locais",id));
-      closeModal();
-      carregarLocais();
-      buscar();
-    };
-  }, 0);
-};
-
-// ===== JORNADAS
-window.buscar = async function(){
+/* ========= JORNADAS ========= */
+function buscar(){
   const iniStr = document.getElementById("inicio").value || "2000-01-01";
   const fimStr = document.getElementById("fim").value || "2999-12-31";
   const filtroRe = norm(document.getElementById("filtroRe").value);
   const filtroNome = norm(document.getElementById("filtroNome").value);
 
-  const snap = await getDocs(collection(db,"jornadas"));
-  let jornadas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+  db.collection("jornadas").get()
+    .then(function(snap){
+      let jornadas = snap.docs.map(function(d){
+        return Object.assign({ id:d.id }, d.data() || {});
+      });
 
-  jornadas = jornadas.filter(j => {
-    const iso = (j.entrada?.ts || "").toString();
-    const d = iso ? iso.slice(0,10) : "";
-    if (!d) return false;
-    return d >= iniStr && d <= fimStr;
-  });
+      jornadas = jornadas.filter(function(j){
+        const iso = (j && j.entrada && j.entrada.ts ? String(j.entrada.ts) : "");
+        const d = iso ? iso.slice(0,10) : "";
+        if (!d) return false;
+        return d >= iniStr && d <= fimStr;
+      });
 
-  if (filtroRe) jornadas = jornadas.filter(j => norm(j.re) === filtroRe);
-  if (filtroNome) jornadas = jornadas.filter(j => norm(j.nome).includes(filtroNome));
+      if (filtroRe) jornadas = jornadas.filter(function(j){ return norm(j.re) === filtroRe; });
+      if (filtroNome) jornadas = jornadas.filter(function(j){ return norm(j.nome).includes(filtroNome); });
 
-  jornadas.sort((a,b) => (toDateAny(b.entrada?.ts)||new Date(0)) - (toDateAny(a.entrada?.ts)||new Date(0)));
-  ultimaTabela = jornadas;
-  montarJornadas(jornadas);
-};
+      jornadas.sort(function(a,b){
+        const da = toDateAny(a && a.entrada ? a.entrada.ts : null) || new Date(0);
+        const dbb= toDateAny(b && b.entrada ? b.entrada.ts : null) || new Date(0);
+        return dbb - da;
+      });
+
+      ultimaTabela = jornadas;
+      montarJornadas(jornadas);
+    })
+    .catch(function(){
+      alert("Não foi possível buscar jornadas.");
+    });
+}
+window.buscar = buscar;
 
 function montarJornadas(jornadas){
   const tbody=document.getElementById("tbodyJornadas");
+  if (!tbody) return;
   tbody.innerHTML="";
 
-  for (const j of jornadas){
-    const dataEntrada = formatBRDate(j.entrada?.ts);
+  (jornadas||[]).forEach(function(j){
+    const dataEntrada = formatBRDate(j && j.entrada ? j.entrada.ts : null);
     const loc = getBestLocationFromJornada(j);
     const rec = reconhecerLocal(loc);
 
@@ -1268,164 +1280,193 @@ function montarJornadas(jornadas){
       <td>${dataEntrada}</td>
       <td>${j.nome || ""}</td>
       <td>${j.re || ""}</td>
-      <td>${formatHHMM(j.entrada?.ts)}</td>
-      <td>${formatHHMM(j.saida_intervalo?.ts)}</td>
-      <td>${formatHHMM(j.retorno_intervalo?.ts)}</td>
-      <td>${formatHHMM(j.saida?.ts)}</td>
-      <td>${formatHHMM(j.entrada_he?.ts)}</td>
-      <td>${formatHHMM(j.saida_he?.ts)}</td>
+      <td>${formatHHMM(j && j.entrada ? j.entrada.ts : null)}</td>
+      <td>${formatHHMM(j && j.saida_intervalo ? j.saida_intervalo.ts : null)}</td>
+      <td>${formatHHMM(j && j.retorno_intervalo ? j.retorno_intervalo.ts : null)}</td>
+      <td>${formatHHMM(j && j.saida ? j.saida.ts : null)}</td>
+      <td>${formatHHMM(j && j.entrada_he ? j.entrada_he.ts : null)}</td>
+      <td>${formatHHMM(j && j.saida_he ? j.saida_he.ts : null)}</td>
       <td>${loc || ""}</td>
       <td>${rec}</td>
       <td><button class="minBtn" onclick="editarJornada('${j.id}')">Modificar</button></td>
     `;
     tbody.appendChild(tr);
-  }
+  });
 }
 
-window.editarJornada = function(docId){
-  const j = ultimaTabela.find(x => x.id === docId);
-  if (!j) return alert("Jornada não encontrada.");
+function editarJornada(docId){
+  const j = ultimaTabela.find(function(x){ return x.id === docId; });
+  if (!j){ alert("Jornada não encontrada."); return; }
 
-  const val = (ts) => brDateTimeFromIso(ts);
+  const val = function(ts){ return brDateTimeFromIso(ts); };
 
   openModal({
     title: `Modificar Jornada — RE ${j.re}`,
     bodyHtml: `
       <div class="grid">
-        <div><label>ENTRADA</label><input id="fEntrada" placeholder="DD/MM/AAAA HH:MM" value="${val(j.entrada?.ts)}"></div>
-        <div><label>INÍCIO INTERVALO</label><input id="fSaiInt" placeholder="DD/MM/AAAA HH:MM" value="${val(j.saida_intervalo?.ts)}"></div>
-        <div><label>FIM INTERVALO</label><input id="fRetInt" placeholder="DD/MM/AAAA HH:MM" value="${val(j.retorno_intervalo?.ts)}"></div>
-        <div><label>SAÍDA</label><input id="fSaida" placeholder="DD/MM/AAAA HH:MM" value="${val(j.saida?.ts)}"></div>
-        <div><label>ENTRADA HE</label><input id="fEntHe" placeholder="DD/MM/AAAA HH:MM" value="${val(j.entrada_he?.ts)}"></div>
-        <div><label>SAÍDA HE</label><input id="fSaiHe" placeholder="DD/MM/AAAA HH:MM" value="${val(j.saida_he?.ts)}"></div>
+        <div><label>ENTRADA</label><input id="fEntrada" placeholder="DD/MM/AAAA HH:MM" value="${val(j.entrada && j.entrada.ts)}"></div>
+        <div><label>INÍCIO INTERVALO</label><input id="fSaiInt" placeholder="DD/MM/AAAA HH:MM" value="${val(j.saida_intervalo && j.saida_intervalo.ts)}"></div>
+        <div><label>FIM INTERVALO</label><input id="fRetInt" placeholder="DD/MM/AAAA HH:MM" value="${val(j.retorno_intervalo && j.retorno_intervalo.ts)}"></div>
+        <div><label>SAÍDA</label><input id="fSaida" placeholder="DD/MM/AAAA HH:MM" value="${val(j.saida && j.saida.ts)}"></div>
+        <div><label>ENTRADA HE</label><input id="fEntHe" placeholder="DD/MM/AAAA HH:MM" value="${val(j.entrada_he && j.entrada_he.ts)}"></div>
+        <div><label>SAÍDA HE</label><input id="fSaiHe" placeholder="DD/MM/AAAA HH:MM" value="${val(j.saida_he && j.saida_he.ts)}"></div>
       </div>
-      <div class="small" style="margin-top:8px">Deixe em branco para remover o campo (apaga no banco).</div>
+      <div class="small" style="margin-top:8px">Deixe em branco para remover o campo.</div>
     `,
-    onSave: async () => {
+    onSave: function(){
       const campos = [
-        ["entrada.ts", document.getElementById("fEntrada").value],
-        ["saida_intervalo.ts", document.getElementById("fSaiInt").value],
-        ["retorno_intervalo.ts", document.getElementById("fRetInt").value],
-        ["saida.ts", document.getElementById("fSaida").value],
-        ["entrada_he.ts", document.getElementById("fEntHe").value],
-        ["saida_he.ts", document.getElementById("fSaiHe").value],
+        ["entrada.ts", (document.getElementById("fEntrada").value || "")],
+        ["saida_intervalo.ts", (document.getElementById("fSaiInt").value || "")],
+        ["retorno_intervalo.ts", (document.getElementById("fRetInt").value || "")],
+        ["saida.ts", (document.getElementById("fSaida").value || "")],
+        ["entrada_he.ts", (document.getElementById("fEntHe").value || "")],
+        ["saida_he.ts", (document.getElementById("fSaiHe").value || "")],
       ];
 
       const payload = { updatedAt: new Date().toISOString() };
 
-      for (const [path, txt] of campos){
-        const t = (txt || "").trim();
-        if (!t){ payload[path] = deleteField(); continue; }
-        const iso = isoFromBrDateTime(t);
-        if (!iso) return alert(`Formato inválido. Use DD/MM/AAAA HH:MM`);
+      for (let i=0;i<campos.length;i++){
+        const path = campos[i][0];
+        const txt = String(campos[i][1]||"").trim();
+        if (!txt){
+          payload[path] = firebase.firestore.FieldValue.delete();
+          continue;
+        }
+        const iso = isoFromBrDateTime(txt);
+        if (!iso){
+          alert("Formato inválido. Use DD/MM/AAAA HH:MM");
+          return;
+        }
         payload[path] = iso;
       }
 
       if (!confirm("Salvar alterações desta jornada?")) return;
-      await updateDoc(doc(db,"jornadas",docId), payload);
-      closeModal();
-      buscar();
+
+      db.collection("jornadas").doc(docId).update(payload)
+        .then(function(){
+          closeModal();
+          buscar();
+        })
+        .catch(function(){
+          alert("Não foi possível salvar a jornada.");
+        });
     }
   });
-};
+}
+window.editarJornada = editarJornada;
 
-// ===== OCORRÊNCIAS / FÉRIAS / PLANTÕES
-function ocDocId(re, ymd){ return `${re}_${ymd}`; }
+/* ========= OCORRÊNCIAS / FÉRIAS / PLANTÕES ========= */
+function ocDocId(re, ymdKey){ return re + "_" + ymdKey; }
 function nomePorRe(re){
-  const c = cacheColabs.find(x => (x.re || x.id) === re);
-  return c?.nome || "";
-}
-async function apagarJornadasDoDia(re, dataYmd){
-  const qJ = query(collection(db,"jornadas"), where("re","==",re));
-  const snap = await getDocs(qJ);
-  const all = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-  const doDia = all.filter(j => (j?.entrada?.ts || "").toString().slice(0,10) === dataYmd);
-  for (const j of doDia) await deleteDoc(doc(db,"jornadas", j.id));
-  return doDia.length;
+  const c = cacheColabs.find(function(x){ return (x.re || x.id) === re; });
+  return c && c.nome ? c.nome : "";
 }
 
-window.salvarOcorrencia = async function(){
-  try{
-    const re = (document.getElementById("ocRe").value || "").trim();
-    const data = document.getElementById("ocData").value;
-    const tipo = document.getElementById("ocTipo").value;
-    const motivo = (document.getElementById("ocMotivo").value || "").trim();
+function apagarJornadasDoDia(re, dataYmd){
+  return db.collection("jornadas").where("re","==",re).get()
+    .then(function(snap){
+      const all = snap.docs.map(function(d){ return Object.assign({ id:d.id }, d.data()||{}); });
+      const doDia = all.filter(function(j){
+        const k = String(j && j.entrada && j.entrada.ts ? j.entrada.ts : "").slice(0,10);
+        return k === dataYmd;
+      });
 
-    if (!re) return alert("Informe o RE.");
-    if (!data) return alert("Informe a data.");
+      const proms = doDia.map(function(j){
+        return db.collection("jornadas").doc(j.id).delete();
+      });
 
-    if (!confirm(`Salvar ocorrência?\nRE: ${re}\nData: ${brDateFromYmd(data)}\nTipo: ${tipo.toUpperCase()}\n\nIsso vai APAGAR registros do dia (se existirem).`)) return;
+      return Promise.all(proms).then(function(){ return doDia.length; });
+    });
+}
 
-    await setDoc(doc(db,"ocorrencias", ocDocId(re, data)), {
-      re, data, tipo, motivo,
-      updatedAt: new Date().toISOString()
-    }, { merge:true });
+function salvarOcorrencia(){
+  const re = (document.getElementById("ocRe").value || "").trim();
+  const data = document.getElementById("ocData").value;
+  const tipo = document.getElementById("ocTipo").value;
+  const motivo = (document.getElementById("ocMotivo").value || "").trim();
 
-    const n = await apagarJornadasDoDia(re, data);
+  if (!re){ alert("Informe o RE."); return; }
+  if (!data){ alert("Informe a data."); return; }
+
+  if (!confirm(`Salvar ocorrência?\nRE: ${re}\nData: ${brDateFromYmd(data)}\nTipo: ${tipo.toUpperCase()}\n\nIsso vai APAGAR registros do dia (se existirem).`)) return;
+
+  db.collection("ocorrencias").doc(ocDocId(re, data)).set({
+    re, data, tipo, motivo,
+    updatedAt: new Date().toISOString()
+  }, { merge:true })
+  .then(function(){
+    return apagarJornadasDoDia(re, data);
+  })
+  .then(function(n){
     alert(`Ocorrência salva.\nRegistros apagados do dia: ${n}`);
-
     document.getElementById("ocMotivo").value = "";
     document.getElementById("ocFiltroRe").value = re;
     document.getElementById("ocFiltroData").value = data;
-    await carregarOcorrencias();
-  }catch(e){
-    console.error(e);
-    alert("Falha ao salvar ocorrência.\n\nMotivo: " + (e?.message || e));
-  }
-};
+    return carregarOcorrencias();
+  })
+  .catch(function(){
+    alert("Falha ao salvar ocorrência.");
+  });
+}
+window.salvarOcorrencia = salvarOcorrencia;
 
-window.carregarOcorrencias = async function(){
-  try{
-    const filtroRe = (document.getElementById("ocFiltroRe").value || "").trim();
-    const filtroData = document.getElementById("ocFiltroData").value;
+function carregarOcorrencias(){
+  const filtroRe = (document.getElementById("ocFiltroRe").value || "").trim();
+  const filtroData = document.getElementById("ocFiltroData").value;
 
-    const snap = await getDocs(collection(db,"ocorrencias"));
-    let list = snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }));
+  return db.collection("ocorrencias").get()
+    .then(function(snap){
+      let list = snap.docs.map(function(d){ return Object.assign({ id:d.id }, d.data()||{}); });
 
-    list = list.map(o => ({
-      ...o,
-      re: (o.re || "").toString().trim(),
-      data: (o.data || "").toString().slice(0,10),
-      tipo: (o.tipo || "").toString(),
-      motivo: (o.motivo || "").toString(),
-      updatedAt: (o.updatedAt || "")
-    }));
+      list = list.map(function(o){
+        return {
+          id:o.id,
+          re: String(o.re||"").trim(),
+          data: String(o.data||"").slice(0,10),
+          tipo: String(o.tipo||""),
+          motivo: String(o.motivo||""),
+          updatedAt: String(o.updatedAt||"")
+        };
+      });
 
-    if (filtroRe) list = list.filter(o => o.re === filtroRe);
-    if (filtroData) list = list.filter(o => o.data === filtroData);
+      if (filtroRe) list = list.filter(function(o){ return o.re === filtroRe; });
+      if (filtroData) list = list.filter(function(o){ return o.data === filtroData; });
 
-    list.sort((a,b) =>
-      (String(b.data||"")).localeCompare(String(a.data||"")) ||
-      String(b.updatedAt||"").localeCompare(String(a.updatedAt||""))
-    );
+      list.sort(function(a,b){
+        const c1 = String(b.data||"").localeCompare(String(a.data||""));
+        if (c1!==0) return c1;
+        return String(b.updatedAt||"").localeCompare(String(a.updatedAt||""));
+      });
 
-    cacheOcorr = list;
+      cacheOcorr = list;
 
-    const tbody = document.getElementById("tbodyOcorr");
-    tbody.innerHTML = "";
+      const tbody = document.getElementById("tbodyOcorr");
+      if (!tbody) return;
 
-    for (const o of cacheOcorr){
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${brDateFromYmd(o.data||"")}</td>
-        <td>${o.re || ""}</td>
-        <td>${nomePorRe(o.re)}</td>
-        <td>${(o.tipo||"").toUpperCase()}</td>
-        <td>${o.motivo || ""}</td>
-        <td>${brDateTimeFromIso(o.updatedAt)}</td>
-        <td><button class="minBtn" onclick="editarOcorrencia('${o.id}')">Modificar</button></td>
-      `;
-      tbody.appendChild(tr);
-    }
-  }catch(e){
-    console.error(e);
-    alert("Falha ao carregar ocorrências.\n\nMotivo: " + (e?.message || e));
-  }
-};
+      tbody.innerHTML = "";
+      cacheOcorr.forEach(function(o){
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${brDateFromYmd(o.data||"")}</td>
+          <td>${o.re || ""}</td>
+          <td>${nomePorRe(o.re)}</td>
+          <td>${(o.tipo||"").toUpperCase()}</td>
+          <td>${o.motivo || ""}</td>
+          <td>${brDateTimeFromIso(o.updatedAt)}</td>
+          <td><button class="minBtn" onclick="editarOcorrencia('${o.id}')">Modificar</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    })
+    .catch(function(){
+      alert("Falha ao carregar ocorrências.");
+    });
+}
+window.carregarOcorrencias = carregarOcorrencias;
 
-window.editarOcorrencia = function(id){
-  const o = cacheOcorr.find(x => x.id === id);
-  if (!o) return alert("Ocorrência não encontrada.");
+function editarOcorrencia(id){
+  const o = cacheOcorr.find(function(x){ return x.id === id; });
+  if (!o){ alert("Ocorrência não encontrada."); return; }
 
   openModal({
     title: `Modificar Ocorrência — ${o.re} — ${brDateFromYmd(o.data)}`,
@@ -1447,129 +1488,176 @@ window.editarOcorrencia = function(id){
         </div>
       </div>
     `,
-    onSave: async () => {
+    onSave: function(){
       const tipo = document.getElementById("moTipo").value;
       const motivo = (document.getElementById("moMotivo").value || "").trim();
       if (!confirm("Salvar alteração desta ocorrência?")) return;
-      await updateDoc(doc(db,"ocorrencias", id), { tipo, motivo, updatedAt: new Date().toISOString() });
-      closeModal();
-      carregarOcorrencias();
+
+      db.collection("ocorrencias").doc(id).update({ tipo, motivo, updatedAt: new Date().toISOString() })
+        .then(function(){
+          closeModal();
+          carregarOcorrencias();
+        })
+        .catch(function(){
+          alert("Não foi possível salvar a ocorrência.");
+        });
     }
   });
 
-  setTimeout(() => {
+  setTimeout(function(){
     const btn = document.getElementById("btnExcluirOcorr");
     if (!btn) return;
-    btn.onclick = async () => {
+    btn.onclick = function(){
       if (!confirm("Excluir esta ocorrência?")) return;
-      await deleteDoc(doc(db,"ocorrencias", id));
-      closeModal();
-      carregarOcorrencias();
+      db.collection("ocorrencias").doc(id).delete()
+        .then(function(){
+          closeModal();
+          carregarOcorrencias();
+        })
+        .catch(function(){
+          alert("Não foi possível excluir a ocorrência.");
+        });
     };
   }, 0);
-};
+}
+window.editarOcorrencia = editarOcorrencia;
 
-// ===== FÉRIAS
-async function getColab(re){
-  const ref = doc(db,"colaboradores", re);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) return null;
-  return { id:snap.id, ...(snap.data()||{}) };
+/* ========= FÉRIAS ========= */
+function getColab(re){
+  return db.collection("colaboradores").doc(re).get()
+    .then(function(snap){
+      if (!snap.exists) return null;
+      return Object.assign({ id:snap.id }, snap.data()||{});
+    });
 }
 function rangeDays(iniYmd, fimYmd){
   const out = [];
-  const [y1,m1,d1] = iniYmd.split("-").map(Number);
-  const [y2,m2,d2] = fimYmd.split("-").map(Number);
-  let cur = new Date(y1, m1-1, d1, 12, 0, 0);
-  const end = new Date(y2, m2-1, d2, 12, 0, 0);
-  while (cur <= end){ out.push(new Date(cur)); cur.setDate(cur.getDate()+1); }
+  const a = iniYmd.split("-").map(Number);
+  const b = fimYmd.split("-").map(Number);
+  let cur = new Date(a[0], a[1]-1, a[2], 12, 0, 0);
+  const end = new Date(b[0], b[1]-1, b[2], 12, 0, 0);
+  while (cur <= end){
+    out.push(new Date(cur));
+    cur.setDate(cur.getDate()+1);
+  }
   return out;
 }
-async function apagarJornadasNoPeriodo(re, iniYmd, fimYmd, escala, somenteDiasTrabalho, plantaoHistorico){
-  const qJ = query(collection(db,"jornadas"), where("re","==",re));
-  const snap = await getDocs(qJ);
-  const all = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+function apagarJornadasNoPeriodo(re, iniYmd, fimYmd, escala, somenteDiasTrabalho, plantaoHistorico){
+  return db.collection("jornadas").where("re","==",re).get()
+    .then(function(snap){
+      const all = snap.docs.map(function(d){ return Object.assign({ id:d.id }, d.data()||{}); });
 
-  const days = rangeDays(iniYmd, fimYmd);
-  const alvo = new Set();
+      const days = rangeDays(iniYmd, fimYmd);
+      const alvo = new Set();
 
-  for (const dt of days){
-    const dayKey = dt.toISOString().slice(0,10);
-    if (somenteDiasTrabalho){
-      if (!isDiaTrabalho(dt, escala, plantaoHistorico)) continue;
-    }
-    alvo.add(dayKey);
-  }
+      days.forEach(function(dt){
+        const dayKey = dt.toISOString().slice(0,10);
+        if (somenteDiasTrabalho){
+          if (!isDiaTrabalho(dt, escala, plantaoHistorico)) return;
+        }
+        alvo.add(dayKey);
+      });
 
-  const apagar = all.filter(j => alvo.has((j?.entrada?.ts || "").toString().slice(0,10)));
-  for (const j of apagar) await deleteDoc(doc(db,"jornadas", j.id));
-  return apagar.length;
+      const apagar = all.filter(function(j){
+        const k = String(j && j.entrada && j.entrada.ts ? j.entrada.ts : "").slice(0,10);
+        return alvo.has(k);
+      });
+
+      const proms = apagar.map(function(j){
+        return db.collection("jornadas").doc(j.id).delete();
+      });
+
+      return Promise.all(proms).then(function(){ return apagar.length; });
+    });
 }
 
-window.salvarFerias = async function(){
+function salvarFerias(){
   const re = (document.getElementById("afRe").value || "").trim();
   const inicio = document.getElementById("afInicio").value;
   const fim = document.getElementById("afFim").value;
   const aplicarSomenteDiasTrabalho = document.getElementById("afDiasUteis").checked;
   const motivo = (document.getElementById("afMotivo").value || "").trim();
 
-  if (!re) return alert("Informe o RE.");
-  if (!inicio || !fim) return alert("Informe início e fim.");
-  if (fim < inicio) return alert("Fim não pode ser menor que início.");
+  if (!re){ alert("Informe o RE."); return; }
+  if (!inicio || !fim){ alert("Informe início e fim."); return; }
+  if (fim < inicio){ alert("Fim não pode ser menor que início."); return; }
 
-  const col = await getColab(re);
-  if (!col) return alert("Colaborador não encontrado.");
-  const escala = (col.escala || "5x2");
-  const plantaoHistorico = Array.isArray(col.plantaoHistorico) ? col.plantaoHistorico : [];
+  getColab(re).then(function(col){
+    if (!col){ alert("Colaborador não encontrado."); return; }
 
-  if (!confirm(
-    `Salvar FÉRIAS?\nRE: ${re}\nNome: ${col.nome||""}\nPeríodo: ${brDateFromYmd(inicio)} até ${brDateFromYmd(fim)}\nSomente dias de trabalho: ${aplicarSomenteDiasTrabalho ? "SIM" : "NÃO"}\n\nIsso vai APAGAR jornadas dentro do período (conforme regra).`
-  )) return;
+    const escala = (col.escala || "5x2");
+    const plantaoHistorico = Array.isArray(col.plantaoHistorico) ? col.plantaoHistorico : [];
 
-  await addDoc(collection(db,"afastamentos"), {
-    re, tipo:"ferias", inicio, fim,
-    aplicarSomenteDiasTrabalho,
-    motivo,
-    createdAt:new Date().toISOString(),
-    updatedAt:new Date().toISOString()
+    if (!confirm(
+      `Salvar FÉRIAS?\nRE: ${re}\nNome: ${col.nome||""}\nPeríodo: ${brDateFromYmd(inicio)} até ${brDateFromYmd(fim)}\nSomente dias de trabalho: ${aplicarSomenteDiasTrabalho ? "SIM" : "NÃO"}\n\nIsso vai APAGAR jornadas dentro do período.`
+    )) return;
+
+    db.collection("afastamentos").add({
+      re, tipo:"ferias", inicio, fim,
+      aplicarSomenteDiasTrabalho,
+      motivo,
+      createdAt:new Date().toISOString(),
+      updatedAt:new Date().toISOString()
+    })
+    .then(function(){
+      return apagarJornadasNoPeriodo(re, inicio, fim, escala, aplicarSomenteDiasTrabalho, plantaoHistorico);
+    })
+    .then(function(apagadas){
+      alert(`Férias salvas.\nJornadas apagadas no período: ${apagadas}`);
+      document.getElementById("afMotivo").value="";
+      carregarFerias();
+    })
+    .catch(function(){
+      alert("Não foi possível salvar férias.");
+    });
   });
+}
+window.salvarFerias = salvarFerias;
 
-  const apagadas = await apagarJornadasNoPeriodo(re, inicio, fim, escala, aplicarSomenteDiasTrabalho, plantaoHistorico);
-  alert(`Férias salvas.\nJornadas apagadas no período: ${apagadas}`);
-  document.getElementById("afMotivo").value="";
-  carregarFerias();
-};
+function carregarFerias(){
+  return db.collection("afastamentos").get()
+    .then(function(snap){
+      cacheFerias = snap.docs.map(function(d){
+        return Object.assign({ id:d.id }, d.data()||{});
+      })
+      .filter(function(x){
+        return String(x.tipo||"").toLowerCase() === "ferias";
+      })
+      .sort(function(a,b){
+        return String(b.inicio||"").localeCompare(String(a.inicio||""));
+      });
 
-window.carregarFerias = async function(){
-  const snap = await getDocs(collection(db,"afastamentos"));
-  cacheFerias = snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }))
-    .filter(x => String(x.tipo||"").toLowerCase() === "ferias")
-    .sort((a,b) => (String(b.inicio||"")).localeCompare(String(a.inicio||"")));
+      const tbody = document.getElementById("tbodyFerias");
+      if (!tbody) return;
 
-  const tbody = document.getElementById("tbodyFerias");
-  tbody.innerHTML="";
+      tbody.innerHTML="";
+      cacheFerias.forEach(function(f){
+        const col = cacheColabs.find(function(c){ return (c.re||c.id) === f.re; }) || null;
+        const nome = col && col.nome ? col.nome : "";
+        const periodo = `${brDateFromYmd(String(f.inicio||"").slice(0,10))} até ${brDateFromYmd(String(f.fim||"").slice(0,10))}`;
+        const du = (f.aplicarSomenteDiasTrabalho === true) ? "SIM" : "NÃO";
 
-  for (const f of cacheFerias){
-    const col = cacheColabs.find(c => (c.re||c.id) === f.re) || null;
-    const nome = col?.nome || "";
-    const periodo = `${brDateFromYmd(String(f.inicio||"").slice(0,10))} até ${brDateFromYmd(String(f.fim||"").slice(0,10))}`;
-    const du = (f.aplicarSomenteDiasTrabalho === true) ? "SIM" : "NÃO";
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${f.re || ""}</td>
-      <td>${nome}</td>
-      <td>${periodo}</td>
-      <td>${du}</td>
-      <td>${(f.motivo||"")}</td>
-      <td><button class="minBtn" onclick="editarFerias('${f.id}')">Modificar</button></td>
-    `;
-    tbody.appendChild(tr);
-  }
-};
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${f.re || ""}</td>
+          <td>${nome}</td>
+          <td>${periodo}</td>
+          <td>${du}</td>
+          <td>${(f.motivo||"")}</td>
+          <td><button class="minBtn" onclick="editarFerias('${f.id}')">Modificar</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    })
+    .catch(function(){
+      alert("Não foi possível carregar férias.");
+    });
+}
+window.carregarFerias = carregarFerias;
 
-window.editarFerias = function(id){
-  const f = cacheFerias.find(x => x.id === id);
-  if (!f) return alert("Férias não encontradas.");
+function editarFerias(id){
+  const f = cacheFerias.find(function(x){ return x.id === id; });
+  if (!f){ alert("Férias não encontradas."); return; }
 
   openModal({
     title: `Modificar Férias — RE ${f.re}`,
@@ -1587,129 +1675,172 @@ window.editarFerias = function(id){
         </div>
         <div style="grid-column:1 / -1">
           <label>Motivo</label>
-          <input id="mfMotivo" value="${(f.motivo||"").toString().replaceAll('"','&quot;')}">
+          <input id="mfMotivo" value="${String(f.motivo||"").replaceAll('"','&quot;')}">
         </div>
         <div class="small" style="grid-column:1 / -1">
           <button class="btnDangerInline" id="btnExcluirFerias">Excluir período de férias</button>
         </div>
       </div>
     `,
-    onSave: async () => {
+    onSave: function(){
       const ini = document.getElementById("mfInicio").value;
       const fim = document.getElementById("mfFim").value;
       const du = document.getElementById("mfDiasUteis").checked;
       const motivo = (document.getElementById("mfMotivo").value || "").trim();
 
-      if (!ini || !fim) return alert("Informe início e fim.");
-      if (fim < ini) return alert("Fim não pode ser menor que início.");
+      if (!ini || !fim){ alert("Informe início e fim."); return; }
+      if (fim < ini){ alert("Fim não pode ser menor que início."); return; }
       if (!confirm("Salvar alteração do período de férias?")) return;
 
-      await updateDoc(doc(db,"afastamentos", id), {
+      db.collection("afastamentos").doc(id).update({
         inicio: ini, fim: fim, aplicarSomenteDiasTrabalho: du, motivo,
         updatedAt: new Date().toISOString()
+      })
+      .then(function(){
+        closeModal();
+        carregarFerias();
+      })
+      .catch(function(){
+        alert("Não foi possível salvar as férias.");
       });
-
-      closeModal();
-      carregarFerias();
     }
   });
 
-  setTimeout(() => {
+  setTimeout(function(){
     const btn = document.getElementById("btnExcluirFerias");
     if (!btn) return;
-    btn.onclick = async () => {
+    btn.onclick = function(){
       if (!confirm("Excluir este período de férias?")) return;
-      await deleteDoc(doc(db,"afastamentos", id));
-      closeModal();
-      carregarFerias();
+      db.collection("afastamentos").doc(id).delete()
+        .then(function(){
+          closeModal();
+          carregarFerias();
+        })
+        .catch(function(){
+          alert("Não foi possível excluir as férias.");
+        });
     };
   }, 0);
-};
+}
+window.editarFerias = editarFerias;
 
-// ===== PLANTÕES 12x36
-window.salvarPlantao12x36 = async function(){
+/* ========= PLANTÕES 12x36 ========= */
+function syncPlantaoHistoricoToColaborador(re){
+  return db.collection("plantoes12x36").where("re","==",re).get()
+    .then(function(snap){
+      let list = snap.docs.map(function(d){ return Object.assign({ id:d.id }, d.data()||{}); });
+      list.sort(function(a,b){
+        return String(a.vigencia||"").localeCompare(String(b.vigencia||""));
+      });
+
+      const historico = list.map(function(p){
+        return {
+          inicio: String(p.vigencia||"").slice(0,10),
+          base: String(p.base||"trabalha").toLowerCase(),
+          obs: String(p.obs||""),
+          updatedAt: String(p.updatedAt||"")
+        };
+      }).filter(function(p){
+        return /^\d{4}-\d{2}-\d{2}$/.test(p.inicio);
+      });
+
+      return db.collection("colaboradores").doc(re).set({
+        plantaoHistorico: historico,
+        updatedAt: new Date().toISOString()
+      }, { merge:true });
+    });
+}
+
+function salvarPlantao12x36(){
   const re = (document.getElementById("plRe").value || "").trim();
   const vigencia = (document.getElementById("plVigencia").value || "").trim();
   const base = document.getElementById("plBase").value;
   const obs = (document.getElementById("plObs").value || "").trim();
 
-  if (!re) return alert("Informe o RE.");
-  if (!vigencia) return alert("Informe a data de vigência.");
+  if (!re){ alert("Informe o RE."); return; }
+  if (!vigencia){ alert("Informe a data de vigência."); return; }
 
-  try{
-    const colSnap = await getDoc(doc(db, "colaboradores", re));
-    if (!colSnap.exists()) return alert("Colaborador não encontrado no banco. Cadastre na aba Colaboradores.");
-    const col = colSnap.data() || {};
+  db.collection("colaboradores").doc(re).get()
+    .then(function(colSnap){
+      if (!colSnap.exists){ alert("Colaborador não encontrado. Cadastre na aba Colaboradores."); return Promise.reject(); }
 
-    const msg =
-      `Salvar ajuste 12x36?\nRE: ${re}\nNome: ${col.nome||""}\nVigente a partir de: ${brDateFromYmd(vigencia)}\nBase: ${base.toUpperCase()}\n` +
-      (obs ? `Obs: ${obs}\n` : "");
+      const col = colSnap.data() || {};
+      const msg =
+        `Salvar ajuste 12x36?\nRE: ${re}\nNome: ${col.nome||""}\nVigente a partir de: ${brDateFromYmd(vigencia)}\nBase: ${base.toUpperCase()}` +
+        (obs ? `\nObs: ${obs}` : "");
 
-    if (!confirm(msg)) return;
+      if (!confirm(msg)) return Promise.reject();
 
-    await addDoc(collection(db, "plantoes12x36"), { re, vigencia, base, obs, updatedAt: new Date().toISOString() });
-    await syncPlantaoHistoricoToColaborador(re);
+      return db.collection("plantoes12x36").add({ re, vigencia, base, obs, updatedAt: new Date().toISOString() });
+    })
+    .then(function(){
+      return syncPlantaoHistoricoToColaborador(re);
+    })
+    .then(function(){
+      document.getElementById("plObs").value = "";
+      document.getElementById("plFiltroRe").value = re;
+      alert("✅ Plantão 12x36 salvo.");
+      return carregarPlantoes12x36();
+    })
+    .catch(function(){});
+}
+window.salvarPlantao12x36 = salvarPlantao12x36;
 
-    document.getElementById("plObs").value = "";
-    document.getElementById("plFiltroRe").value = re;
+function carregarPlantoes12x36(){
+  const filtroRe = (document.getElementById("plFiltroRe") && document.getElementById("plFiltroRe").value ? document.getElementById("plFiltroRe").value : "").trim();
 
-    alert("✅ Plantão 12x36 salvo e sincronizado no colaborador.");
-    await carregarPlantoes12x36();
-  }catch(e){
-    console.error(e);
-    alert("❌ Não foi possível salvar o plantão 12x36.\n\nMotivo: " + (e?.message || e));
-  }
-};
+  return db.collection("plantoes12x36").get()
+    .then(function(snap){
+      let list = snap.docs.map(function(d){ return Object.assign({ id:d.id }, d.data()||{}); });
 
-window.carregarPlantoes12x36 = async function(){
-  try{
-    const filtroRe = (document.getElementById("plFiltroRe")?.value || "").trim();
-    const snap = await getDocs(collection(db, "plantoes12x36"));
-    let list = snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }));
+      list = list.map(function(x){
+        return {
+          id:x.id,
+          re: String(x.re||"").trim(),
+          vigencia: String(x.vigencia||"").slice(0,10),
+          base: String(x.base||""),
+          obs: String(x.obs||""),
+          updatedAt: String(x.updatedAt||"")
+        };
+      });
 
-    list = list.map(x => ({
-      ...x,
-      re: (x.re||"").toString().trim(),
-      vigencia: (x.vigencia||"").toString().slice(0,10),
-      base: (x.base||"").toString(),
-      obs: (x.obs||"").toString(),
-      updatedAt: (x.updatedAt||"").toString()
-    }));
+      if (filtroRe) list = list.filter(function(x){ return x.re === filtroRe; });
 
-    if (filtroRe) list = list.filter(x => x.re === filtroRe);
+      list.sort(function(a,b){
+        const c1 = String(b.vigencia||"").localeCompare(String(a.vigencia||""));
+        if (c1!==0) return c1;
+        return String(b.updatedAt||"").localeCompare(String(a.updatedAt||""));
+      });
 
-    list.sort((a,b) =>
-      (String(b.vigencia||"")).localeCompare(String(a.vigencia||"")) ||
-      (String(b.updatedAt||"")).localeCompare(String(a.updatedAt||""))
-    );
+      cachePlantoes = list;
 
-    cachePlantoes = list;
+      const tbody = document.getElementById("tbodyPlantoes");
+      if (!tbody) return;
 
-    const tbody = document.getElementById("tbodyPlantoes");
-    tbody.innerHTML = "";
+      tbody.innerHTML="";
+      cachePlantoes.forEach(function(p){
+        const tr=document.createElement("tr");
+        tr.innerHTML = `
+          <td>${p.re}</td>
+          <td>${nomePorRe(p.re)}</td>
+          <td>${brDateFromYmd(p.vigencia)}</td>
+          <td>${String(p.base||"").toUpperCase()}</td>
+          <td>${p.obs || ""}</td>
+          <td>${brDateTimeFromIso(p.updatedAt)}</td>
+          <td><button class="minBtn" onclick="editarPlantao('${p.id}')">Modificar</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    })
+    .catch(function(){
+      alert("Não foi possível carregar plantões 12x36.");
+    });
+}
+window.carregarPlantoes12x36 = carregarPlantoes12x36;
 
-    for (const p of cachePlantoes){
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${p.re}</td>
-        <td>${nomePorRe(p.re)}</td>
-        <td>${brDateFromYmd(p.vigencia)}</td>
-        <td>${(p.base||"").toUpperCase()}</td>
-        <td>${p.obs || ""}</td>
-        <td>${brDateTimeFromIso(p.updatedAt)}</td>
-        <td><button class="minBtn" onclick="editarPlantao('${p.id}')">Modificar</button></td>
-      `;
-      tbody.appendChild(tr);
-    }
-  }catch(e){
-    console.error(e);
-    alert("❌ Falha ao carregar plantões 12x36.\n\nMotivo: " + (e?.message || e));
-  }
-};
-
-window.editarPlantao = function(id){
-  const p = cachePlantoes.find(x => x.id === id);
-  if (!p) return alert("Plantão não encontrado.");
+function editarPlantao(id){
+  const p = cachePlantoes.find(function(x){ return x.id === id; });
+  if (!p){ alert("Plantão não encontrado."); return; }
 
   openModal({
     title: `Modificar 12x36 — RE ${p.re}`,
@@ -1727,74 +1858,86 @@ window.editarPlantao = function(id){
         </div>
         <div style="grid-column:1 / -1">
           <label>Obs</label>
-          <input id="mpObs" value="${(p.obs||"").replaceAll('"','&quot;')}">
+          <input id="mpObs" value="${String(p.obs||"").replaceAll('"','&quot;')}">
         </div>
         <div class="small" style="grid-column:1 / -1">
           <button class="btnDangerInline" id="btnExcluirPlantao">Excluir este registro</button>
         </div>
       </div>
     `,
-    onSave: async () => {
+    onSave: function(){
       const vig = (document.getElementById("mpVigencia").value || "").trim();
       const base = document.getElementById("mpBase").value;
       const obs = (document.getElementById("mpObs").value || "").trim();
-      if (!vig) return alert("Informe a vigência.");
+      if (!vig){ alert("Informe a vigência."); return; }
       if (!confirm("Salvar alteração deste plantão 12x36?")) return;
 
-      await updateDoc(doc(db, "plantoes12x36", id), { vigencia: vig, base, obs, updatedAt: new Date().toISOString() });
-      await syncPlantaoHistoricoToColaborador(p.re);
-
-      closeModal();
-      carregarPlantoes12x36();
+      db.collection("plantoes12x36").doc(id).update({ vigencia: vig, base, obs, updatedAt: new Date().toISOString() })
+        .then(function(){ return syncPlantaoHistoricoToColaborador(p.re); })
+        .then(function(){
+          closeModal();
+          carregarPlantoes12x36();
+        })
+        .catch(function(){
+          alert("Não foi possível salvar o plantão.");
+        });
     }
   });
 
-  setTimeout(() => {
+  setTimeout(function(){
     const btn = document.getElementById("btnExcluirPlantao");
     if (!btn) return;
-    btn.onclick = async () => {
+    btn.onclick = function(){
       if (!confirm("Excluir este registro de plantão 12x36?")) return;
-      await deleteDoc(doc(db,"plantoes12x36", id));
-      await syncPlantaoHistoricoToColaborador(p.re);
-      closeModal();
-      carregarPlantoes12x36();
+      db.collection("plantoes12x36").doc(id).delete()
+        .then(function(){ return syncPlantaoHistoricoToColaborador(p.re); })
+        .then(function(){
+          closeModal();
+          carregarPlantoes12x36();
+        })
+        .catch(function(){
+          alert("Não foi possível excluir o plantão.");
+        });
     };
   }, 0);
-};
+}
+window.editarPlantao = editarPlantao;
 
-// ===== export simples CSV
-window.exportar = function(){
+/* ========= EXPORT CSV (JORNADAS) ========= */
+function exportar(){
   let csv = "DataEntrada,Nome,RE,Entrada,InicioIntervalo,FimIntervalo,Saida,EntradaHE,SaidaHE,Coords,Local\n";
-  for (const j of ultimaTabela){
+  (ultimaTabela||[]).forEach(function(j){
     const loc = getBestLocationFromJornada(j);
     const rec = reconhecerLocal(loc);
     const linha = [
-      formatBRDate(j.entrada?.ts),
+      formatBRDate(j && j.entrada ? j.entrada.ts : null),
       j.nome || "",
       j.re || "",
-      formatHHMM(j.entrada?.ts),
-      formatHHMM(j.saida_intervalo?.ts),
-      formatHHMM(j.retorno_intervalo?.ts),
-      formatHHMM(j.saida?.ts),
-      formatHHMM(j.entrada_he?.ts),
-      formatHHMM(j.saida_he?.ts),
+      formatHHMM(j && j.entrada ? j.entrada.ts : null),
+      formatHHMM(j && j.saida_intervalo ? j.saida_intervalo.ts : null),
+      formatHHMM(j && j.retorno_intervalo ? j.retorno_intervalo.ts : null),
+      formatHHMM(j && j.saida ? j.saida.ts : null),
+      formatHHMM(j && j.entrada_he ? j.entrada_he.ts : null),
+      formatHHMM(j && j.saida_he ? j.saida_he.ts : null),
       loc || "",
       rec || ""
-    ].map(v => `"${String(v).replaceAll('"','""')}"`).join(",");
+    ].map(function(v){ return `"${String(v).replaceAll('"','""')}"`; }).join(",");
     csv += linha + "\n";
-  }
+  });
+
   const blob = new Blob([csv], { type:"text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = "jornadas.csv";
   a.click();
-};
+}
+window.exportar = exportar;
 
-// ============================================
-// ✅ EXPORTAÇÃO RH (XLSX) - SOMENTE ATIVOS
-// ✅ HE separado de FT (folga trabalhada)
-// ============================================
+/* ============================================
+   ✅ EXPORTAÇÃO RH (XLSX) - ATIVOS
+   ✅ FT separado de HE
+============================================ */
 function setRhStatus(msg){
   const el = document.getElementById("rhStatus");
   if (el) el.textContent = msg || "";
@@ -1812,43 +1955,44 @@ function parseHHMMToMinutes(h){
 }
 function diffMinutes(a,b){
   const da = toDateAny(a);
-  const db = toDateAny(b);
-  if (!da || !db || isNaN(da) || isNaN(db)) return 0;
-  return Math.round((db - da)/60000);
+  const dbb = toDateAny(b);
+  if (!da || !dbb || isNaN(da) || isNaN(dbb)) return 0;
+  return Math.round((dbb - da)/60000);
 }
 function getPlannedMinutesForDay(col, dateObj){
   const dow = dateObj.getDay();
-  const hs = col?.horariosSemana || {};
-  const slot = hs?.[String(dow)];
+  const hs = (col && col.horariosSemana) ? col.horariosSemana : {};
+  const slot = hs ? hs[String(dow)] : null;
   if (slot && slot.in && slot.out){
     const i = parseHHMMToMinutes(slot.in);
     const o = parseHHMMToMinutes(slot.out);
     if (i != null && o != null) return (o >= i) ? (o - i) : (o + 24*60 - i);
   }
-  const he = parseHHMMToMinutes(col?.horaEntrada||"");
-  const hs2= parseHHMMToMinutes(col?.horaSaida||"");
+  const he = parseHHMMToMinutes(col && col.horaEntrada ? col.horaEntrada : "");
+  const hs2= parseHHMMToMinutes(col && col.horaSaida ? col.horaSaida : "");
   if (he!=null && hs2!=null) return (hs2>=he) ? (hs2-he) : (hs2+24*60-he);
   return null;
 }
 function calcWorkedMinutesFromJornada(j){
-  const ent = j?.entrada?.ts;
-  const sai = j?.saida?.ts;
+  const ent = j && j.entrada ? j.entrada.ts : null;
+  const sai = j && j.saida ? j.saida.ts : null;
   if (!ent || !sai) return { worked:0, intervalo:0, virou:false };
+
   const dEnt = toDateAny(ent);
   const dSai = toDateAny(sai);
   const virou = (dEnt && dSai) ? (ymd(dEnt) !== ymd(dSai)) : false;
 
   let total = diffMinutes(ent, sai);
   let intervalo = 0;
-  const si = j?.saida_intervalo?.ts;
-  const ri = j?.retorno_intervalo?.ts;
+  const si = j && j.saida_intervalo ? j.saida_intervalo.ts : null;
+  const ri = j && j.retorno_intervalo ? j.retorno_intervalo.ts : null;
   if (si && ri) intervalo = Math.max(0, diffMinutes(si, ri));
   total = Math.max(0, total - intervalo);
-  return { worked: total, intervalo, virou };
+  return { worked: total, intervalo: intervalo, virou: virou };
 }
 function calcHeMinutesFromJornada(j){
-  const ehEnt = j?.entrada_he?.ts;
-  const ehSai = j?.saida_he?.ts;
+  const ehEnt = j && j.entrada_he ? j.entrada_he.ts : null;
+  const ehSai = j && j.saida_he ? j.saida_he.ts : null;
   if (!ehEnt || !ehSai) return 0;
   return Math.max(0, diffMinutes(ehEnt, ehSai));
 }
@@ -1859,12 +2003,15 @@ function monthDays(year, month1to12){
   return out;
 }
 function findOcorrencia(re, ymdKey, ocorrenciasList){
-  return ocorrenciasList.find(o => o.re===re && String(o.data||"").slice(0,10)===ymdKey) || null;
+  return (ocorrenciasList||[]).find(function(o){
+    return o.re===re && String(o.data||"").slice(0,10)===ymdKey;
+  }) || null;
 }
 function findFerias(re, ymdKey, dateObj, col, feriasList){
-  const escala = (col?.escala || "5x2");
-  const plantaoHistorico = Array.isArray(col?.plantaoHistorico) ? col.plantaoHistorico : [];
-  for (const f of feriasList){
+  const escala = (col && col.escala) ? col.escala : "5x2";
+  const plantaoHistorico = (col && Array.isArray(col.plantaoHistorico)) ? col.plantaoHistorico : [];
+  for (let i=0;i<(feriasList||[]).length;i++){
+    const f = feriasList[i];
     if (f.re !== re) continue;
     const ini = String(f.inicio||"").slice(0,10);
     const fim = String(f.fim||"").slice(0,10);
@@ -1879,58 +2026,60 @@ function findFerias(re, ymdKey, dateObj, col, feriasList){
   return null;
 }
 function isBeforeAdmissao(col, ymdKey){
-  const ad = String(col?.dataAdmissao || "").slice(0,10);
+  const ad = String((col && col.dataAdmissao) ? col.dataAdmissao : "").slice(0,10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(ad)) return false;
   return ymdKey < ad;
 }
 function getScaleStatus(col, dateObj){
-  const escala = (col?.escala || "5x2");
-  const plantaoHistorico = Array.isArray(col?.plantaoHistorico) ? col.plantaoHistorico : [];
+  const escala = (col && col.escala) ? col.escala : "5x2";
+  const plantaoHistorico = (col && Array.isArray(col.plantaoHistorico)) ? col.plantaoHistorico : [];
   const folga = isFolgaByEscala(dateObj, escala, plantaoHistorico);
   return folga ? "FOLGA" : "TRABALHA";
 }
 function getJornadaOfDay(re, ymdKey, jornadasList){
-  return jornadasList.find(j => j.re===re && String(j?.entrada?.ts||"").slice(0,10)===ymdKey) || null;
+  return (jornadasList||[]).find(function(j){
+    return j.re===re && String(j && j.entrada && j.entrada.ts ? j.entrada.ts : "").slice(0,10)===ymdKey;
+  }) || null;
 }
 function weekdayPtShort(d){ return d.toLocaleDateString("pt-BR", { weekday:"short" }); }
 function safeStr(v){ return (v==null) ? "" : String(v); }
 function formatDayBR(ymdKey){ return brDateFromYmd(ymdKey); }
 
-window.exportarRHXLSX = async function(){
-  try{
-    setRhStatus("Carregando dados do Firestore...");
+function exportarRHXLSX(){
+  setRhStatus("Carregando dados...");
 
-    const mes = Number(document.getElementById("rhMes").value);
-    const ano = Number(document.getElementById("rhAno").value);
-    const mes2 = pad2(mes);
+  const mes = Number(document.getElementById("rhMes").value);
+  const ano = Number(document.getElementById("rhAno").value);
+  const mes2 = pad2(mes);
 
-    const [snapCol, snapJor, snapOco, snapAfa] = await Promise.all([
-      getDocs(collection(db,"colaboradores")),
-      getDocs(collection(db,"jornadas")),
-      getDocs(collection(db,"ocorrencias")),
-      getDocs(collection(db,"afastamentos"))
-    ]);
+  Promise.all([
+    db.collection("colaboradores").get(),
+    db.collection("jornadas").get(),
+    db.collection("ocorrencias").get(),
+    db.collection("afastamentos").get()
+  ])
+  .then(function(res){
+    const snapCol = res[0], snapJor = res[1], snapOco = res[2], snapAfa = res[3];
 
-    // ✅ SOMENTE ATIVOS (RÍGIDO)
     const colaboradores = snapCol.docs
-      .map(d => ({ id:d.id, ...(d.data()||{}) }))
-      .filter(c => c.ativo === true)
-      .sort((a,b)=> (a.nome||"").localeCompare(b.nome||""));
+      .map(function(d){ return Object.assign({ id:d.id }, d.data()||{}); })
+      .filter(function(c){ return c.ativo !== false; }) /* ✅ ATIVOS */
+      .sort(function(a,b){ return String(a.nome||"").localeCompare(String(b.nome||"")); });
 
-    const jornadasAll = snapJor.docs.map(d => ({ id:d.id, ...(d.data()||{}) }));
-    const ocorrAll = snapOco.docs.map(d => ({ id:d.id, ...(d.data()||{}) }));
-    const feriasAll = snapAfa.docs.map(d => ({ id:d.id, ...(d.data()||{}) }))
-      .filter(x => String(x.tipo||"").toLowerCase() === "ferias");
+    const jornadasAll = snapJor.docs.map(function(d){ return Object.assign({ id:d.id }, d.data()||{}); });
+    const ocorrAll = snapOco.docs.map(function(d){ return Object.assign({ id:d.id }, d.data()||{}); });
+    const feriasAll = snapAfa.docs.map(function(d){ return Object.assign({ id:d.id }, d.data()||{}); })
+      .filter(function(x){ return String(x.tipo||"").toLowerCase() === "ferias"; });
 
-    const jornadasMes = jornadasAll.filter(j => {
-      const ent = String(j?.entrada?.ts||"");
+    const jornadasMes = jornadasAll.filter(function(j){
+      const ent = String(j && j.entrada && j.entrada.ts ? j.entrada.ts : "");
       if (!ent) return false;
       const d = toDateAny(ent);
       if (!d || isNaN(d)) return false;
       return d.getFullYear()===ano && (d.getMonth()+1)===mes;
     });
 
-    setRhStatus("Calculando competência e montando XLSX...");
+    setRhStatus("Montando XLSX...");
 
     const days = monthDays(ano, mes);
 
@@ -1938,34 +2087,36 @@ window.exportarRHXLSX = async function(){
     const sheetDiario = [];
     const sheetEscala = [];
 
-    // ✅ Resumo com HE e FT separados
+    /* ✅ título centralizado (mescla) */
+    sheetResumo.push([`RELATÓRIO RH — ${mes2}/${ano}`]);
     sheetResumo.push([
       "RE","Nome","CPF","Escala","Admissão",
       "Minutos Normais","Horas Normais",
       "Minutos HE","Horas HE",
       "Minutos FT","Horas FT",
-      "Minutos Total","Horas Total",
+      "Minutos Trabalhados Total","Horas Total",
       "Faltas","Atestados","Abonos","Férias","Folgas",
       "Dias Trabalhados","Dias Planejados Trabalhar"
     ]);
 
-    // ✅ Diário: Normal / HE / FT separados
+    sheetDiario.push([`DIÁRIO — ${mes2}/${ano}`]);
     sheetDiario.push([
       "RE","Nome","Data","Dia",
       "Escala (dia)","Planejado (HH:MM)","Status",
       "Entrada","Saída","Intervalo (min)","Trabalhado (min)",
-      "Normal (min)","HE (min)","FT (min)","Total (min)",
-      "Entrada HE","Saída HE","HE campo (min)",
+      "Normal (min)","HE (min)","FT (min)",
+      "Entrada HE","Saída HE","HE (min) (campo HE)",
       "Posto","Obs"
     ]);
 
+    sheetEscala.push([`ESCALA — ${mes2}/${ano}`]);
     sheetEscala.push([
       "RE","Nome","Data","Dia","Escala","Status (TRABALHA/FOLGA)","Planejado (HH:MM)"
     ]);
 
-    for (const col of colaboradores){
+    colaboradores.forEach(function(col){
       const re = String(col.re || col.id || "").trim();
-      if (!re) continue;
+      if (!re) return;
 
       const nome = safeStr(col.nome);
       const cpf = safeStr(col.cpf);
@@ -1973,10 +2124,10 @@ window.exportarRHXLSX = async function(){
       const adm = safeStr(col.dataAdmissao||"").slice(0,10);
 
       let sumNormal = 0, sumHE = 0, sumFT = 0, sumTotal = 0;
-      let qtdFalta = 0, qtdAtestado = 0, qtdAbono = 0, qtdFerias = 0, qtdFolgas = 0;
+      let qtdFalta = 0, qtdAtestado = 0, qtdAbono = 0, qtdFerias = 0, qtdFolga = 0;
       let diasTrabalhados = 0, diasPlanejadosTrabalhar = 0;
 
-      for (const dt of days){
+      days.forEach(function(dt){
         const ymdKey = ymd(dt);
         const diaAntesAdm = isBeforeAdmissao(col, ymdKey);
         const escalaDia = getScaleStatus(col, dt);
@@ -1992,7 +2143,7 @@ window.exportarRHXLSX = async function(){
           planejadoTxt
         ]);
 
-        if (diaAntesAdm) continue;
+        if (diaAntesAdm) return;
 
         const isTrabalha = (escalaDia === "TRABALHA");
         if (isTrabalha) diasPlanejadosTrabalhar++;
@@ -2004,11 +2155,11 @@ window.exportarRHXLSX = async function(){
             re,nome,formatDayBR(ymdKey),weekdayPtShort(dt),
             escalaDia, planejadoTxt, "FÉRIAS",
             "","","","",
-            "","", "", "",
+            "","","",
             "","","",
             "", safeStr(fer.motivo||"")
           ]);
-          continue;
+          return;
         }
 
         const oc = findOcorrencia(re, ymdKey, ocorrAll);
@@ -2021,37 +2172,23 @@ window.exportarRHXLSX = async function(){
             re,nome,formatDayBR(ymdKey),weekdayPtShort(dt),
             escalaDia, planejadoTxt, (t||"").toUpperCase(),
             "","","","",
-            "","", "", "",
+            "","","",
             "","","",
             "", safeStr(oc.motivo||"")
           ]);
-          continue;
+          return;
         }
 
         const j = getJornadaOfDay(re, ymdKey, jornadasMes);
         if (!j){
           if (!isTrabalha){
-            qtdFolgas++;
-            sheetDiario.push([
-              re,nome,formatDayBR(ymdKey),weekdayPtShort(dt),
-              escalaDia,planejadoTxt,"FOLGA",
-              "","","","",
-              "","", "", "",
-              "","","",
-              "", ""
-            ]);
+            qtdFolga++;
+            sheetDiario.push([re,nome,formatDayBR(ymdKey),weekdayPtShort(dt),escalaDia,planejadoTxt,"FOLGA","","","","","", "","","","", "", ""]);
           } else {
             qtdFalta++;
-            sheetDiario.push([
-              re,nome,formatDayBR(ymdKey),weekdayPtShort(dt),
-              escalaDia,planejadoTxt,"FALTA",
-              "","","","",
-              "","", "", "",
-              "","","",
-              "", ""
-            ]);
+            sheetDiario.push([re,nome,formatDayBR(ymdKey),weekdayPtShort(dt),escalaDia,planejadoTxt,"FALTA","","","","","", "","","","", "", ""]);
           }
-          continue;
+          return;
         }
 
         const workedInfo = calcWorkedMinutesFromJornada(j);
@@ -2062,56 +2199,58 @@ window.exportarRHXLSX = async function(){
         let normalMin = 0, heMin = 0, ftMin = 0;
 
         if (!isTrabalha){
-          // ✅ Folga: tudo vira FT (inclusive campo HE)
-          qtdFolgas++;
-          ftMin = Math.max(0, worked + heFieldMin);
+          /* ✅ TRABALHO EM FOLGA = FT (NÃO é HE) */
+          qtdFolga++;
+          ftMin += worked;
         } else {
-          // ✅ Dia de trabalho: Normal + HE (o excedente + campo HE)
-          if (planejadoMin == null){
-            normalMin = worked;
-            heMin = heFieldMin;
+          if (planejadoMin == null) {
+            normalMin += worked;
           } else {
-            normalMin = Math.min(worked, planejadoMin);
-            heMin = Math.max(0, worked - planejadoMin) + heFieldMin;
+            normalMin += Math.min(worked, planejadoMin);
+            heMin    += Math.max(0, worked - planejadoMin);
           }
         }
 
-        const totalMin = normalMin + heMin + ftMin;
+        /* ✅ campo HE sempre conta como HE */
+        heMin += heFieldMin;
 
         sumNormal += normalMin;
-        sumHE += heMin;
-        sumFT += ftMin;
-        sumTotal += totalMin;
+        sumHE     += heMin;
+        sumFT     += ftMin;
+        sumTotal  += (worked + heFieldMin); /* total real trabalhado + HE campo */
 
-        if (totalMin > 0) diasTrabalhados++;
+        if ((worked + heFieldMin) > 0) diasTrabalhados++;
 
         const posto = reconhecerLocal(getBestLocationFromJornada(j));
         const obs = [
           (workedInfo.virou ? "Virou o dia" : ""),
-          (!j?.saida?.ts ? "Sem saída" : ""),
-          ((j?.saida_intervalo?.ts && !j?.retorno_intervalo?.ts) || (!j?.saida_intervalo?.ts && j?.retorno_intervalo?.ts)) ? "Intervalo incompleto" : ""
+          (!j.saida || !j.saida.ts ? "Sem saída" : ""),
+          (((j.saida_intervalo && j.saida_intervalo.ts) && (!j.retorno_intervalo || !j.retorno_intervalo.ts)) ||
+           ((!j.saida_intervalo || !j.saida_intervalo.ts) && (j.retorno_intervalo && j.retorno_intervalo.ts)))
+           ? "Intervalo incompleto" : ""
         ].filter(Boolean).join(" | ");
+
+        const status = (!isTrabalha ? "FT" : "TRABALHOU");
 
         sheetDiario.push([
           re, nome,
           formatDayBR(ymdKey), weekdayPtShort(dt),
           escalaDia, planejadoTxt,
-          (!isTrabalha ? "FT (FOLGA TRAB.)" : "TRABALHOU"),
-          formatHHMM(j?.entrada?.ts),
-          formatHHMM(j?.saida?.ts),
+          status,
+          formatHHMM(j.entrada && j.entrada.ts),
+          formatHHMM(j.saida && j.saida.ts),
           intervaloMin,
           worked,
           normalMin,
           heMin,
           ftMin,
-          totalMin,
-          formatHHMM(j?.entrada_he?.ts),
-          formatHHMM(j?.saida_he?.ts),
+          formatHHMM(j.entrada_he && j.entrada_he.ts),
+          formatHHMM(j.saida_he && j.saida_he.ts),
           heFieldMin,
           posto,
           obs
         ]);
-      }
+      });
 
       sheetResumo.push([
         re, nome, cpf, escala,
@@ -2120,25 +2259,36 @@ window.exportarRHXLSX = async function(){
         sumHE, minutesToHHMM(sumHE),
         sumFT, minutesToHHMM(sumFT),
         sumTotal, minutesToHHMM(sumTotal),
-        qtdFalta, qtdAtestado, qtdAbono, qtdFerias, qtdFolgas,
+        qtdFalta, qtdAtestado, qtdAbono, qtdFerias, qtdFolga,
         diasTrabalhados, diasPlanejadosTrabalhar
       ]);
-    }
+    });
 
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sheetResumo), "Resumo");
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sheetDiario), "Diario");
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sheetEscala), "Escala");
+
+    const wsResumo = XLSX.utils.aoa_to_sheet(sheetResumo);
+    const wsDiario = XLSX.utils.aoa_to_sheet(sheetDiario);
+    const wsEscala = XLSX.utils.aoa_to_sheet(sheetEscala);
+
+    /* ✅ mescla título (linha 1) para “centralizar” */
+    wsResumo["!merges"] = [{ s:{r:0,c:0}, e:{r:0,c:19} }];
+    wsDiario["!merges"] = [{ s:{r:0,c:0}, e:{r:0,c:18} }];
+    wsEscala["!merges"] = [{ s:{r:0,c:0}, e:{r:0,c:6} }];
+
+    XLSX.utils.book_append_sheet(wb, wsResumo, "Resumo");
+    XLSX.utils.book_append_sheet(wb, wsDiario, "Diario");
+    XLSX.utils.book_append_sheet(wb, wsEscala, "Escala");
 
     const filename = `RH_${mes2}-${ano}.xlsx`;
     XLSX.writeFile(wb, filename);
-    setRhStatus(`✅ Exportado com sucesso: ${filename}`);
-  }catch(e){
-    console.error(e);
-    setRhStatus("❌ Falha ao exportar. Veja o console.");
-    alert("Falha ao exportar RH (XLSX). Veja o console.");
-  }
-};
+    setRhStatus(`✅ Exportado: ${filename}`);
+  })
+  .catch(function(){
+    setRhStatus("❌ Falha ao exportar.");
+    alert("Falha ao exportar RH.");
+  });
+}
+window.exportarRHXLSX = exportarRHXLSX;
 </script>
 </body>
 </html>
