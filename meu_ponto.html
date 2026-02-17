@@ -31,6 +31,27 @@
   th{ background:#fafafa; }
   .footer{ text-align:center; margin-top:14px; font-size:12px; color:#666; }
   .muted{ color:#999; }
+
+  /* Holerite box */
+  .card{
+    margin-top:14px;
+    border:1px solid #eee;
+    border-radius:12px;
+    padding:12px;
+    background:#fbfbfb;
+  }
+  .card h3{
+    margin:0 0 10px;
+    font-size:14px;
+    text-align:center;
+  }
+  .statusLine{
+    text-align:center;
+    font-size:12px;
+    margin-top:8px;
+    color:#555;
+    min-height:16px;
+  }
 </style>
 </head>
 
@@ -75,6 +96,19 @@
       <button class="secondary" id="btnVoltar2">Voltar ao Registro</button>
     </div>
 
+    <!-- ✅ HOLERITES -->
+    <div class="card">
+      <h3>Holerite (download)</h3>
+      <div class="row">
+        <button id="btnBaixarHolerite">Baixar holerite do mês selecionado</button>
+      </div>
+      <div class="statusLine" id="holStatus"></div>
+      <div class="small">
+        Formato do arquivo: <b>hol_{re}_{mm}_{aaaa}.pdf</b><br>
+        Caminho no Storage: <b>holerites/{re}/</b>
+      </div>
+    </div>
+
     <div class="small" id="hintMes">
       A jornada pertence ao dia da <b>ENTRADA</b>. Se virar o dia, a saída aparece com <b>(+1)</b>.
     </div>
@@ -85,8 +119,8 @@
           <th>Data</th>
           <th>Dia</th>
           <th>Entrada</th>
-          <th>Início Intervalo</th>
-          <th>Fim Intervalo</th>
+          <th>Início Intraj.</th>
+          <th>Fim Intraj.</th>
           <th>Saída</th>
           <th>Entrada HE</th>
           <th>Saída HE</th>
@@ -110,6 +144,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, doc, getDoc, getDocs, collection, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getStorage, ref as sRef, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD--zpWLbLg5X82oGTyz6SuPFQV0sd7NWc",
@@ -122,6 +157,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
 // DOM
 const loginBox = document.getElementById("loginBox");
@@ -137,6 +173,10 @@ const mesSel = document.getElementById("mes");
 const anoSel = document.getElementById("ano");
 const btnCarregar = document.getElementById("btnCarregar");
 const btnPdf = document.getElementById("btnPdf");
+
+// holerite
+const btnBaixarHolerite = document.getElementById("btnBaixarHolerite");
+const holStatus = document.getElementById("holStatus");
 
 document.getElementById("btnVoltar1").onclick = voltar;
 document.getElementById("btnVoltar2").onclick = voltar;
@@ -185,6 +225,7 @@ function horarioTxt(c){
   if (he || hs) return `${he||"—"}–${hs||"—"}`;
   return "—";
 }
+function setHolStatus(msg){ holStatus.textContent = msg || ""; }
 
 // escala
 function isFolgaByEscala(dateObj, escala){
@@ -318,8 +359,11 @@ function getFeriasNoDia(ymdKey, dateObj, escala){
 btnEntrar.addEventListener("click", entrar);
 btnCarregar.addEventListener("click", carregar);
 btnPdf.addEventListener("click", exportarPdf);
-mesSel.addEventListener("change", () => { if (user) carregar(); });
-anoSel.addEventListener("change", () => { if (user) carregar(); });
+mesSel.addEventListener("change", () => { setHolStatus(""); if (user) carregar(); });
+anoSel.addEventListener("change", () => { setHolStatus(""); if (user) carregar(); });
+
+// holerite download
+btnBaixarHolerite.addEventListener("click", baixarHoleriteDoMes);
 
 async function entrar(){
   const re = reEl.value.trim();
@@ -352,6 +396,7 @@ async function entrar(){
   loginBox.style.display = "none";
   conteudo.style.display = "block";
 
+  setHolStatus("");
   await carregar();
 }
 
@@ -410,12 +455,11 @@ function obsJornada(j){
   const dSai = toDateAny(j.saida?.ts);
   let obs = [];
 
-  // ✅ textos "humanos": intervalo / (intrajornada só como técnico)
-  if (j?.flags?.intrajornada_nao_realizada) obs.push("Intervalo não realizado (intrajornada)");
+  if (j?.flags?.intrajornada_nao_realizada) obs.push("Intrajornada não realizada");
   if (dEnt && dSai && ymd(dEnt) !== ymd(dSai)) obs.push("Virou o dia");
   if (!j.saida?.ts) obs.push("Sem saída");
   if ((j.saida_intervalo?.ts && !j.retorno_intervalo?.ts) || (!j.saida_intervalo?.ts && j.retorno_intervalo?.ts)) {
-    obs.push("Intervalo incompleto");
+    obs.push("Intrajornada incompleta");
   }
   const posto = reconhecerLocal(getBestLocationFromJornada(j));
   if (posto === "Não reconhecido") obs.push("Fora do posto");
@@ -452,8 +496,8 @@ function renderTabela(){
       const dSai = toDateAny(j1.saida?.ts);
 
       entrada = hm(toDateAny(j1.entrada?.ts));
-      saiInt  = hm(toDateAny(j1.saida_intervalo?.ts));       // início intervalo (interno)
-      retInt  = hm(toDateAny(j1.retorno_intervalo?.ts));     // fim intervalo (interno)
+      saiInt  = hm(toDateAny(j1.saida_intervalo?.ts));
+      retInt  = hm(toDateAny(j1.retorno_intervalo?.ts));
       saida   = hm(dSai) + ((dSai && dEnt && ymd(dSai) !== ymd(dEnt)) ? " (+1)" : "");
       entHe   = hm(toDateAny(j1.entrada_he?.ts));
       saiHe   = hm(toDateAny(j1.saida_he?.ts));
@@ -484,7 +528,71 @@ function renderTabela(){
   }
 }
 
-// PDF helpers
+/* =========================
+   ✅ HOLERITE (DOWNLOAD)
+   ========================= */
+function buildHoleriteFileName(re, mes, ano){
+  // hol_{re}_{mm}_{aaaa}.pdf
+  return `hol_${re}_${pad2(mes)}_${String(ano)}.pdf`;
+}
+
+async function baixarHoleriteDoMes(){
+  if (!user?.re) return alert("Faça login primeiro.");
+
+  const mes = Number(mesSel.value);
+  const ano = Number(anoSel.value);
+
+  const fileName = buildHoleriteFileName(user.re, mes, ano);
+  const path = `holerites/${user.re}/${fileName}`;
+
+  try{
+    setHolStatus(`Procurando: ${fileName}...`);
+
+    // pega URL do Storage
+    const url = await getDownloadURL(sRef(storage, path));
+
+    // baixa como blob e força download
+    setHolStatus("Baixando...");
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`Falha no download (HTTP ${resp.status})`);
+
+    const blob = await resp.blob();
+    const blobUrl = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = fileName; // força nome do arquivo
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    URL.revokeObjectURL(blobUrl);
+
+    setHolStatus("✅ Holerite baixado com sucesso.");
+  }catch(e){
+    console.error("Erro holerite:", e);
+
+    // mensagens mais “humanas”
+    const msg = String(e?.message || e);
+    if (msg.includes("object-not-found")){
+      setHolStatus("❌ Holerite não encontrado para este mês/ano (arquivo não existe no Storage).");
+      alert("Holerite não encontrado. Confira se você subiu o PDF com o nome exato:\n\n" + fileName);
+      return;
+    }
+    if (msg.includes("permission") || msg.includes("unauthorized")){
+      setHolStatus("❌ Sem permissão para baixar (Storage Rules).");
+      alert("Sem permissão para baixar.\n\nComo você não usa Firebase Auth no colaborador, o Storage precisa estar com leitura pública (beta) OU você terá que migrar para Auth depois.");
+      return;
+    }
+
+    setHolStatus("❌ Falha ao baixar holerite.");
+    alert("Falha ao baixar holerite. Abra o Console (F12) e veja o erro.");
+  }
+}
+
+// =========================
+// PDF (seu código original)
+// =========================
 async function loadImageAsDataURL(url){
   const res = await fetch(url);
   const blob = await res.blob();
@@ -516,7 +624,6 @@ async function exportarPdf(){
   const docPdf = new jsPDF({ orientation:"portrait", unit:"pt", format:"a4" });
   const pageH = docPdf.internal.pageSize.getHeight();
 
-  // logo sem distorcer
   let logoDataUrl = null;
   let logoNat = null;
   try {
@@ -556,8 +663,7 @@ async function exportarPdf(){
     docPdf.text("Sistema desenvolvido por Gabriel Wandele, todos direitos reservados", marginX, pageH - 10);
   }
 
-  // ✅ PDF cabeçalho também com "intervalo"
-  const head = [[ "Data","Dia","Ent","Ini Interv","Fim Interv","Sai","HE Ent","HE Sai","Posto","Obs" ]];
+  const head = [[ "Data","Dia","Ent","Ini Intraj","Fim Intraj","Sai","HE Ent","HE Sai","Posto","Obs" ]];
 
   const body = linhasMes.map(linha => {
     const dataKey = `${ano}-${pad2(mes)}-${pad2(linha.dia)}`;
