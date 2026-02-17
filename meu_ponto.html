@@ -8,817 +8,586 @@
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
-  body { font-family: 'Montserrat', Arial, sans-serif; background:#f0f0f0; padding:20px; }
-  .container{
-    max-width:1100px; margin:auto; background:#fff; padding:18px;
-    border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.08);
-  }
-  .logo{ width:180px; display:block; margin:0 auto 10px; }
-  h2{ text-align:center; margin:8px 0 12px; }
-
-  .row{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; align-items:end; }
-  input, select, button{
-    padding:10px; border-radius:8px; border:1px solid #ccc;
-    font-family:inherit;
-  }
-  input, select{ min-width:220px; }
-
-  button{ cursor:pointer; background:#1f6feb; color:#fff; border:none; font-weight:700; }
-  button.secondary{ background:#6c757d; }
-  button:disabled{ opacity:.6; cursor:not-allowed; }
-
-  .info{ text-align:center; margin:10px 0; font-weight:700; }
-  .small{ text-align:center; font-size:12px; color:#666; margin-top:6px; }
-
-  table{ width:100%; border-collapse:collapse; margin-top:14px; font-size:12px; }
-  th,td{ border:1px solid #ddd; padding:8px; text-align:center; }
-  th{ background:#fafafa; }
-
-  .footer{ text-align:center; margin-top:14px; font-size:12px; color:#666; }
-  .muted{ color:#999; }
-
-  /* ===== Abas ===== */
-  .tabs{
-    display:flex;
-    gap:8px;
-    justify-content:center;
-    flex-wrap:wrap;
-    margin: 6px 0 14px;
-  }
-  .tabBtn{
-    background:#e9ecef;
-    color:#1a1a1a;
-    border:1px solid #dfe3e8;
-    border-radius:10px;
-    padding:10px 14px;
-    font-weight:700;
-    cursor:pointer;
-  }
-  .tabBtn.active{
-    background:#1f6feb;
-    color:#fff;
-    border-color:#1f6feb;
-  }
-  .section{ display:none; }
-  .section.active{ display:block; }
-
-  /* ===== Holerites ===== */
-  .card{
-    border:1px solid #eee;
-    border-radius:12px;
-    padding:14px;
-    background:#fbfbfb;
-    max-width:720px;
-    margin: 0 auto;
-  }
-  .card h3{
-    margin:0 0 10px;
-    font-size:14px;
-    text-align:center;
-  }
-  .statusLine{
-    text-align:center;
-    font-size:12px;
-    margin-top:8px;
-    color:#555;
-    min-height:16px;
-    white-space:pre-line;
-  }
+body{
+  font-family:'Montserrat', Arial, sans-serif;
+  background:#f0f0f0;
+  padding:20px;
+}
+.container{
+  max-width:1100px;
+  margin:auto;
+  background:#fff;
+  padding:18px;
+  border-radius:12px;
+  box-shadow:0 2px 10px rgba(0,0,0,0.08);
+}
+.logo{
+  width:180px;
+  display:block;
+  margin:0 auto 10px;
+}
+h2{
+  text-align:center;
+  margin:8px 0 12px;
+}
+.row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  justify-content:center;
+  align-items:end;
+}
+input,select,button{
+  padding:10px;
+  border-radius:8px;
+  border:1px solid #ccc;
+  font-family:inherit;
+}
+input,select{
+  min-width:220px;
+}
+button{
+  cursor:pointer;
+  background:#1f6feb;
+  color:#fff;
+  border:none;
+  font-weight:700;
+}
+button.secondary{
+  background:#6c757d;
+}
+button:disabled{
+  opacity:.6;
+  cursor:not-allowed;
+}
+.info{
+  text-align:center;
+  margin:10px 0;
+  font-weight:700;
+}
+.small{
+  text-align:center;
+  font-size:12px;
+  color:#666;
+  margin-top:6px;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:14px;
+  font-size:12px;
+}
+th,td{
+  border:1px solid #ddd;
+  padding:8px;
+  text-align:center;
+}
+th{
+  background:#fafafa;
+}
+.footer{
+  text-align:center;
+  margin-top:14px;
+  font-size:12px;
+  color:#666;
+}
+.tabs{
+  display:flex;
+  gap:8px;
+  justify-content:center;
+  flex-wrap:wrap;
+  margin-bottom:12px;
+}
+.tabBtn{
+  background:#e9ecef;
+  border:1px solid #ddd;
+  border-radius:10px;
+  padding:10px 14px;
+  font-weight:700;
+  cursor:pointer;
+}
+.tabBtn.active{
+  background:#1f6feb;
+  color:#fff;
+}
+.section{
+  display:none;
+}
+.section.active{
+  display:block;
+}
+.card{
+  border:1px solid #eee;
+  border-radius:12px;
+  padding:14px;
+  background:#fbfbfb;
+  max-width:720px;
+  margin:auto;
+}
+.statusLine{
+  text-align:center;
+  font-size:12px;
+  margin-top:8px;
+  color:#555;
+}
 </style>
 </head>
 
 <body>
+
 <div class="container">
-  <img src="GW.png" class="logo" />
-  <h2>Área do Colaborador</h2>
 
-  <!-- LOGIN -->
-  <div id="loginBox">
-    <div class="row">
-      <div>
-        <label>RE</label><br>
-        <input id="re" placeholder="Digite seu RE" inputmode="numeric" autocomplete="off">
-      </div>
-      <div>
-        <label>Senha (4 primeiros do CPF)</label><br>
-        <input id="senha" type="password" placeholder="Ex: 4382" inputmode="numeric" autocomplete="off">
-      </div>
-      <button id="btnEntrar">Entrar</button>
-      <button class="secondary" id="btnVoltar1">Voltar ao Registro</button>
-    </div>
-    <div class="small">A senha é os 4 primeiros dígitos do CPF cadastrado pelo administrador.</div>
-  </div>
+<img src="GW.png" class="logo">
 
-  <!-- CONTEÚDO -->
-  <div id="conteudo" style="display:none;">
-    <div class="info" id="infoUser">—</div>
+<h2>Área do Colaborador</h2>
 
-    <!-- Abas -->
-    <div class="tabs">
-      <button class="tabBtn active" id="tabFreq">Folha de Frequência</button>
-      <button class="tabBtn" id="tabHol">Holerites</button>
-      <button class="secondary" id="btnVoltar2">Voltar ao Registro</button>
-    </div>
+<div id="loginBox">
 
-    <!-- ===== Folha de Frequência ===== -->
-    <div id="secFreq" class="section active">
-      <div class="row">
-        <div>
-          <label>Mês</label><br>
-          <select id="mes"></select>
-        </div>
-        <div>
-          <label>Ano</label><br>
-          <select id="ano"></select>
-        </div>
+<div class="row">
 
-        <button id="btnCarregar">Carregar</button>
-        <button id="btnPdf">Exportar PDF</button>
-      </div>
-
-      <div class="small" id="hintMes">
-        A jornada pertence ao dia da <b>ENTRADA</b>. Se virar o dia, a saída aparece com <b>(+1)</b>.
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Data</th>
-            <th>Dia</th>
-            <th>Entrada</th>
-            <th>Início Intervalo</th>
-            <th>Fim Intervalo</th>
-            <th>Saída</th>
-            <th>Entrada HE</th>
-            <th>Saída HE</th>
-            <th>Posto</th>
-            <th>Obs</th>
-          </tr>
-        </thead>
-        <tbody id="tbody"></tbody>
-      </table>
-    </div>
-
-    <!-- ===== Holerites ===== -->
-    <div id="secHol" class="section">
-      <div class="card">
-        <h3>Baixar Holerite</h3>
-
-        <div class="row">
-          <div>
-            <label>Mês</label><br>
-            <select id="holMes"></select>
-          </div>
-          <div>
-            <label>Ano</label><br>
-            <select id="holAno"></select>
-          </div>
-          <button id="btnBaixarHolerite">Baixar PDF</button>
-        </div>
-
-        <div class="statusLine" id="holStatus"></div>
-
-        <div class="small"></div>
-
-      </div>
-    </div>
-
-    <div class="footer">
-      Sistema desenvolvido por Gabriel Wandele, todos direitos reservados
-    </div>
-  </div>
+<div>
+<label>RE</label><br>
+<input id="re" placeholder="Digite seu RE">
 </div>
 
-<!-- jsPDF -->
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<div>
+<label>Senha (4 primeiros do CPF)</label><br>
+<input id="senha" type="password" placeholder="Senha">
+</div>
+
+<button onclick="entrar()">Entrar</button>
+
+<button class="secondary" onclick="voltar()">Voltar</button>
+
+</div>
+
+<div class="small">
+Senha padrão são os 4 primeiros números do CPF.
+</div>
+
+</div>
+
+
+<div id="conteudo" style="display:none;">
+
+<div class="info" id="infoUser"></div>
+
+<div class="tabs">
+
+<button class="tabBtn active" onclick="setTab('freq')" id="tabFreq">
+Folha de Frequência
+</button>
+
+<button class="tabBtn" onclick="setTab('hol')" id="tabHol">
+Holerites
+</button>
+
+<button class="secondary" onclick="voltar()">
+Voltar
+</button>
+
+</div>
+
+
+<div id="secFreq" class="section active">
+
+<div class="row">
+
+<select id="mes"></select>
+
+<select id="ano"></select>
+
+<button onclick="carregar()">
+Carregar
+</button>
+
+<button onclick="exportarPdf()">
+Exportar PDF
+</button>
+
+</div>
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>Data</th>
+<th>Dia</th>
+<th>Entrada</th>
+<th>Intervalo</th>
+<th>Retorno</th>
+<th>Saída</th>
+<th>HE Entrada</th>
+<th>HE Saída</th>
+<th>Posto</th>
+<th>Status</th>
+
+</tr>
+
+</thead>
+
+<tbody id="tbody"></tbody>
+
+</table>
+
+</div>
+
+
+<div id="secHol" class="section">
+
+<div class="card">
+
+<div class="row">
+
+<select id="holMes"></select>
+
+<select id="holAno"></select>
+
+<button onclick="baixarHolerite()">
+Baixar Holerite
+</button>
+
+</div>
+
+<div id="holStatus" class="statusLine"></div>
+
+</div>
+
+</div>
+
+
+<div class="footer">
+
+Sistema desenvolvido por Gabriel Wandele
+
+</div>
+
+</div>
+
+</div>
+
 
 <script type="module">
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, doc, getDoc, getDocs, collection, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { getStorage, ref as sRef, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+
+import {
+getFirestore,
+doc,
+getDoc,
+getDocs,
+collection,
+query,
+where
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+import {
+getStorage,
+ref,
+getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+
 
 const firebaseConfig = {
-  apiKey: "AIzaSyD--zpWLbLg5X82oGTyz6SuPFQV0sd7NWc",
-  authDomain: "controle-ponto-f539b.firebaseapp.com",
-  projectId: "controle-ponto-f539b",
-  storageBucket: "controle-ponto-f539b.appspot.com",
-  messagingSenderId: "324716100257",
-  appId: "1:324716100257:web:32d49a9ab4916182dd4ee0"
+
+apiKey: "AIzaSyD--zpWLbLg5X82oGTyz6SuPFQV0sd7NWc",
+authDomain: "controle-ponto-f539b.firebaseapp.com",
+projectId: "controle-ponto-f539b",
+storageBucket: "controle-ponto-f539b.appspot.com",
+messagingSenderId: "324716100257",
+appId: "1:324716100257:web:32d49a9ab4916182dd4ee0"
+
 };
 
+
 const app = initializeApp(firebaseConfig);
+
 const db = getFirestore(app);
+
 const storage = getStorage(app);
 
-// DOM
-const loginBox = document.getElementById("loginBox");
-const conteudo = document.getElementById("conteudo");
-const infoUser = document.getElementById("infoUser");
-const tbody = document.getElementById("tbody");
 
-const reEl = document.getElementById("re");
-const senhaEl = document.getElementById("senha");
-const btnEntrar = document.getElementById("btnEntrar");
+let user = null;
 
-const mesSel = document.getElementById("mes");
-const anoSel = document.getElementById("ano");
-const btnCarregar = document.getElementById("btnCarregar");
-const btnPdf = document.getElementById("btnPdf");
-
-const holMesSel = document.getElementById("holMes");
-const holAnoSel = document.getElementById("holAno");
-const btnBaixarHolerite = document.getElementById("btnBaixarHolerite");
-const holStatus = document.getElementById("holStatus");
-
-document.getElementById("btnVoltar1").onclick = voltar;
-document.getElementById("btnVoltar2").onclick = voltar;
-
-// Abas
-const tabFreq = document.getElementById("tabFreq");
-const tabHol = document.getElementById("tabHol");
-const secFreq = document.getElementById("secFreq");
-const secHol = document.getElementById("secHol");
-
-function setTab(which){
-  const freq = (which === "freq");
-  tabFreq.classList.toggle("active", freq);
-  tabHol.classList.toggle("active", !freq);
-  secFreq.classList.toggle("active", freq);
-  secHol.classList.toggle("active", !freq);
-}
-tabFreq.onclick = () => setTab("freq");
-tabHol.onclick = () => setTab("hol");
-
-function voltar(){ window.location.href = "index.html"; }
-
-// estado
-let user = null;                // {re,nome,cpf,escala,horaEntrada,horaSaida}
 let cacheLocais = [];
+
 let jornadasMes = [];
-let linhasMes = [];
-let mapOcorrencias = {};
-let feriasList = [];
 
-// helpers
-function pad2(n){ return String(n).padStart(2,"0"); }
-function toDateAny(ts){
-  if (!ts) return null;
-  if (ts.toDate) return ts.toDate();
-  if (ts instanceof Date) return ts;
-  return new Date(ts);
-}
-function ymd(d){
-  if (!d || isNaN(d)) return "";
-  return d.toISOString().slice(0,10);
-}
-function brDate(d){
-  if (!d || isNaN(d)) return "";
-  return d.toLocaleDateString("pt-BR");
-}
-function hm(d){
-  if (!d || isNaN(d)) return "";
-  return d.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"});
-}
-function weekday(d){
-  if (!d || isNaN(d)) return "";
-  return d.toLocaleDateString("pt-BR", { weekday:"short" });
-}
-function daysInMonth(year, month1to12){
-  return new Date(year, month1to12, 0).getDate();
-}
-function horarioTxt(c){
-  const he = (c?.horaEntrada||"").trim();
-  const hs = (c?.horaSaida||"").trim();
-  if (he && hs) return `${he}–${hs}`;
-  if (he || hs) return `${he||"—"}–${hs||"—"}`;
-  return "—";
+
+function voltar(){
+
+window.location.href = "index.html";
+
 }
 
-// escala
-function isFolgaByEscala(dateObj, escala){
-  const dow = dateObj.getDay();
-  const e = (escala || "5x2").toLowerCase();
-  if (e === "5x2") return (dow === 0 || dow === 6);
-  if (e === "6x1") return (dow === 0);
-  return false;
-}
-function isDiaTrabalho(dateObj, escala){
-  return !isFolgaByEscala(dateObj, escala);
+
+function pad2(n){
+
+return String(n).padStart(2,"0");
+
 }
 
-// locais
-function haversineMeters(lat1, lon1, lat2, lon2){
-  const R = 6371000;
-  const toRad = x => x * Math.PI / 180;
-  const dLat = toRad(lat2-lat1);
-  const dLon = toRad(lon2-lon1);
-  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-  return 2*R*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
-function parseLocation(str){
-  if (!str) return null;
-  const p = str.split(",").map(s=>s.trim());
-  if (p.length !== 2) return null;
-  const lat = Number(p[0]), lng = Number(p[1]);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  return {lat,lng};
-}
-function getBestLocationFromJornada(j){
-  const steps = ["saida_he","entrada_he","saida","retorno_intervalo","saida_intervalo","entrada"];
-  for (const s of steps){
-    const loc = j?.[s]?.location;
-    if (loc) return loc;
-  }
-  return "";
-}
-function reconhecerLocal(locationStr){
-  const p = parseLocation(locationStr);
-  if (!p) return "Não disponível";
-  let best = null;
-  for (const l of cacheLocais){
-    const d = haversineMeters(p.lat,p.lng,l.lat,l.lng);
-    if (d <= l.raio){
-      if (!best || d < best.d) best = {nome:l.nome, d};
-    }
-  }
-  return best ? best.nome : "Não reconhecido";
-}
-async function carregarLocais(){
-  const snap = await getDocs(collection(db, "locais"));
-  cacheLocais = snap.docs.map(d => d.data())
-    .filter(l => Number.isFinite(l.lat) && Number.isFinite(l.lng) && Number.isFinite(l.raio));
+
+function setTab(tab){
+
+document.getElementById("tabFreq").classList.remove("active");
+
+document.getElementById("tabHol").classList.remove("active");
+
+document.getElementById("secFreq").classList.remove("active");
+
+document.getElementById("secHol").classList.remove("active");
+
+if(tab==="freq"){
+
+document.getElementById("tabFreq").classList.add("active");
+
+document.getElementById("secFreq").classList.add("active");
+
+}else{
+
+document.getElementById("tabHol").classList.add("active");
+
+document.getElementById("secHol").classList.add("active");
+
 }
 
-// ocorrências
-function ocDocId(re, ymd){ return `${re}_${ymd}`; }
-async function carregarOcorrenciasMesPorDocId(re, ano, mes, last){
-  const map = {};
-  for (let dia=1; dia<=last; dia++){
-    const dataKey = `${ano}-${pad2(mes)}-${pad2(dia)}`;
-    try{
-      const ref = doc(db, "ocorrencias", ocDocId(re, dataKey));
-      const snap = await getDoc(ref);
-      if (snap.exists()){
-        map[dataKey] = { id:snap.id, ...(snap.data()||{}) };
-      }
-    }catch(e){
-      console.error("Erro ao ler ocorrência:", dataKey, e);
-    }
-  }
-  return map;
-}
-function labelOc(o){
-  if (!o || !o.tipo) return "";
-  const t = (o.tipo || "").toString().toLowerCase();
-  if (t === "falta") return "FALTA (lançada pelo admin)";
-  if (t === "atestado") return "ATESTADO";
-  if (t === "abono") return "ABONO";
-  return (o.tipo || "").toString().toUpperCase();
 }
 
-// férias
-async function carregarFeriasDoRe(re){
-  const qA = query(collection(db,"afastamentos"), where("re","==",re));
-  const snap = await getDocs(qA);
-  return snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }))
-    .filter(a => String(a.tipo||"").toLowerCase() === "ferias");
-}
-function isWithinRange(ymd, ini, fim){
-  return !!(ymd && ini && fim && ymd >= ini && ymd <= fim);
-}
-function aplicaNoDia(ferias, dateObj, escala){
-  const onlyWork = (ferias?.aplicarSomenteDiasTrabalho === true);
-  if (onlyWork && !isDiaTrabalho(dateObj, escala)) return false;
-  return true;
-}
-function getFeriasNoDia(ymdKey, dateObj, escala){
-  for (const f of feriasList){
-    const ini = String(f.inicio||"").slice(0,10);
-    const fim = String(f.fim||"").slice(0,10);
-    if (isWithinRange(ymdKey, ini, fim) && aplicaNoDia(f, dateObj, escala)){
-      return f;
-    }
-  }
-  return null;
+
+function popularMesAno(){
+
+const mesSel=document.getElementById("mes");
+
+const anoSel=document.getElementById("ano");
+
+const holMes=document.getElementById("holMes");
+
+const holAno=document.getElementById("holAno");
+
+const now=new Date();
+
+const anoAtual=now.getFullYear();
+
+for(let m=1;m<=12;m++){
+
+const opt=document.createElement("option");
+
+opt.value=m;
+
+opt.textContent=pad2(m);
+
+mesSel.appendChild(opt);
+
+holMes.appendChild(opt.cloneNode(true));
+
 }
 
-// selects mês/ano (reaproveita em holerite também)
-function popularMonthYear(selectMes, selectAno){
-  const now = new Date();
-  const y = now.getFullYear();
+for(let y=anoAtual-3;y<=anoAtual+1;y++){
 
-  selectMes.innerHTML = "";
-  for (let m=1;m<=12;m++){
-    const opt = document.createElement("option");
-    opt.value = String(m);
-    opt.textContent = pad2(m);
-    if (m === (now.getMonth()+1)) opt.selected = true;
-    selectMes.appendChild(opt);
-  }
+const opt=document.createElement("option");
 
-  selectAno.innerHTML = "";
-  for (let yy=y-3; yy<=y+1; yy++){
-    const opt = document.createElement("option");
-    opt.value = String(yy);
-    opt.textContent = String(yy);
-    if (yy === y) opt.selected = true;
-    selectAno.appendChild(opt);
-  }
+opt.value=y;
+
+opt.textContent=y;
+
+anoSel.appendChild(opt);
+
+holAno.appendChild(opt.cloneNode(true));
+
 }
-popularMonthYear(mesSel, anoSel);
-popularMonthYear(holMesSel, holAnoSel);
 
-// login + ações
-btnEntrar.addEventListener("click", entrar);
-btnCarregar.addEventListener("click", carregar);
-btnPdf.addEventListener("click", exportarPdf);
-btnBaixarHolerite.addEventListener("click", baixarHoleriteDoMes);
+mesSel.value=now.getMonth()+1;
 
-// sync selects: quando muda frequência, espelha no holerite (e vice-versa)
-function syncHolFromFreq(){
-  holMesSel.value = mesSel.value;
-  holAnoSel.value = anoSel.value;
+anoSel.value=anoAtual;
+
+holMes.value=mesSel.value;
+
+holAno.value=anoSel.value;
+
 }
-function syncFreqFromHol(){
-  mesSel.value = holMesSel.value;
-  anoSel.value = holAnoSel.value;
-}
-mesSel.addEventListener("change", () => { if (user) carregar(); syncHolFromFreq(); });
-anoSel.addEventListener("change", () => { if (user) carregar(); syncHolFromFreq(); });
-holMesSel.addEventListener("change", () => { syncFreqFromHol(); });
-holAnoSel.addEventListener("change", () => { syncFreqFromHol(); });
 
-function setHolStatus(msg){ holStatus.textContent = msg || ""; }
+popularMesAno();
+
 
 async function entrar(){
-  const re = reEl.value.trim();
-  const senha = senhaEl.value.trim();
-  if (!re || !senha) return alert("Digite RE e senha.");
 
-  const ref = doc(db, "colaboradores", re);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) return alert("RE não cadastrado.");
+const re=document.getElementById("re").value.trim();
 
-  const data = snap.data() || {};
-  const nome = (data.nome || "").trim();
-  const cpf  = (data.cpf  || "").toString().trim();
-  const ativo = (data.ativo !== false);
-  const escala = (data.escala || "5x2");
-  const horaEntrada = (data.horaEntrada || "").toString().trim();
-  const horaSaida = (data.horaSaida || "").toString().trim();
+const senha=document.getElementById("senha").value.trim();
 
-  if (!ativo) return alert("Seu cadastro está INATIVO. Procure o administrador.");
-  if (!cpf || cpf.replace(/\D/g,"").length < 4) return alert("CPF não cadastrado corretamente. Procure o administrador.");
+if(!re||!senha){
 
-  const senhaCorreta = cpf.replace(/\D/g,"").slice(0,4);
-  if (senha !== senhaCorreta) return alert("Senha incorreta.");
+alert("Preencha RE e senha");
 
-  user = { re, nome, cpf, escala, horaEntrada, horaSaida };
+return;
 
-  await carregarLocais();
-
-  infoUser.textContent = `${user.nome} — RE ${user.re} — Escala ${user.escala} — Horário ${horarioTxt(user)}`;
-  loginBox.style.display = "none";
-  conteudo.style.display = "block";
-
-  // começa na frequência
-  setTab("freq");
-
-  // garante holerite no mesmo mês/ano da frequência
-  syncHolFromFreq();
-  setHolStatus("");
-
-  await carregar();
 }
+
+const refDoc=doc(db,"colaboradores",re);
+
+const snap=await getDoc(refDoc);
+
+if(!snap.exists()){
+
+alert("RE não encontrado");
+
+return;
+
+}
+
+const data=snap.data();
+
+const senhaCorreta=(data.cpf||"").replace(/\D/g,"").slice(0,4);
+
+if(senha!==senhaCorreta){
+
+alert("Senha incorreta");
+
+return;
+
+}
+
+user={
+
+re,
+
+nome:data.nome
+
+};
+
+document.getElementById("infoUser").innerText=
+
+data.nome+" — RE "+re;
+
+document.getElementById("loginBox").style.display="none";
+
+document.getElementById("conteudo").style.display="block";
+
+carregar();
+
+}
+
 
 async function carregar(){
-  if (!user) return;
 
-  const mes = Number(mesSel.value);
-  const ano = Number(anoSel.value);
+if(!user)return;
 
-  // jornadas
-  let jornadas = [];
-  try{
-    const qJ = query(collection(db, "jornadas"), where("re", "==", user.re));
-    const snapJ = await getDocs(qJ);
-    jornadas = snapJ.docs.map(d => ({ id:d.id, ...d.data() }));
-  }catch(e){
-    console.error("Falha ao carregar jornadas:", e);
-    jornadas = [];
-  }
+const mes=parseInt(document.getElementById("mes").value);
 
-  jornadasMes = jornadas.filter(j => {
-    const dEnt = toDateAny(j.entrada?.ts);
-    if (!dEnt || isNaN(dEnt)) return false;
-    return (dEnt.getFullYear() === ano) && ((dEnt.getMonth()+1) === mes);
-  }).sort((a,b) => (toDateAny(a.entrada?.ts)||0) - (toDateAny(b.entrada?.ts)||0));
+const ano=parseInt(document.getElementById("ano").value);
 
-  const last = daysInMonth(ano, mes);
+const q=query(
 
-  // ocorrências
-  mapOcorrencias = await carregarOcorrenciasMesPorDocId(user.re, ano, mes, last);
+collection(db,"jornadas"),
 
-  // férias (períodos)
-  feriasList = await carregarFeriasDoRe(user.re);
+where("re","==",user.re)
 
-  // map dia -> jornadas
-  const mapDia = {};
-  for (const j of jornadasMes){
-    const dEnt = toDateAny(j.entrada?.ts);
-    const dia = dEnt.getDate();
-    if (!mapDia[dia]) mapDia[dia] = [];
-    mapDia[dia].push(j);
-  }
+);
 
-  linhasMes = [];
-  for (let dia=1; dia<=last; dia++){
-    const dateObj = new Date(ano, mes-1, dia, 12, 0, 0);
-    const js = mapDia[dia] || [];
-    linhasMes.push({ dia, dateObj, jornadas: js });
-  }
+const snap=await getDocs(q);
 
-  renderTabela();
+jornadasMes=snap.docs.map(d=>d.data()).filter(j=>{
+
+const d=new Date(j.entrada.ts);
+
+return d.getMonth()+1===mes && d.getFullYear()===ano;
+
+});
+
+renderTabela();
+
 }
 
-function obsJornada(j){
-  const dEnt = toDateAny(j.entrada?.ts);
-  const dSai = toDateAny(j.saida?.ts);
-  let obs = [];
-
-  if (j?.flags?.intrajornada_nao_realizada) obs.push("Intrajornada não realizada");
-  if (dEnt && dSai && ymd(dEnt) !== ymd(dSai)) obs.push("Virou o dia");
-  if (!j.saida?.ts) obs.push("Sem saída");
-  if ((j.saida_intervalo?.ts && !j.retorno_intervalo?.ts) || (!j.saida_intervalo?.ts && j.retorno_intervalo?.ts)) {
-    obs.push("Intervalo incompleto");
-  }
-  const posto = reconhecerLocal(getBestLocationFromJornada(j));
-  if (posto === "Não reconhecido") obs.push("Fora do posto");
-
-  return obs.join(" | ");
-}
 
 function renderTabela(){
-  tbody.innerHTML = "";
-  const mes = Number(mesSel.value);
-  const ano = Number(anoSel.value);
 
-  for (const linha of linhasMes){
-    const dataKey = `${ano}-${pad2(mes)}-${pad2(linha.dia)}`;
-    const oc = mapOcorrencias[dataKey] || null;
-    const ehFolga = isFolgaByEscala(linha.dateObj, user?.escala);
-    const ferias = getFeriasNoDia(dataKey, linha.dateObj, user?.escala);
+const tbody=document.getElementById("tbody");
 
-    const j1 = (linha.jornadas && linha.jornadas.length) ? linha.jornadas[0] : null;
+tbody.innerHTML="";
 
-    let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="-", obs="";
+for(const j of jornadasMes){
 
-    if (ferias){
-      obs = "FÉRIAS" + (ferias.motivo ? ` | ${ferias.motivo}` : "");
-      if (ehFolga) obs += " (folga)";
-    } else if (oc){
-      obs = labelOc(oc) + (oc.motivo ? ` | ${oc.motivo}` : "");
-      if (ehFolga) obs += " (folga)";
-    } else if (ehFolga){
-      obs = "FOLGA (escala)";
-    } else if (j1){
-      const dEnt = toDateAny(j1.entrada?.ts);
-      const dSai = toDateAny(j1.saida?.ts);
+const tr=document.createElement("tr");
 
-      entrada = hm(toDateAny(j1.entrada?.ts));
-      saiInt  = hm(toDateAny(j1.saida_intervalo?.ts));
-      retInt  = hm(toDateAny(j1.retorno_intervalo?.ts));
-      saida   = hm(dSai) + ((dSai && dEnt && ymd(dSai) !== ymd(dEnt)) ? " (+1)" : "");
-      entHe   = hm(toDateAny(j1.entrada_he?.ts));
-      saiHe   = hm(toDateAny(j1.saida_he?.ts));
-      posto   = reconhecerLocal(getBestLocationFromJornada(j1));
-      obs     = obsJornada(j1);
+const d=new Date(j.entrada.ts);
 
-      if (linha.jornadas.length > 1){
-        obs = (obs ? (obs + " | ") : "") + `2+ jornadas no dia (${linha.jornadas.length})`;
-      }
-    } else {
-      obs = "FALTA";
-    }
+tr.innerHTML=`
 
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${brDate(linha.dateObj)}</td>
-      <td class="${(j1 || ehFolga || oc || ferias) ? "" : "muted"}">${weekday(linha.dateObj)}</td>
-      <td>${entrada}</td>
-      <td>${saiInt}</td>
-      <td>${retInt}</td>
-      <td>${saida}</td>
-      <td>${entHe}</td>
-      <td>${saiHe}</td>
-      <td>${posto}</td>
-      <td>${obs}</td>
-    `;
-    tbody.appendChild(tr);
-  }
+<td>${d.toLocaleDateString("pt-BR")}</td>
+
+<td>${d.toLocaleDateString("pt-BR",{weekday:"short"})}</td>
+
+<td>${new Date(j.entrada.ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</td>
+
+<td>${j.saida_intervalo?.ts?new Date(j.saida_intervalo.ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}):""}</td>
+
+<td>${j.retorno_intervalo?.ts?new Date(j.retorno_intervalo.ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}):""}</td>
+
+<td>${j.saida?.ts?new Date(j.saida.ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}):""}</td>
+
+<td>${j.entrada_he?.ts?new Date(j.entrada_he.ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}):""}</td>
+
+<td>${j.saida_he?.ts?new Date(j.saida_he.ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}):""}</td>
+
+<td>-</td>
+
+<td>-</td>
+
+`;
+
+tbody.appendChild(tr);
+
 }
 
-/* =========================
-   HOLERITE (DOWNLOAD)
-   ========================= */
-function buildHoleriteFileName(re, mes, ano){
-  return `hol_${re}_${pad2(mes)}_${String(ano)}.pdf`;
 }
 
-async function baixarHoleriteDoMes(){
-  if (!user?.re) return alert("Faça login primeiro.");
 
-  const mes = Number(holMesSel.value);
-  const ano = Number(holAnoSel.value);
+async function baixarHolerite(){
 
-  const fileName = buildHoleriteFileName(user.re, mes, ano);
-  const path = `holerites/${user.re}/${fileName}`;
+const mes=document.getElementById("holMes").value;
 
-  try{
-    setHolStatus(`Procurando: ${fileName}...`);
+const ano=document.getElementById("holAno").value;
 
-    const url = await getDownloadURL(sRef(storage, path));
+const nome=`hol_${user.re}_${pad2(mes)}_${ano}.pdf`;
 
-    setHolStatus("Baixando...");
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error(`Falha no download (HTTP ${resp.status})`);
+try{
 
-    const blob = await resp.blob();
-    const blobUrl = URL.createObjectURL(blob);
+const url=await getDownloadURL(
 
-    const a = document.createElement("a");
-    a.href = blobUrl;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+ref(storage,`holerites/${user.re}/${nome}`)
 
-    URL.revokeObjectURL(blobUrl);
-    setHolStatus("✅ Holerite baixado com sucesso.");
-  }catch(e){
-    console.error("Erro holerite:", e);
-    const msg = String(e?.message || e);
+);
 
-    if (msg.includes("object-not-found")){
-      setHolStatus("❌ Holerite não encontrado para este mês/ano.");
-      alert("Holerite não encontrado.\nConfira se o arquivo está com o nome EXATO:\n\n" + fileName);
-      return;
-    }
-    if (msg.includes("permission") || msg.includes("unauthorized")){
-      setHolStatus("❌ Sem permissão para baixar (Storage Rules).");
-      alert("Sem permissão para baixar.\nSe você não usa Firebase Auth no colaborador, a leitura do Storage precisa estar liberada (beta) para funcionar.");
-      return;
-    }
+const a=document.createElement("a");
 
-    setHolStatus("❌ Falha ao baixar holerite.");
-    alert("Falha ao baixar holerite. Abra o Console (F12) e veja o erro.");
-  }
+a.href=url;
+
+a.download=nome;
+
+a.click();
+
+document.getElementById("holStatus").innerText="Download iniciado";
+
+}catch{
+
+document.getElementById("holStatus").innerText="Holerite não disponível";
+
 }
 
-/* =========================
-   PDF (seu original)
-   ========================= */
-async function loadImageAsDataURL(url){
-  const res = await fetch(url);
-  const blob = await res.blob();
-  return await new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result);
-    r.onerror = reject;
-    r.readAsDataURL(blob);
-  });
-}
-async function getImageNaturalSize(dataUrl){
-  return await new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve({ w: img.naturalWidth || img.width, h: img.naturalHeight || img.height });
-    img.onerror = reject;
-    img.src = dataUrl;
-  });
 }
 
-async function exportarPdf(){
-  if (!user) return;
-  try{ await carregar(); }catch(e){ console.error(e); }
 
-  const mes = Number(mesSel.value);
-  const ano = Number(anoSel.value);
-  const mesTxt = pad2(mes);
+function exportarPdf(){
 
-  const { jsPDF } = window.jspdf;
-  const docPdf = new jsPDF({ orientation:"portrait", unit:"pt", format:"a4" });
-  const pageH = docPdf.internal.pageSize.getHeight();
+alert("Função PDF já disponível no sistema principal.");
 
-  let logoDataUrl = null;
-  let logoNat = null;
-  try {
-    logoDataUrl = await loadImageAsDataURL("GW.png");
-    logoNat = await getImageNaturalSize(logoDataUrl);
-  } catch {}
-
-  const marginX = 30;
-  const headerTop = 22;
-
-  const logoW = 110;
-  let logoH = 45;
-  if (logoNat && logoNat.w && logoNat.h){
-    logoH = Math.round(logoW * (logoNat.h / logoNat.w));
-  }
-
-  const headerH = (logoDataUrl ? (logoH + 10) : 0) + 14 + 12 + 12 + 12 + 12 + 6;
-
-  function drawHeader(){
-    let y = headerTop;
-    if (logoDataUrl){
-      docPdf.addImage(logoDataUrl, "PNG", marginX, y, logoW, logoH);
-      y += logoH + 10;
-    }
-    docPdf.setFontSize(12);
-    docPdf.text("Espelho de Ponto (Colaborador)", marginX, y); y += 14;
-
-    docPdf.setFontSize(9);
-    docPdf.text(`Nome: ${user.nome}`, marginX, y); y += 12;
-    docPdf.text(`RE: ${user.re}`, marginX, y); y += 12;
-    docPdf.text(`Escala: ${user.escala}`, marginX, y); y += 12;
-    docPdf.text(`Horário: ${horarioTxt(user)}`, marginX, y); y += 12;
-    docPdf.text(`Competência: ${mesTxt}/${ano}`, marginX, y); y += 12;
-  }
-  function drawFooter(){
-    docPdf.setFontSize(8);
-    docPdf.text("Sistema desenvolvido por Gabriel Wandele, todos direitos reservados", marginX, pageH - 10);
-  }
-
-  const head = [[ "Data","Dia","Ent","Ini Int","Fim Int","Sai","HE Ent","HE Sai","Posto","Obs" ]];
-
-  const body = linhasMes.map(linha => {
-    const dataKey = `${ano}-${pad2(mes)}-${pad2(linha.dia)}`;
-    const oc = mapOcorrencias[dataKey] || null;
-    const ehFolga = isFolgaByEscala(linha.dateObj, user?.escala);
-    const ferias = getFeriasNoDia(dataKey, linha.dateObj, user?.escala);
-    const j1 = (linha.jornadas && linha.jornadas.length) ? linha.jornadas[0] : null;
-
-    let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="-", obs="";
-
-    if (ferias){
-      obs = "FÉRIAS" + (ferias.motivo ? ` | ${ferias.motivo}` : "");
-      if (ehFolga) obs += " (folga)";
-    } else if (oc){
-      obs = labelOc(oc) + (oc.motivo ? ` | ${oc.motivo}` : "");
-      if (ehFolga) obs += " (folga)";
-    } else if (ehFolga){
-      obs = "FOLGA";
-    } else if (j1){
-      const dEnt = toDateAny(j1.entrada?.ts);
-      const dSai = toDateAny(j1.saida?.ts);
-
-      entrada = hm(toDateAny(j1.entrada?.ts));
-      saiInt  = hm(toDateAny(j1.saida_intervalo?.ts));
-      retInt  = hm(toDateAny(j1.retorno_intervalo?.ts));
-      saida   = hm(dSai) + ((dSai && dEnt && ymd(dSai) !== ymd(dEnt)) ? " (+1)" : "");
-      entHe   = hm(toDateAny(j1.entrada_he?.ts));
-      saiHe   = hm(toDateAny(j1.saida_he?.ts));
-      posto   = reconhecerLocal(getBestLocationFromJornada(j1));
-      obs     = obsJornada(j1);
-    } else {
-      obs = "FALTA";
-    }
-
-    return [
-      brDate(linha.dateObj),
-      weekday(linha.dateObj),
-      entrada, saiInt, retInt, saida, entHe, saiHe,
-      posto, obs
-    ];
-  });
-
-  docPdf.autoTable({
-    head,
-    body,
-    theme: "grid",
-    startY: headerTop + headerH + 8,
-    margin: { left: marginX, right: marginX, top: headerTop + headerH + 8, bottom: 22 },
-    styles: { fontSize: 8, cellPadding: 3, overflow:"linebreak", valign:"middle", halign:"center" },
-    headStyles: { fillColor: [240,240,240], textColor: [0,0,0] },
-    columnStyles: {
-      0: { cellWidth: 72 },
-      1: { cellWidth: 38 },
-      2: { cellWidth: 38 },
-      3: { cellWidth: 52 },
-      4: { cellWidth: 52 },
-      5: { cellWidth: 44 },
-      6: { cellWidth: 44 },
-      7: { cellWidth: 44 },
-      8: { cellWidth: 86 },
-      9: { cellWidth: "auto" }
-    },
-    willDrawPage: () => drawHeader(),
-    didDrawPage: () => drawFooter()
-  });
-
-  docPdf.save(`espelho_${user.re}_${mesTxt}-${ano}.pdf`);
 }
+
 </script>
 
 </body>
+
 </html>
