@@ -85,8 +85,8 @@
           <th>Data</th>
           <th>Dia</th>
           <th>Entrada</th>
-          <th>Início Intraj.</th>
-          <th>Fim Intraj.</th>
+          <th>Início Intervalo</th>
+          <th>Fim Intervalo</th>
           <th>Saída</th>
           <th>Entrada HE</th>
           <th>Saída HE</th>
@@ -410,11 +410,12 @@ function obsJornada(j){
   const dSai = toDateAny(j.saida?.ts);
   let obs = [];
 
-  if (j?.flags?.intrajornada_nao_realizada) obs.push("Intrajornada não realizada");
+  // ✅ textos "humanos": intervalo / (intrajornada só como técnico)
+  if (j?.flags?.intrajornada_nao_realizada) obs.push("Intervalo não realizado (intrajornada)");
   if (dEnt && dSai && ymd(dEnt) !== ymd(dSai)) obs.push("Virou o dia");
   if (!j.saida?.ts) obs.push("Sem saída");
   if ((j.saida_intervalo?.ts && !j.retorno_intervalo?.ts) || (!j.saida_intervalo?.ts && j.retorno_intervalo?.ts)) {
-    obs.push("Intrajornada incompleta");
+    obs.push("Intervalo incompleto");
   }
   const posto = reconhecerLocal(getBestLocationFromJornada(j));
   if (posto === "Não reconhecido") obs.push("Fora do posto");
@@ -437,7 +438,7 @@ function renderTabela(){
 
     let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="-", obs="";
 
-    // ✅ prioridade: FÉRIAS > ocorrência > folga > jornada > falta
+    // prioridade: FÉRIAS > ocorrência > folga > jornada > falta
     if (ferias){
       obs = "FÉRIAS" + (ferias.motivo ? ` | ${ferias.motivo}` : "");
       if (ehFolga) obs += " (folga)";
@@ -451,8 +452,8 @@ function renderTabela(){
       const dSai = toDateAny(j1.saida?.ts);
 
       entrada = hm(toDateAny(j1.entrada?.ts));
-      saiInt  = hm(toDateAny(j1.saida_intervalo?.ts));
-      retInt  = hm(toDateAny(j1.retorno_intervalo?.ts));
+      saiInt  = hm(toDateAny(j1.saida_intervalo?.ts));       // início intervalo (interno)
+      retInt  = hm(toDateAny(j1.retorno_intervalo?.ts));     // fim intervalo (interno)
       saida   = hm(dSai) + ((dSai && dEnt && ymd(dSai) !== ymd(dEnt)) ? " (+1)" : "");
       entHe   = hm(toDateAny(j1.entrada_he?.ts));
       saiHe   = hm(toDateAny(j1.saida_he?.ts));
@@ -555,7 +556,8 @@ async function exportarPdf(){
     docPdf.text("Sistema desenvolvido por Gabriel Wandele, todos direitos reservados", marginX, pageH - 10);
   }
 
-  const head = [[ "Data","Dia","Ent","Ini Intraj","Fim Intraj","Sai","HE Ent","HE Sai","Posto","Obs" ]];
+  // ✅ PDF cabeçalho também com "intervalo"
+  const head = [[ "Data","Dia","Ent","Ini Interv","Fim Interv","Sai","HE Ent","HE Sai","Posto","Obs" ]];
 
   const body = linhasMes.map(linha => {
     const dataKey = `${ano}-${pad2(mes)}-${pad2(linha.dia)}`;
