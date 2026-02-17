@@ -171,9 +171,11 @@
       <input id="cadNome" placeholder="Nome completo">
       <input id="cadCpf" placeholder="CPF (obrigatório)" inputmode="numeric">
 
+      <!-- ✅ adicionada escala 12x36 -->
       <select id="cadEscala">
         <option value="5x2">5x2 (Seg-Sex)</option>
         <option value="6x1">6x1 (Folga Dom)</option>
+        <option value="12x36">12x36 (1 trabalha / 1 folga)</option>
       </select>
 
       <input id="cadHoraEntrada" type="time" title="Hora prevista de entrada">
@@ -312,8 +314,9 @@
   <div id="secPlantoes" class="section">
     <h3>Plantões 12x36</h3>
     <div class="small">
-      Cadastre uma regra de base por vigência: se em <b>DATA</b> a pessoa estará em <b>TRABALHA</b> ou <b>FOLGA</b>.
-      O sistema usa o histórico (não altera o passado ao trocar o plantão depois).
+      Cadastre uma regra de base por vigência: se em <b>DATA</b> a pessoa estará em <b>TRABALHA</b> ou <b>FOLGA</b>.<br>
+      O sistema usa o histórico (não altera o passado ao trocar o plantão depois).<br>
+      <b>IMPORTANTE:</b> após salvar, este admin sincroniza automaticamente em <b>colaboradores/{re}.plantaoHistorico</b> para o app do colaborador reconhecer.
     </div>
 
     <div class="row">
@@ -368,7 +371,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
   getFirestore, doc, setDoc, getDocs, collection, updateDoc, addDoc,
-  deleteDoc, deleteField, query, where, getDoc
+  deleteDoc, deleteField, query, where, getDoc, orderBy
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import {
   getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
@@ -425,7 +428,6 @@ onAuthStateChanged(auth, user => {
   if (user){
     carregarLocais();
     carregarColaboradores();
-    // não força carregar tudo pra não pesar no mobile
   }
 });
 
@@ -475,15 +477,52 @@ function horarioTxt(c){
   if (he || hs) return `${he||"—"}–${hs||"—"}`;
   return "—";
 }
-function isFolgaByEscala(dateObj, escala){
+
+// ===== 12x36 helpers (admin) =====
+function ymd(d){
+  if (!d || isNaN(d)) return "";
+  return d.toISOString().slice(0,10);
+}
+function getPlantaoReferencia(dateObj, historico){
+  if (!Array.isArray(historico) || !historico.length) return null;
+  const key = ymd(dateObj);
+  let best = null;
+  for (const p of historico){
+    const ini = String(p?.inicio || p?.vigencia || "").slice(0,10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ini)) continue;
+    if (ini <= key){
+      if (!best || ini > String(best.inicio||"")) best = { ...p, inicio: ini };
+    }
+  }
+  return best;
+}
+function isFolgaByEscala(dateObj, escala, plantaoHistorico){
   const dow = dateObj.getDay();
   const e = (escala || "5x2").toLowerCase();
   if (e === "5x2") return (dow === 0 || dow === 6);
   if (e === "6x1") return (dow === 0);
+
+  const eh12x36 = e.includes("12") && e.includes("36");
+  if (eh12x36){
+    const plantao = getPlantaoReferencia(dateObj, plantaoHistorico || []);
+    if (!plantao) return false; // sem base: NÃO considera folga aqui (admin usa só p/ férias)
+    const baseYmd = String(plantao.inicio||"").slice(0,10);
+    const baseTipo = String(plantao.base||"trabalha").toLowerCase(); // trabalha|folga
+
+    const base = new Date(baseYmd + "T00:00:00");
+    const atual = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 12, 0, 0);
+    const diffDias = Math.floor((atual - base) / 86400000);
+
+    // Se na data base é TRABALHA => trabalha quando diff%2==0
+    // Se na data base é FOLGA => folga quando diff%2==0
+    const trabalha = (diffDias % 2) === 0 ? (baseTipo === "trabalha") : (baseTipo !== "trabalha");
+    return !trabalha;
+  }
+
   return false;
 }
-function isDiaTrabalho(dateObj, escala){
-  return !isFolgaByEscala(dateObj, escala);
+function isDiaTrabalho(dateObj, escala, plantaoHistorico){
+  return !isFolgaByEscala(dateObj, escala, plantaoHistorico);
 }
 
 // localização/posto
@@ -533,6 +572,25 @@ function openModal({title, bodyHtml, onSave}){
   saveBtn.onclick=onSave || null;
 }
 
+// ===== SYNC 12x36 -> colaborador.plantaoHistorico =====
+async function syncPlantaoHistoricoToColaborador(re){
+  const qP = query(collection(db,"plantoes12x36"), where("re","==",re), orderBy("vigencia","asc"));
+  const snap = await getDocs(qP);
+  const list = snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }))
+    .map(p => ({
+      inicio: String(p.vigencia||"").slice(0,10), // IMPORTANT: colaborador.html usa "inicio"
+      base: String(p.base||"trabalha").toLowerCase(), // trabalha|folga
+      obs: String(p.obs||""),
+      updatedAt: String(p.updatedAt||"")
+    }))
+    .filter(p => /^\d{4}-\d{2}-\d{2}$/.test(p.inicio));
+
+  await setDoc(doc(db,"colaboradores",re), {
+    plantaoHistorico: list,
+    updatedAt: new Date().toISOString()
+  }, { merge:true });
+}
+
 // ===== COLABORADORES =====
 window.cadastrarColab = async function(){
   const re = document.getElementById("cadRe").value.trim();
@@ -541,7 +599,7 @@ window.cadastrarColab = async function(){
   const escala = document.getElementById("cadEscala").value;
   const horaEntrada = (document.getElementById("cadHoraEntrada").value || "").trim();
   const horaSaida = (document.getElementById("cadHoraSaida").value || "").trim();
-  const dataAdmissao = (document.getElementById("cadAdmissao").value || "").trim(); // YYYY-MM-DD
+  const dataAdmissao = (document.getElementById("cadAdmissao").value || "").trim();
 
   if (!re || !nome) return alert("Preencha RE e Nome.");
   cpf = cpf.replace(/\D/g,"");
@@ -624,6 +682,7 @@ window.editarColab = function(reDocId){
           <select id="mEscala">
             <option value="5x2" ${(c.escala||"5x2")==="5x2" ? "selected" : ""}>5x2 (Seg-Sex)</option>
             <option value="6x1" ${(c.escala||"5x2")==="6x1" ? "selected" : ""}>6x1 (Folga Dom)</option>
+            <option value="12x36" ${(c.escala||"5x2")==="12x36" ? "selected" : ""}>12x36 (1 trabalha / 1 folga)</option>
           </select>
         </div>
 
@@ -666,7 +725,6 @@ window.editarColab = function(reDocId){
       if (!nome) return alert("Nome não pode ficar vazio.");
       if (!cpf || cpf.length < 4) return alert("CPF é obrigatório (mínimo 4 dígitos).");
       if (!dataAdmissao) return alert("Data de admissão é obrigatória.");
-
       if (!confirm("Salvar alteração do colaborador?")) return;
 
       await setDoc(doc(db,"colaboradores",reDocId), {
@@ -1078,19 +1136,20 @@ function rangeDays(iniYmd, fimYmd){
   }
   return out;
 }
-async function apagarJornadasNoPeriodo(re, iniYmd, fimYmd, escala, somenteDiasTrabalho){
+async function apagarJornadasNoPeriodo(re, iniYmd, fimYmd, escala, somenteDiasTrabalho, plantaoHistorico){
   const qJ = query(collection(db,"jornadas"), where("re","==",re));
   const snap = await getDocs(qJ);
   const all = snap.docs.map(d => ({ id:d.id, ...d.data() }));
 
   const days = rangeDays(iniYmd, fimYmd);
   const alvo = new Set();
+
   for (const dt of days){
-    const ymd = dt.toISOString().slice(0,10);
+    const dayKey = dt.toISOString().slice(0,10);
     if (somenteDiasTrabalho){
-      if (!isDiaTrabalho(dt, escala)) continue;
+      if (!isDiaTrabalho(dt, escala, plantaoHistorico)) continue;
     }
-    alvo.add(ymd);
+    alvo.add(dayKey);
   }
 
   const apagar = all.filter(j => {
@@ -1118,6 +1177,7 @@ window.salvarFerias = async function(){
   const col = await getColab(re);
   if (!col) return alert("Colaborador não encontrado.");
   const escala = (col.escala || "5x2");
+  const plantaoHistorico = Array.isArray(col.plantaoHistorico) ? col.plantaoHistorico : [];
 
   if (!confirm(
     `Salvar FÉRIAS?\nRE: ${re}\nNome: ${col.nome||""}\nPeríodo: ${brDateFromYmd(inicio)} até ${brDateFromYmd(fim)}\nSomente dias de trabalho: ${aplicarSomenteDiasTrabalho ? "SIM" : "NÃO"}\n\nIsso vai APAGAR jornadas dentro do período (conforme regra).`
@@ -1134,7 +1194,7 @@ window.salvarFerias = async function(){
     updatedAt: new Date().toISOString()
   });
 
-  const apagadas = await apagarJornadasNoPeriodo(re, inicio, fim, escala, aplicarSomenteDiasTrabalho);
+  const apagadas = await apagarJornadasNoPeriodo(re, inicio, fim, escala, aplicarSomenteDiasTrabalho, plantaoHistorico);
   alert(`Férias salvas.\nJornadas apagadas no período: ${apagadas}`);
 
   document.getElementById("afMotivo").value="";
@@ -1215,7 +1275,6 @@ window.editarFerias = function(id){
 
       if (!ini || !fim) return alert("Informe início e fim.");
       if (fim < ini) return alert("Fim não pode ser menor que início.");
-
       if (!confirm("Salvar alteração do período de férias?")) return;
 
       await updateDoc(doc(db,"afastamentos", id), {
@@ -1243,10 +1302,10 @@ window.editarFerias = function(id){
   }, 0);
 };
 
-// ===== PLANTÕES 12x36 =====
+// ===== PLANTÕES 12x36 (CORRIGIDO + SYNC) =====
 window.salvarPlantao12x36 = async function(){
   const re = (document.getElementById("plRe").value || "").trim();
-  const vigencia = (document.getElementById("plVigencia").value || "").trim(); // YYYY-MM-DD
+  const vigencia = (document.getElementById("plVigencia").value || "").trim();
   const base = document.getElementById("plBase").value; // trabalha | folga
   const obs = (document.getElementById("plObs").value || "").trim();
 
@@ -1254,7 +1313,6 @@ window.salvarPlantao12x36 = async function(){
   if (!vigencia) return alert("Informe a data de vigência.");
 
   try{
-    // ✅ NÃO depende do cache: busca colaborador no Firestore
     const colSnap = await getDoc(doc(db, "colaboradores", re));
     if (!colSnap.exists()){
       return alert("Colaborador não encontrado no banco. Cadastre na aba Colaboradores.");
@@ -1280,10 +1338,13 @@ window.salvarPlantao12x36 = async function(){
       updatedAt: new Date().toISOString()
     });
 
+    // ✅ sincroniza para o colaborador conseguir calcular no app dele
+    await syncPlantaoHistoricoToColaborador(re);
+
     document.getElementById("plObs").value = "";
     document.getElementById("plFiltroRe").value = re;
 
-    alert("✅ Plantão 12x36 salvo no Firestore.");
+    alert("✅ Plantão 12x36 salvo e sincronizado no colaborador.");
     await carregarPlantoes12x36();
 
   }catch(e){
@@ -1387,7 +1448,6 @@ window.editarPlantao = function(id){
       const obs = (document.getElementById("mpObs").value || "").trim();
 
       if (!vig) return alert("Informe a vigência.");
-
       if (!confirm("Salvar alteração deste plantão 12x36?")) return;
 
       await updateDoc(doc(db, "plantoes12x36", id), {
@@ -1396,6 +1456,9 @@ window.editarPlantao = function(id){
         obs,
         updatedAt: new Date().toISOString()
       });
+
+      // ✅ re-sincroniza no colaborador
+      await syncPlantaoHistoricoToColaborador(p.re);
 
       closeModal();
       carregarPlantoes12x36();
@@ -1408,6 +1471,10 @@ window.editarPlantao = function(id){
     btn.onclick = async () => {
       if (!confirm("Excluir este registro de plantão 12x36?")) return;
       await deleteDoc(doc(db,"plantoes12x36", id));
+
+      // ✅ re-sincroniza no colaborador
+      await syncPlantaoHistoricoToColaborador(p.re);
+
       closeModal();
       carregarPlantoes12x36();
     };
