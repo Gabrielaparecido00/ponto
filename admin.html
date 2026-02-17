@@ -140,6 +140,26 @@
       <button onclick="exportar()">Exportar CSV</button>
     </div>
 
+    <hr class="hr">
+
+    <h3>Exportação RH (XLSX)</h3>
+    <div class="small">
+      Gera um único XLSX com: <b>Resumo por colaborador</b> + <b>Detalhe dia a dia</b> + <b>Calendário de escala</b>.
+      Classifica <b>Hora Normal</b> vs <b>HE</b> usando o horário planejado do dia (cadastro do colaborador).
+    </div>
+
+    <div class="row">
+      <label>Competência (mês):</label>
+      <select id="rhMes"></select>
+
+      <label>Ano:</label>
+      <select id="rhAno"></select>
+
+      <button onclick="exportarRHXLSX()">Exportar RH (XLSX)</button>
+    </div>
+
+    <div class="small" id="rhStatus"></div>
+
     <table>
       <thead>
         <tr>
@@ -171,15 +191,14 @@
       <input id="cadNome" placeholder="Nome completo">
       <input id="cadCpf" placeholder="CPF (obrigatório)" inputmode="numeric">
 
-      <!-- ✅ adicionada escala 12x36 -->
       <select id="cadEscala">
         <option value="5x2">5x2 (Seg-Sex)</option>
         <option value="6x1">6x1 (Folga Dom)</option>
         <option value="12x36">12x36 (1 trabalha / 1 folga)</option>
       </select>
 
-      <input id="cadHoraEntrada" type="time" title="Hora prevista de entrada">
-      <input id="cadHoraSaida" type="time" title="Hora prevista de saída">
+      <input id="cadHoraEntrada" type="time" title="Hora prevista de entrada (informativo)">
+      <input id="cadHoraSaida" type="time" title="Hora prevista de saída (informativo)">
 
       <input id="cadAdmissao" type="date" title="Data de admissão">
 
@@ -367,11 +386,14 @@
   </div>
 </div>
 
+<!-- XLSX (SheetJS) para exportar RH -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
   getFirestore, doc, setDoc, getDocs, collection, updateDoc, addDoc,
-  deleteDoc, deleteField, query, where, getDoc, orderBy
+  deleteDoc, deleteField, query, where, getDoc
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import {
   getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
@@ -400,6 +422,36 @@ let cacheColabs = [];
 let cacheFerias = [];
 let cacheOcorr = [];
 let cachePlantoes = [];
+
+// ===== RH selects (mês/ano) =====
+function pad2(n){ return String(n).padStart(2,"0"); }
+function initRhSelectors(){
+  const mesSel = document.getElementById("rhMes");
+  const anoSel = document.getElementById("rhAno");
+  if (!mesSel || !anoSel) return;
+
+  const now = new Date();
+  const y = now.getFullYear();
+
+  mesSel.innerHTML = "";
+  for (let m=1; m<=12; m++){
+    const opt=document.createElement("option");
+    opt.value=String(m);
+    opt.textContent=pad2(m);
+    if (m === (now.getMonth()+1)) opt.selected=true;
+    mesSel.appendChild(opt);
+  }
+
+  anoSel.innerHTML = "";
+  for (let yy=y-3; yy<=y+1; yy++){
+    const opt=document.createElement("option");
+    opt.value=String(yy);
+    opt.textContent=String(yy);
+    if (yy===y) opt.selected=true;
+    anoSel.appendChild(opt);
+  }
+}
+initRhSelectors();
 
 // menu
 window.showSection = function(id){
@@ -505,7 +557,7 @@ function isFolgaByEscala(dateObj, escala, plantaoHistorico){
   const eh12x36 = e.includes("12") && e.includes("36");
   if (eh12x36){
     const plantao = getPlantaoReferencia(dateObj, plantaoHistorico || []);
-    if (!plantao) return false; // sem base: NÃO considera folga aqui (admin usa só p/ férias)
+    if (!plantao) return false; // sem base: NÃO considera folga aqui (admin usa só p/ férias e escala)
     const baseYmd = String(plantao.inicio||"").slice(0,10);
     const baseTipo = String(plantao.base||"trabalha").toLowerCase(); // trabalha|folga
 
@@ -513,8 +565,6 @@ function isFolgaByEscala(dateObj, escala, plantaoHistorico){
     const atual = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 12, 0, 0);
     const diffDias = Math.floor((atual - base) / 86400000);
 
-    // Se na data base é TRABALHA => trabalha quando diff%2==0
-    // Se na data base é FOLGA => folga quando diff%2==0
     const trabalha = (diffDias % 2) === 0 ? (baseTipo === "trabalha") : (baseTipo !== "trabalha");
     return !trabalha;
   }
@@ -574,19 +624,16 @@ function openModal({title, bodyHtml, onSave}){
 
 // ===== SYNC 12x36 -> colaborador.plantaoHistorico =====
 async function syncPlantaoHistoricoToColaborador(re){
-  // ✅ sem orderBy -> não exige índice composto
   const qP = query(collection(db,"plantoes12x36"), where("re","==",re));
   const snap = await getDocs(qP);
 
   let list = snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }));
-
-  // ✅ ordena no JS (vigencia asc)
   list.sort((a,b) => String(a.vigencia||"").localeCompare(String(b.vigencia||"")));
 
   const historico = list
     .map(p => ({
-      inicio: String(p.vigencia||"").slice(0,10), // colaborador usa "inicio"
-      base: String(p.base||"trabalha").toLowerCase(), // trabalha|folga
+      inicio: String(p.vigencia||"").slice(0,10),
+      base: String(p.base||"trabalha").toLowerCase(),
       obs: String(p.obs||""),
       updatedAt: String(p.updatedAt||"")
     }))
@@ -614,12 +661,14 @@ window.cadastrarColab = async function(){
   if (!dataAdmissao) return alert("Data de admissão é obrigatória.");
 
   if (!confirm(
-    `Cadastrar?\nRE: ${re}\nNome: ${nome}\nEscala: ${escala}\nHorário: ${horaEntrada||"—"}–${horaSaida||"—"}\nAdmissão: ${brDateFromYmd(dataAdmissao)}`
+    `Cadastrar?\nRE: ${re}\nNome: ${nome}\nEscala: ${escala}\nHorário (info): ${horaEntrada||"—"}–${horaSaida||"—"}\nAdmissão: ${brDateFromYmd(dataAdmissao)}`
   )) return;
 
   await setDoc(doc(db,"colaboradores",re), {
     re, nome, cpf, escala, horaEntrada, horaSaida,
     dataAdmissao,
+    // ✅ novo campo (pode ficar vazio inicialmente)
+    horariosSemana: {},
     ativo:true,
     updatedAt:new Date().toISOString()
   }, { merge:true });
@@ -662,9 +711,116 @@ window.carregarColaboradores = async function(){
   }
 };
 
+// ✅ helpers horário por semana
+function normalizeWeekSchedule(raw){
+  const out = {};
+  for (let d=0; d<=6; d++){
+    const k = String(d);
+    const v = raw?.[k];
+    if (!v) { out[k] = null; continue; }
+    const i = (v.in || v.entrada || "").toString().trim();
+    const o = (v.out || v.saida || "").toString().trim();
+    if (!i || !o) out[k] = null;
+    else out[k] = { in:i, out:o };
+  }
+  return out;
+}
+function diasPadraoPorEscala(escala){
+  const e = (escala||"5x2").toLowerCase();
+  // 0=dom, 1=seg, ... 6=sab
+  if (e==="5x2") return [1,2,3,4,5];
+  if (e==="6x1") return [1,2,3,4,5,6];
+  if (e.includes("12") && e.includes("36")) return [0,1,2,3,4,5,6]; // o plantão decide no calendário
+  return [1,2,3,4,5];
+}
+function weekLabel(d){
+  return ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"][d] || String(d);
+}
+function buildHorarioSemanaHtml(horariosSemana, escala){
+  const hs = normalizeWeekSchedule(horariosSemana);
+  const marcadosDefault = new Set(diasPadraoPorEscala(escala));
+
+  const rows = [];
+  for (let d=0; d<=6; d++){
+    const cur = hs[String(d)];
+    rows.push(`
+      <div style="border:1px solid #eee; border-radius:10px; padding:10px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+          <label style="display:flex; gap:8px; align-items:center; margin:0;">
+            <input type="checkbox" class="wkChk" data-d="${d}" ${marcadosDefault.has(d) ? "checked" : ""}>
+            <b>${weekLabel(d)}</b>
+          </label>
+          <span class="small">se desmarcar, vira folga planejada</span>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <div style="flex:1;">
+            <label>Entrada</label>
+            <input type="time" class="wkIn" data-d="${d}" value="${cur?.in || ""}">
+          </div>
+          <div style="flex:1;">
+            <label>Saída</label>
+            <input type="time" class="wkOut" data-d="${d}" value="${cur?.out || ""}">
+          </div>
+        </div>
+      </div>
+    `);
+  }
+
+  return `
+    <div style="grid-column:1 / -1; margin-top:8px; padding:12px; border:1px solid #eee; border-radius:12px;">
+      <div style="font-weight:700; margin-bottom:6px;">Horários por dia da semana (cálculo RH)</div>
+      <div class="small" style="margin-bottom:10px;">
+        1) Marque os dias • 2) Preencha o primeiro dia • 3) Clique “Replicar” • 4) Ajuste dia a dia.
+      </div>
+
+      <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px;">
+        <button type="button" class="minBtn" id="btnAutoDias">Marcar dias pela escala</button>
+        <button type="button" class="minBtn" id="btnReplicar">Replicar do primeiro dia marcado</button>
+        <span class="small">* Para 12x36, isso só define “horário de plantão”; o calendário (trabalha/folga) vem do histórico.</span>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;" id="wkGrid">
+        ${rows.join("")}
+      </div>
+
+      <div class="small" style="margin-top:10px;">
+        Dica: se quiser “sem intervalo padrão”, deixe assim mesmo — o cálculo usa os registros reais (entrada/saída/intervalo).
+      </div>
+    </div>
+  `;
+}
+function readHorarioSemanaFromModal(){
+  const hs = {};
+  const chks = Array.from(document.querySelectorAll(".wkChk"));
+  for (const chk of chks){
+    const d = chk.getAttribute("data-d");
+    const enabled = chk.checked;
+
+    const inEl = document.querySelector(`.wkIn[data-d="${d}"]`);
+    const outEl = document.querySelector(`.wkOut[data-d="${d}"]`);
+
+    const i = (inEl?.value || "").trim();
+    const o = (outEl?.value || "").trim();
+
+    if (!enabled){
+      hs[String(d)] = null;
+      if (inEl) inEl.value="";
+      if (outEl) outEl.value="";
+      continue;
+    }
+
+    // se marcou, mas não colocou horário, deixa null (RH vai tratar como "sem horário planejado")
+    if (!i || !o) hs[String(d)] = null;
+    else hs[String(d)] = { in:i, out:o };
+  }
+  return hs;
+}
+
 window.editarColab = function(reDocId){
   const c = cacheColabs.find(x => x.id === reDocId);
   if (!c) return alert("Colaborador não encontrado.");
+
+  const escalaAtual = (c.escala || "5x2");
 
   openModal({
     title: "Modificar colaborador",
@@ -687,9 +843,9 @@ window.editarColab = function(reDocId){
         <div>
           <label>Escala</label>
           <select id="mEscala">
-            <option value="5x2" ${(c.escala||"5x2")==="5x2" ? "selected" : ""}>5x2 (Seg-Sex)</option>
-            <option value="6x1" ${(c.escala||"5x2")==="6x1" ? "selected" : ""}>6x1 (Folga Dom)</option>
-            <option value="12x36" ${(c.escala||"5x2")==="12x36" ? "selected" : ""}>12x36 (1 trabalha / 1 folga)</option>
+            <option value="5x2" ${(escalaAtual)==="5x2" ? "selected" : ""}>5x2 (Seg-Sex)</option>
+            <option value="6x1" ${(escalaAtual)==="6x1" ? "selected" : ""}>6x1 (Folga Dom)</option>
+            <option value="12x36" ${(escalaAtual)==="12x36" ? "selected" : ""}>12x36 (1 trabalha / 1 folga)</option>
           </select>
         </div>
 
@@ -702,11 +858,11 @@ window.editarColab = function(reDocId){
         </div>
 
         <div>
-          <label>Hora entrada prevista</label>
+          <label>Hora entrada prevista (info)</label>
           <input id="mHoraEntrada" type="time" value="${(c.horaEntrada||"").toString().trim()}">
         </div>
         <div>
-          <label>Hora saída prevista</label>
+          <label>Hora saída prevista (info)</label>
           <input id="mHoraSaida" type="time" value="${(c.horaSaida||"").toString().trim()}">
         </div>
 
@@ -714,6 +870,8 @@ window.editarColab = function(reDocId){
           <label>Data de admissão (obrigatório)</label>
           <input id="mAdmissao" type="date" value="${String(c.dataAdmissao||"").slice(0,10)}">
         </div>
+
+        ${buildHorarioSemanaHtml(c.horariosSemana || {}, escalaAtual)}
 
         <div class="small" style="grid-column:1 / -1">
           Colaborador inativo NÃO consegue registrar ponto no sistema.
@@ -729,6 +887,8 @@ window.editarColab = function(reDocId){
       const horaSaida = (document.getElementById("mHoraSaida").value || "").trim();
       const dataAdmissao = (document.getElementById("mAdmissao").value || "").trim();
 
+      const horariosSemana = readHorarioSemanaFromModal();
+
       if (!nome) return alert("Nome não pode ficar vazio.");
       if (!cpf || cpf.length < 4) return alert("CPF é obrigatório (mínimo 4 dígitos).");
       if (!dataAdmissao) return alert("Data de admissão é obrigatória.");
@@ -737,6 +897,7 @@ window.editarColab = function(reDocId){
       await setDoc(doc(db,"colaboradores",reDocId), {
         nome, cpf, ativo, escala, horaEntrada, horaSaida,
         dataAdmissao,
+        horariosSemana,
         updatedAt:new Date().toISOString()
       }, { merge:true });
 
@@ -747,6 +908,79 @@ window.editarColab = function(reDocId){
       carregarPlantoes12x36();
     }
   });
+
+  // listeners da UI do horário semana
+  setTimeout(() => {
+    const escSel = document.getElementById("mEscala");
+
+    const btnAuto = document.getElementById("btnAutoDias");
+    const btnRep = document.getElementById("btnReplicar");
+
+    function applyAutoDias(){
+      const esc = escSel?.value || escalaAtual;
+      const days = new Set(diasPadraoPorEscala(esc));
+      for (let d=0; d<=6; d++){
+        const chk = document.querySelector(`.wkChk[data-d="${d}"]`);
+        if (chk) chk.checked = days.has(d);
+        // se desmarcou, limpa horários
+        if (!days.has(d)){
+          const i = document.querySelector(`.wkIn[data-d="${d}"]`);
+          const o = document.querySelector(`.wkOut[data-d="${d}"]`);
+          if (i) i.value = "";
+          if (o) o.value = "";
+        }
+      }
+    }
+
+    function replicateFromFirst(){
+      // acha primeiro dia marcado com horário preenchido
+      let first = null;
+      for (let d=0; d<=6; d++){
+        const chk = document.querySelector(`.wkChk[data-d="${d}"]`);
+        if (!chk || !chk.checked) continue;
+        const i = document.querySelector(`.wkIn[data-d="${d}"]`)?.value || "";
+        const o = document.querySelector(`.wkOut[data-d="${d}"]`)?.value || "";
+        if (i && o){
+          first = { in:i, out:o };
+          break;
+        }
+      }
+      if (!first) return alert("Preencha o horário (entrada/saída) no primeiro dia marcado antes de replicar.");
+
+      for (let d=0; d<=6; d++){
+        const chk = document.querySelector(`.wkChk[data-d="${d}"]`);
+        if (!chk || !chk.checked) continue;
+        const i = document.querySelector(`.wkIn[data-d="${d}"]`);
+        const o = document.querySelector(`.wkOut[data-d="${d}"]`);
+        if (i && !i.value) i.value = first.in;
+        if (o && !o.value) o.value = first.out;
+      }
+    }
+
+    if (btnAuto) btnAuto.onclick = applyAutoDias;
+    if (btnRep) btnRep.onclick = replicateFromFirst;
+
+    if (escSel){
+      escSel.addEventListener("change", () => {
+        // só re-marca dias automaticamente se o usuário quiser (btn), então aqui não faz nada
+        // (de propósito)
+      });
+    }
+
+    // quando desmarca um dia, limpa horários
+    for (let d=0; d<=6; d++){
+      const chk = document.querySelector(`.wkChk[data-d="${d}"]`);
+      if (!chk) continue;
+      chk.addEventListener("change", () => {
+        if (!chk.checked){
+          const i = document.querySelector(`.wkIn[data-d="${d}"]`);
+          const o = document.querySelector(`.wkOut[data-d="${d}"]`);
+          if (i) i.value = "";
+          if (o) o.value = "";
+        }
+      });
+    }
+  }, 0);
 };
 
 // ===== LOCAIS =====
@@ -1345,7 +1579,6 @@ window.salvarPlantao12x36 = async function(){
       updatedAt: new Date().toISOString()
     });
 
-    // ✅ sincroniza para o colaborador conseguir calcular no app dele
     await syncPlantaoHistoricoToColaborador(re);
 
     document.getElementById("plObs").value = "";
@@ -1356,10 +1589,7 @@ window.salvarPlantao12x36 = async function(){
 
   }catch(e){
     console.error("Erro ao salvar plantão 12x36:", e);
-    alert(
-      "❌ Não foi possível salvar o plantão 12x36.\n\n" +
-      "Motivo: " + (e?.message || e)
-    );
+    alert("❌ Não foi possível salvar o plantão 12x36.\n\nMotivo: " + (e?.message || e));
   }
 };
 
@@ -1464,7 +1694,6 @@ window.editarPlantao = function(id){
         updatedAt: new Date().toISOString()
       });
 
-      // ✅ re-sincroniza no colaborador
       await syncPlantaoHistoricoToColaborador(p.re);
 
       closeModal();
@@ -1479,7 +1708,6 @@ window.editarPlantao = function(id){
       if (!confirm("Excluir este registro de plantão 12x36?")) return;
       await deleteDoc(doc(db,"plantoes12x36", id));
 
-      // ✅ re-sincroniza no colaborador
       await syncPlantaoHistoricoToColaborador(p.re);
 
       closeModal();
@@ -1488,7 +1716,7 @@ window.editarPlantao = function(id){
   }, 0);
 };
 
-// export
+// export simples (CSV)
 window.exportar = function(){
   let csv = "DataEntrada,Nome,RE,Entrada,InicioIntervalo,FimIntervalo,Saida,EntradaHE,SaidaHE,Coords,Local\n";
   for (const j of ultimaTabela){
@@ -1515,6 +1743,418 @@ window.exportar = function(){
   a.href = url;
   a.download = "jornadas.csv";
   a.click();
+};
+
+// ============================================
+// ✅ EXPORTAÇÃO RH (XLSX) - ponta a ponta
+// ============================================
+
+function setRhStatus(msg){
+  const el = document.getElementById("rhStatus");
+  if (el) el.textContent = msg || "";
+}
+
+function minutesToHHMM(min){
+  const m = Math.max(0, Math.round(min||0));
+  const hh = Math.floor(m/60);
+  const mm = m%60;
+  return `${String(hh).padStart(2,"0")}:${String(mm).padStart(2,"0")}`;
+}
+
+function parseHHMMToMinutes(h){
+  const m = (h||"").trim().match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+  if (!m) return null;
+  return Number(m[1])*60 + Number(m[2]);
+}
+
+function diffMinutes(a,b){
+  const da = toDateAny(a);
+  const db = toDateAny(b);
+  if (!da || !db || isNaN(da) || isNaN(db)) return 0;
+  return Math.round((db - da)/60000);
+}
+
+function getPlannedMinutesForDay(col, dateObj){
+  const dow = dateObj.getDay(); // 0..6
+  const hs = col?.horariosSemana || {};
+  const slot = hs?.[String(dow)];
+  if (slot && slot.in && slot.out){
+    const i = parseHHMMToMinutes(slot.in);
+    const o = parseHHMMToMinutes(slot.out);
+    if (i != null && o != null){
+      // se sair < entrar, assume virou o dia
+      return (o >= i) ? (o - i) : (o + 24*60 - i);
+    }
+  }
+  // fallback: informativo horaEntrada/horaSaida
+  const he = parseHHMMToMinutes(col?.horaEntrada||"");
+  const hs2= parseHHMMToMinutes(col?.horaSaida||"");
+  if (he!=null && hs2!=null){
+    return (hs2>=he) ? (hs2-he) : (hs2+24*60-he);
+  }
+  return null;
+}
+
+function calcWorkedMinutesFromJornada(j){
+  // trabalhado = (saida - entrada) - (intervalo)
+  const ent = j?.entrada?.ts;
+  const sai = j?.saida?.ts;
+  if (!ent || !sai) return { worked:0, intervalo:0, virou:false };
+
+  const dEnt = toDateAny(ent);
+  const dSai = toDateAny(sai);
+  const virou = (dEnt && dSai) ? (ymd(dEnt) !== ymd(dSai)) : false;
+
+  let total = diffMinutes(ent, sai);
+  let intervalo = 0;
+
+  const si = j?.saida_intervalo?.ts;
+  const ri = j?.retorno_intervalo?.ts;
+
+  if (si && ri){
+    intervalo = Math.max(0, diffMinutes(si, ri));
+  } else {
+    // se não tem intervalo completo, não desconta
+    intervalo = 0;
+  }
+
+  total = Math.max(0, total - intervalo);
+  return { worked: total, intervalo, virou };
+}
+
+function calcHeMinutesFromJornada(j){
+  const ehEnt = j?.entrada_he?.ts;
+  const ehSai = j?.saida_he?.ts;
+  if (!ehEnt || !ehSai) return 0;
+  return Math.max(0, diffMinutes(ehEnt, ehSai));
+}
+
+function monthDays(year, month1to12){
+  const last = new Date(year, month1to12, 0).getDate();
+  const out = [];
+  for (let d=1; d<=last; d++){
+    out.push(new Date(year, month1to12-1, d, 12, 0, 0));
+  }
+  return out;
+}
+
+function findOcorrencia(re, ymdKey, ocorrenciasList){
+  return ocorrenciasList.find(o => o.re===re && String(o.data||"").slice(0,10)===ymdKey) || null;
+}
+
+function findFerias(re, ymdKey, dateObj, col, feriasList){
+  const escala = (col?.escala || "5x2");
+  const plantaoHistorico = Array.isArray(col?.plantaoHistorico) ? col.plantaoHistorico : [];
+  for (const f of feriasList){
+    if (f.re !== re) continue;
+    const ini = String(f.inicio||"").slice(0,10);
+    const fim = String(f.fim||"").slice(0,10);
+    if (!ini || !fim) continue;
+    if (!(ymdKey >= ini && ymdKey <= fim)) continue;
+
+    const onlyWork = (f.aplicarSomenteDiasTrabalho === true);
+    if (onlyWork){
+      if (!isDiaTrabalho(dateObj, escala, plantaoHistorico)) continue;
+    }
+    return f;
+  }
+  return null;
+}
+
+function isBeforeAdmissao(col, ymdKey){
+  const ad = String(col?.dataAdmissao || "").slice(0,10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ad)) return false;
+  return ymdKey < ad;
+}
+
+function getScaleStatus(col, dateObj){
+  const escala = (col?.escala || "5x2");
+  const plantaoHistorico = Array.isArray(col?.plantaoHistorico) ? col.plantaoHistorico : [];
+  const folga = isFolgaByEscala(dateObj, escala, plantaoHistorico);
+  return folga ? "FOLGA" : "TRABALHA";
+}
+
+function getJornadaOfDay(re, ymdKey, jornadasList){
+  // jornada pertence ao dia da ENTRADA
+  return jornadasList.find(j => j.re===re && String(j?.entrada?.ts||"").slice(0,10)===ymdKey) || null;
+}
+
+function formatDayBR(ymdKey){
+  return brDateFromYmd(ymdKey);
+}
+
+function weekdayPtShort(d){
+  return d.toLocaleDateString("pt-BR", { weekday:"short" });
+}
+
+function safeStr(v){ return (v==null) ? "" : String(v); }
+
+// ✅ principal
+window.exportarRHXLSX = async function(){
+  try{
+    setRhStatus("Carregando dados do Firestore...");
+
+    // competência
+    const mes = Number(document.getElementById("rhMes").value);
+    const ano = Number(document.getElementById("rhAno").value);
+    const mes2 = pad2(mes);
+
+    // carrega tudo que precisa
+    const [snapCol, snapJor, snapOco, snapAfa] = await Promise.all([
+      getDocs(collection(db,"colaboradores")),
+      getDocs(collection(db,"jornadas")),
+      getDocs(collection(db,"ocorrencias")),
+      getDocs(collection(db,"afastamentos"))
+    ]);
+
+    const colaboradores = snapCol.docs.map(d => ({ id:d.id, ...(d.data()||{}) }))
+      .sort((a,b)=> (a.nome||"").localeCompare(b.nome||""));
+
+    const jornadasAll = snapJor.docs.map(d => ({ id:d.id, ...(d.data()||{}) }));
+    const ocorrAll = snapOco.docs.map(d => ({ id:d.id, ...(d.data()||{}) }));
+    const feriasAll = snapAfa.docs.map(d => ({ id:d.id, ...(d.data()||{}) }))
+      .filter(x => String(x.tipo||"").toLowerCase() === "ferias");
+
+    // filtra jornadas do mês pela data da entrada
+    const jornadasMes = jornadasAll.filter(j => {
+      const ent = String(j?.entrada?.ts||"");
+      if (!ent) return false;
+      const d = toDateAny(ent);
+      if (!d || isNaN(d)) return false;
+      return d.getFullYear()===ano && (d.getMonth()+1)===mes;
+    });
+
+    setRhStatus("Calculando competência e montando XLSX...");
+
+    const days = monthDays(ano, mes);
+
+    // planilhas
+    const sheetResumo = [];
+    const sheetDiario = [];
+    const sheetEscala = [];
+
+    // cabeçalhos
+    sheetResumo.push([
+      "RE","Nome","CPF","Escala","Admissão",
+      "Minutos Normais","Horas Normais",
+      "Minutos HE","Horas HE",
+      "Minutos Trabalhados Total","Horas Total",
+      "Faltas","Atestados","Abonos","Férias","Folgas","Folga Trabalhada (FT)",
+      "Dias Trabalhados","Dias Planejados Trabalhar"
+    ]);
+
+    sheetDiario.push([
+      "RE","Nome","Data","Dia",
+      "Escala (dia)","Planejado (HH:MM)","Status",
+      "Entrada","Saída","Intervalo (min)","Trabalhado (min)",
+      "Normal (min)","HE (min)",
+      "Entrada HE","Saída HE","HE (min) (campo HE)",
+      "Posto","Obs"
+    ]);
+
+    sheetEscala.push([
+      "RE","Nome","Data","Dia","Escala","Status (TRABALHA/FOLGA)","Planejado (HH:MM)"
+    ]);
+
+    for (const col of colaboradores){
+      const re = String(col.re || col.id || "").trim();
+      if (!re) continue;
+
+      const nome = safeStr(col.nome);
+      const cpf = safeStr(col.cpf);
+      const escala = safeStr(col.escala || "5x2");
+      const adm = safeStr(col.dataAdmissao||"").slice(0,10);
+
+      let sumNormal = 0;
+      let sumExtra = 0;
+      let sumWorked = 0;
+
+      let qtdFalta = 0;
+      let qtdAtestado = 0;
+      let qtdAbono = 0;
+      let qtdFerias = 0;
+      let qtdFolga = 0;
+      let qtdFT = 0;
+
+      let diasTrabalhados = 0;
+      let diasPlanejadosTrabalhar = 0;
+
+      for (const dt of days){
+        const ymdKey = ymd(dt);
+
+        const diaAntesAdm = isBeforeAdmissao(col, ymdKey);
+        const escalaDia = getScaleStatus(col, dt); // TRABALHA/FOLGA
+        const planejadoMin = getPlannedMinutesForDay(col, dt);
+        const planejadoTxt = (planejadoMin==null) ? "" : minutesToHHMM(planejadoMin);
+
+        // escala sheet
+        sheetEscala.push([
+          re, nome,
+          formatDayBR(ymdKey),
+          weekdayPtShort(dt),
+          escala,
+          diaAntesAdm ? "NÃO ADMITIDO" : escalaDia,
+          planejadoTxt
+        ]);
+
+        if (diaAntesAdm) continue;
+
+        const isTrabalha = (escalaDia === "TRABALHA");
+        if (isTrabalha) diasPlanejadosTrabalhar++;
+
+        // prioridade: férias > ocorrência > jornada > falta/folga
+        const fer = findFerias(re, ymdKey, dt, col, feriasAll);
+        if (fer){
+          qtdFerias++;
+          sheetDiario.push([
+            re,nome,formatDayBR(ymdKey),weekdayPtShort(dt),
+            escalaDia, planejadoTxt, "FÉRIAS",
+            "","","","",
+            "","",
+            "","","",
+            "", safeStr(fer.motivo||"")
+          ]);
+          continue;
+        }
+
+        const oc = findOcorrencia(re, ymdKey, ocorrAll);
+        if (oc){
+          const t = String(oc.tipo||"").toLowerCase();
+          if (t==="falta") qtdFalta++;
+          if (t==="atestado") qtdAtestado++;
+          if (t==="abono") qtdAbono++;
+
+          sheetDiario.push([
+            re,nome,formatDayBR(ymdKey),weekdayPtShort(dt),
+            escalaDia, planejadoTxt, (t||"").toUpperCase(),
+            "","","","",
+            "","",
+            "","","",
+            "", safeStr(oc.motivo||"")
+          ]);
+          continue;
+        }
+
+        const j = getJornadaOfDay(re, ymdKey, jornadasMes);
+
+        if (!j){
+          if (!isTrabalha){
+            qtdFolga++;
+            sheetDiario.push([
+              re,nome,formatDayBR(ymdKey),weekdayPtShort(dt),
+              escalaDia, planejadoTxt, "FOLGA",
+              "","","","",
+              "","",
+              "","","",
+              "", ""
+            ]);
+          } else {
+            qtdFalta++;
+            sheetDiario.push([
+              re,nome,formatDayBR(ymdKey),weekdayPtShort(dt),
+              escalaDia, planejadoTxt, "FALTA",
+              "","","","",
+              "","",
+              "","","",
+              "", ""
+            ]);
+          }
+          continue;
+        }
+
+        // tem jornada
+        const workedInfo = calcWorkedMinutesFromJornada(j);
+        const heFieldMin = calcHeMinutesFromJornada(j);
+
+        const worked = workedInfo.worked;
+        const intervaloMin = workedInfo.intervalo;
+
+        let normalMin = 0;
+        let extraMin = 0;
+
+        if (!isTrabalha){
+          // trabalhou em folga => FT, tudo vira extra
+          qtdFT++;
+          qtdFolga++; // ainda conta folga do calendário
+          extraMin += worked;
+        } else {
+          if (planejadoMin == null){
+            // não tem planejado => tudo vira normal (pra não estourar HE errado)
+            normalMin += worked;
+          } else {
+            normalMin += Math.min(worked, planejadoMin);
+            extraMin  += Math.max(0, worked - planejadoMin);
+          }
+        }
+
+        // HE do campo HE sempre soma como extra
+        extraMin += heFieldMin;
+
+        sumNormal += normalMin;
+        sumExtra  += extraMin;
+        sumWorked += (worked + heFieldMin);
+
+        if ((worked + heFieldMin) > 0) diasTrabalhados++;
+
+        const posto = reconhecerLocal(getBestLocationFromJornada(j));
+        const obs = [
+          (j?.flags?.intrajornada_nao_realizada ? "Intrajornada não realizada" : ""),
+          (workedInfo.virou ? "Virou o dia" : ""),
+          (!j?.saida?.ts ? "Sem saída" : ""),
+          ((j?.saida_intervalo?.ts && !j?.retorno_intervalo?.ts) || (!j?.saida_intervalo?.ts && j?.retorno_intervalo?.ts)) ? "Intervalo incompleto" : ""
+        ].filter(Boolean).join(" | ");
+
+        sheetDiario.push([
+          re, nome,
+          formatDayBR(ymdKey), weekdayPtShort(dt),
+          escalaDia, planejadoTxt,
+          (!isTrabalha ? "FT" : "TRABALHOU"),
+          formatHHMM(j?.entrada?.ts),
+          formatHHMM(j?.saida?.ts),
+          intervaloMin,
+          worked,
+          normalMin,
+          extraMin,
+          formatHHMM(j?.entrada_he?.ts),
+          formatHHMM(j?.saida_he?.ts),
+          heFieldMin,
+          posto,
+          obs
+        ]);
+      }
+
+      sheetResumo.push([
+        re, nome, cpf, escala,
+        adm ? brDateFromYmd(adm) : "",
+        sumNormal, minutesToHHMM(sumNormal),
+        sumExtra, minutesToHHMM(sumExtra),
+        sumWorked, minutesToHHMM(sumWorked),
+        qtdFalta, qtdAtestado, qtdAbono, qtdFerias, qtdFolga, qtdFT,
+        diasTrabalhados, diasPlanejadosTrabalhar
+      ]);
+    }
+
+    // workbook
+    const wb = XLSX.utils.book_new();
+
+    const wsResumo = XLSX.utils.aoa_to_sheet(sheetResumo);
+    const wsDiario = XLSX.utils.aoa_to_sheet(sheetDiario);
+    const wsEscala = XLSX.utils.aoa_to_sheet(sheetEscala);
+
+    XLSX.utils.book_append_sheet(wb, wsResumo, "Resumo");
+    XLSX.utils.book_append_sheet(wb, wsDiario, "Diario");
+    XLSX.utils.book_append_sheet(wb, wsEscala, "Escala");
+
+    const filename = `RH_${mes2}-${ano}.xlsx`;
+    XLSX.writeFile(wb, filename);
+
+    setRhStatus(`✅ Exportado com sucesso: ${filename}`);
+
+  }catch(e){
+    console.error(e);
+    setRhStatus("❌ Falha ao exportar. Veja o console.");
+    alert("Falha ao exportar RH (XLSX). Veja o console.");
+  }
 };
 </script>
 </body>
