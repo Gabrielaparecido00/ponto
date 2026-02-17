@@ -8,61 +8,59 @@
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
-  *{ box-sizing:border-box; }
-
-  body { font-family: 'Montserrat', Arial, sans-serif; background:#f0f0f0; padding:16px; }
+  body { font-family: 'Montserrat', Arial, sans-serif; background:#f0f0f0; padding:14px; }
   .container{
-    max-width:1100px; margin:auto; background:#fff; padding:18px;
+    max-width:1100px; margin:auto; background:#fff; padding:14px;
     border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.08);
   }
-  .logo{ width:180px; display:block; margin:0 auto 10px; }
-  h2{ text-align:center; margin:8px 0 12px; }
+  .logo{ width:170px; display:block; margin:0 auto 10px; }
+  h2{ text-align:center; margin:8px 0 12px; font-size:20px; }
 
-  .row{
-    display:flex;
-    flex-wrap:wrap;
-    gap:10px;
-    justify-content:center;
-    align-items:end;
-  }
-
+  .row{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; align-items:end; }
   input, select, button{
     padding:10px; border-radius:10px; border:1px solid #ccc;
     font-family:inherit;
-    width:100%;
-    min-width:0;
   }
+  input, select{ min-width:220px; }
 
-  button{
-    cursor:pointer; background:#1f6feb; color:#fff; border:none; font-weight:700;
-  }
+  button{ cursor:pointer; background:#1f6feb; color:#fff; border:none; font-weight:700; }
   button.secondary{ background:#6c757d; }
   button:disabled{ opacity:.6; cursor:not-allowed; }
 
-  .info{ text-align:center; margin:10px 0; font-weight:700; }
+  .info{ text-align:center; margin:10px 0; font-weight:700; font-size:13px; line-height:1.35; }
   .small{ text-align:center; font-size:12px; color:#666; margin-top:6px; }
 
-  @media (min-width: 840px){
-    input, select{ width:auto; min-width:220px; }
-    button{ width:auto; }
+  .tableWrap{
+    width:100%;
+    overflow:auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius:12px;
+    border:1px solid #eee;
+    margin-top:12px;
   }
+  table{ width:100%; border-collapse:collapse; font-size:12px; min-width:980px; }
+  th,td{ border-bottom:1px solid #eee; padding:10px 8px; text-align:center; white-space:nowrap; }
+  th{ background:#fafafa; position:sticky; top:0; z-index:1; }
 
+  .footer{ text-align:center; margin-top:14px; font-size:12px; color:#666; }
+  .muted{ color:#999; }
+
+  /* Abas */
   .tabs{
     display:flex;
     gap:8px;
     justify-content:center;
     flex-wrap:wrap;
-    margin: 6px 0 14px;
+    margin: 6px 0 12px;
   }
   .tabBtn{
     background:#e9ecef;
     color:#1a1a1a;
     border:1px solid #dfe3e8;
-    border-radius:10px;
+    border-radius:12px;
     padding:10px 14px;
     font-weight:700;
     cursor:pointer;
-    flex:1 1 auto;
   }
   .tabBtn.active{
     background:#1f6feb;
@@ -72,70 +70,38 @@
   .section{ display:none; }
   .section.active{ display:block; }
 
-  .tableWrap{ width:100%; overflow:auto; }
-
-  table{ width:100%; border-collapse:collapse; margin-top:14px; font-size:12px; }
-  th,td{ border:1px solid #ddd; padding:8px; text-align:center; }
-  th{ background:#fafafa; }
-
-  .footer{ text-align:center; margin-top:14px; font-size:12px; color:#666; }
-  .muted{ color:#999; }
-
+  /* Holerites */
   .card{
     border:1px solid #eee;
     border-radius:12px;
     padding:14px;
     background:#fbfbfb;
-    max-width:720px;
+    max-width:820px;
     margin: 0 auto;
   }
   .card h3{
-    margin:0 0 10px;
+    margin:0 0 12px;
     font-size:14px;
     text-align:center;
   }
   .statusLine{
     text-align:center;
     font-size:12px;
-    margin-top:8px;
+    margin-top:10px;
     color:#555;
-    min-height:16px;
+    min-height:18px;
     white-space:pre-line;
   }
 
-  @media (max-width: 720px){
-    .container{ padding:14px; }
-    .tableWrap{ overflow:visible; }
-
-    table, thead, tbody, th, td, tr{
-      display:block;
-      width:100%;
-    }
-    thead{ display:none; }
-
-    tbody tr{
-      border:1px solid #e6e6e6;
-      border-radius:12px;
-      padding:10px;
-      margin:10px 0;
-      background:#fff;
-    }
-
-    tbody td{
-      border:none;
-      padding:6px 0;
-      text-align:left;
-      display:flex;
-      justify-content:space-between;
-      gap:12px;
-    }
-
-    tbody td::before{
-      content: attr(data-label);
-      font-weight:700;
-      color:#444;
-      min-width:118px;
-    }
+  /* Mobile: melhora bastante */
+  @media (max-width: 520px){
+    body{ padding:10px; }
+    .container{ padding:12px; }
+    .logo{ width:150px; }
+    input, select, button{ width:100%; min-width:0; }
+    .row{ align-items:stretch; }
+    .tabs{ gap:6px; }
+    .tabBtn{ width:100%; }
   }
 </style>
 </head>
@@ -172,6 +138,7 @@
       <button class="secondary" id="btnVoltar2">Voltar ao Registro</button>
     </div>
 
+    <!-- Frequência -->
     <div id="secFreq" class="section active">
       <div class="row">
         <div>
@@ -212,19 +179,31 @@
       </div>
     </div>
 
+    <!-- Holerites -->
     <div id="secHol" class="section">
       <div class="card">
         <h3>Baixar Holerite</h3>
 
         <div class="row">
           <div>
+            <label>Tipo</label><br>
+            <select id="holTipo">
+              <option value="mensal">Mensal</option>
+              <option value="13_1">13º — 1ª parcela</option>
+              <option value="13_2">13º — 2ª parcela</option>
+            </select>
+          </div>
+
+          <div>
             <label>Mês</label><br>
             <select id="holMes"></select>
           </div>
+
           <div>
             <label>Ano</label><br>
             <select id="holAno"></select>
           </div>
+
           <button id="btnBaixarHolerite">Baixar PDF</button>
         </div>
 
@@ -238,6 +217,7 @@
   </div>
 </div>
 
+<!-- jsPDF -->
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
@@ -274,6 +254,7 @@ const anoSel = document.getElementById("ano");
 const btnCarregar = document.getElementById("btnCarregar");
 const btnPdf = document.getElementById("btnPdf");
 
+const holTipoSel = document.getElementById("holTipo");
 const holMesSel = document.getElementById("holMes");
 const holAnoSel = document.getElementById("holAno");
 const btnBaixarHolerite = document.getElementById("btnBaixarHolerite");
@@ -307,6 +288,7 @@ let jornadasMes = [];
 let linhasMes = [];
 let mapOcorrencias = {};
 let feriasList = [];
+let holeriteBusy = false;
 
 // helpers
 function pad2(n){ return String(n).padStart(2,"0"); }
@@ -342,19 +324,11 @@ function horarioTxt(c){
   if (he || hs) return `${he||"—"}–${hs||"—"}`;
   return "—";
 }
-function brDateFromYmd(ymdKey){
-  if (!ymdKey) return "";
-  const [y,m,d] = ymdKey.split("-");
-  if (!y || !m || !d) return ymdKey;
+function brDateFromYmd(ymdStr){
+  if (!ymdStr) return "";
+  const [y,m,d] = ymdStr.slice(0,10).split("-");
+  if (!y||!m||!d) return ymdStr;
   return `${d}/${m}/${y}`;
-}
-
-// ✅ admissão: helper
-function isBeforeAdmission(dateObj){
-  const adm = (user?.dataAdmissao || "").slice(0,10);
-  if (!adm) return false;
-  const k = dateObj.toISOString().slice(0,10);
-  return k < adm;
 }
 
 // escala
@@ -491,7 +465,7 @@ function popularMonthYear(selectMes, selectAno){
 popularMonthYear(mesSel, anoSel);
 popularMonthYear(holMesSel, holAnoSel);
 
-// eventos
+// login + ações
 btnEntrar.addEventListener("click", entrar);
 btnCarregar.addEventListener("click", carregar);
 btnPdf.addEventListener("click", exportarPdf);
@@ -505,26 +479,44 @@ function syncFreqFromHol(){
   mesSel.value = holMesSel.value;
   anoSel.value = holAnoSel.value;
 }
-mesSel.addEventListener("change", () => { if (user) carregar(); syncHolFromFreq(); });
-anoSel.addEventListener("change", () => { if (user) carregar(); syncHolFromFreq(); });
-holMesSel.addEventListener("change", () => { syncFreqFromHol(); });
-holAnoSel.addEventListener("change", () => { syncFreqFromHol(); });
+mesSel.addEventListener("change", () => { if (user) carregar(); syncHolFromFreq(); setHolStatus(""); });
+anoSel.addEventListener("change", () => { if (user) carregar(); syncHolFromFreq(); setHolStatus(""); });
+holMesSel.addEventListener("change", () => { syncFreqFromHol(); setHolStatus(""); });
+holAnoSel.addEventListener("change", () => { syncFreqFromHol(); setHolStatus(""); });
+
+holTipoSel.addEventListener("change", () => {
+  // Para 13º, normalmente é dezembro. Vamos setar o mês 12 automaticamente.
+  const v = holTipoSel.value;
+  if (v === "13_1" || v === "13_2"){
+    holMesSel.value = "12";
+  }
+  setHolStatus("");
+});
 
 function setHolStatus(msg){ holStatus.textContent = msg || ""; }
+function setHoleriteBusy(busy){
+  holeriteBusy = busy;
+  btnBaixarHolerite.disabled = busy;
+  btnBaixarHolerite.textContent = busy ? "Aguarde..." : "Baixar PDF";
+}
 
+// ✅ admissão: checa se uma competência (ano/mes) é anterior à admissão
+function isCompetenciaAnteriorAdmissao(ano, mes, dataAdmissaoYmd){
+  if (!dataAdmissaoYmd) return false;
+  const adm = String(dataAdmissaoYmd).slice(0,10);
+  // compara com primeiro dia do mês
+  const comp = `${String(ano)}-${pad2(mes)}-01`;
+  return comp < adm;
+}
+
+// login
 async function entrar(){
   const re = reEl.value.trim();
   const senha = senhaEl.value.trim();
   if (!re || !senha) return alert("Digite RE e senha.");
 
-  let snap;
-  try{
-    snap = await getDoc(doc(db, "colaboradores", re));
-  }catch{
-    alert("Falha ao acessar o sistema. Tente novamente.");
-    return;
-  }
-
+  const ref = doc(db, "colaboradores", re);
+  const snap = await getDoc(ref);
   if (!snap.exists()) return alert("RE não cadastrado.");
 
   const data = snap.data() || {};
@@ -534,21 +526,21 @@ async function entrar(){
   const escala = (data.escala || "5x2");
   const horaEntrada = (data.horaEntrada || "").toString().trim();
   const horaSaida = (data.horaSaida || "").toString().trim();
-  const dataAdmissao = String(data.dataAdmissao || "").slice(0,10);
+  const dataAdmissao = (data.dataAdmissao || "").toString().slice(0,10); // ✅ NOVO
 
   if (!ativo) return alert("Seu cadastro está INATIVO. Procure o administrador.");
   if (!cpf || cpf.replace(/\D/g,"").length < 4) return alert("CPF não cadastrado corretamente. Procure o administrador.");
+  if (!dataAdmissao) return alert("Data de admissão não cadastrada. Procure o administrador.");
 
   const senhaCorreta = cpf.replace(/\D/g,"").slice(0,4);
   if (senha !== senhaCorreta) return alert("Senha incorreta.");
 
   user = { re, nome, cpf, escala, horaEntrada, horaSaida, dataAdmissao };
 
-  try{ await carregarLocais(); }catch{ cacheLocais = []; }
+  await carregarLocais();
 
   infoUser.textContent =
-    `${user.nome} — RE ${user.re} — Escala ${user.escala} — Horário ${horarioTxt(user)}`
-    + (user.dataAdmissao ? ` — Admissão ${brDateFromYmd(user.dataAdmissao)}` : "");
+    `${user.nome} — RE ${user.re}\nEscala ${user.escala} — Horário ${horarioTxt(user)}\nAdmissão: ${brDateFromYmd(user.dataAdmissao)}`;
 
   loginBox.style.display = "none";
   conteudo.style.display = "block";
@@ -556,10 +548,10 @@ async function entrar(){
   setTab("freq");
   syncHolFromFreq();
   setHolStatus("");
-
   await carregar();
 }
 
+// carregar folha
 async function carregar(){
   if (!user) return;
 
@@ -584,9 +576,7 @@ async function carregar(){
   const last = daysInMonth(ano, mes);
 
   mapOcorrencias = await carregarOcorrenciasMesPorDocId(user.re, ano, mes, last);
-
-  try{ feriasList = await carregarFeriasDoRe(user.re); }
-  catch{ feriasList = []; }
+  feriasList = await carregarFeriasDoRe(user.re);
 
   const mapDia = {};
   for (const j of jornadasMes){
@@ -623,6 +613,13 @@ function obsJornada(j){
   return obs.join(" | ");
 }
 
+// ✅ FIX faltas: antes da admissão = "PRÉ-ADMISSÃO"
+function isAntesDaAdmissaoNoDia(ymdKey){
+  const adm = (user?.dataAdmissao || "").slice(0,10);
+  if (!adm) return false;
+  return ymdKey < adm;
+}
+
 function renderTabela(){
   tbody.innerHTML = "";
   const mes = Number(mesSel.value);
@@ -638,9 +635,11 @@ function renderTabela(){
 
     let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="-", obs="";
 
-    if (isBeforeAdmission(linha.dateObj)){
-      obs = "— (não admitido)";
-    } else if (ferias){
+    // ✅ PRÉ-ADMISSÃO tem prioridade (não é falta, não é folga da escala ainda)
+    if (isAntesDaAdmissaoNoDia(dataKey)){
+      obs = "PRÉ-ADMISSÃO";
+    }
+    else if (ferias){
       obs = "FÉRIAS" + (ferias.motivo ? ` | ${ferias.motivo}` : "");
       if (ehFolga) obs += " (folga)";
     } else if (oc){
@@ -670,42 +669,76 @@ function renderTabela(){
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td data-label="Data">${brDate(linha.dateObj)}</td>
-      <td data-label="Dia" class="${(j1 || ehFolga || oc || ferias || isBeforeAdmission(linha.dateObj)) ? "" : "muted"}">${weekday(linha.dateObj)}</td>
-      <td data-label="Entrada">${entrada}</td>
-      <td data-label="Início intervalo">${saiInt}</td>
-      <td data-label="Fim intervalo">${retInt}</td>
-      <td data-label="Saída">${saida}</td>
-      <td data-label="HE Entrada">${entHe}</td>
-      <td data-label="HE Saída">${saiHe}</td>
-      <td data-label="Posto">${posto}</td>
-      <td data-label="Obs">${obs}</td>
+      <td>${brDate(linha.dateObj)}</td>
+      <td class="${(j1 || ehFolga || oc || ferias || isAntesDaAdmissaoNoDia(dataKey)) ? "" : "muted"}">${weekday(linha.dateObj)}</td>
+      <td>${entrada}</td>
+      <td>${saiInt}</td>
+      <td>${retInt}</td>
+      <td>${saida}</td>
+      <td>${entHe}</td>
+      <td>${saiHe}</td>
+      <td>${posto}</td>
+      <td>${obs}</td>
     `;
     tbody.appendChild(tr);
   }
 }
 
-/* HOLERITE */
-function buildHoleriteFileName(re, mes, ano){
+/* =========================
+   HOLERITE (DOWNLOAD) ✅ FIX
+   ========================= */
+function holeriteFileName(re, mes, ano, tipo){
+  if (tipo === "13_1") return `hol13_${re}_1_${String(ano)}.pdf`;
+  if (tipo === "13_2") return `hol13_${re}_2_${String(ano)}.pdf`;
+  // mensal
   return `hol_${re}_${pad2(mes)}_${String(ano)}.pdf`;
+}
+function holeritePath(re, mes, ano, tipo){
+  const fileName = holeriteFileName(re, mes, ano, tipo);
+  return { fileName, path:`holerites/${re}/${fileName}` };
+}
+
+async function fetchWithTimeout(url, ms){
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try{
+    const resp = await fetch(url, { signal: ctrl.signal });
+    return resp;
+  } finally {
+    clearTimeout(t);
+  }
 }
 
 async function baixarHoleriteDoMes(){
   if (!user?.re) return alert("Faça login primeiro.");
+  if (holeriteBusy) return;
 
   const mes = Number(holMesSel.value);
   const ano = Number(holAnoSel.value);
+  const tipo = holTipoSel.value;
 
-  const fileName = buildHoleriteFileName(user.re, mes, ano);
-  const path = `holerites/${user.re}/${fileName}`;
+  // ✅ Se a competência é anterior à admissão: já bloqueia e explica
+  if (tipo === "mensal" && isCompetenciaAnteriorAdmissao(ano, mes, user.dataAdmissao)){
+    setHolStatus(
+      `❌ Sem holerite nesta competência.\nVocê foi admitido em ${brDateFromYmd(user.dataAdmissao)}.`
+    );
+    return;
+  }
+
+  // 13º: pode existir mesmo se admitiu no ano (depende), então não vou bloquear pelo mês.
+  // Se quiser bloquear 13º quando admissão > 31/12 do ano, eu adiciono.
+
+  const { fileName, path } = holeritePath(user.re, mes, ano, tipo);
 
   try{
-    setHolStatus(`Procurando holerite (${pad2(mes)}/${ano})...`);
+    setHoleriteBusy(true);
+    setHolStatus(`Procurando holerite...\n${fileName}`);
+
     const url = await getDownloadURL(sRef(storage, path));
 
     setHolStatus("Baixando...");
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error("download-failed");
+    const resp = await fetchWithTimeout(url, 15000);
+    if (!resp.ok) throw new Error(`HTTP_${resp.status}`);
 
     const blob = await resp.blob();
     const blobUrl = URL.createObjectURL(blob);
@@ -722,23 +755,33 @@ async function baixarHoleriteDoMes(){
   }catch(e){
     const msg = String(e?.message || e);
 
+    // object-not-found: arquivo não existe
     if (msg.includes("object-not-found")){
-      setHolStatus("❌ Holerite não encontrado para este mês/ano.");
-      alert("Holerite não encontrado.\nConfira o nome do arquivo:\n\n" + fileName);
-      return;
-    }
-    if (msg.includes("permission") || msg.includes("unauthorized")){
-      setHolStatus("❌ Sem permissão para baixar.");
-      alert("Sem permissão para baixar holerite.\nVerifique as regras do Storage.");
+      setHolStatus("⏳ Holerite ainda não foi disponibilizado para esta competência.");
       return;
     }
 
-    setHolStatus("❌ Não foi possível baixar o holerite.");
-    alert("Falha ao baixar o holerite. Tente novamente.");
+    // timeout
+    if (msg.includes("AbortError")){
+      setHolStatus("❌ Tempo excedido ao baixar. Tente novamente.");
+      return;
+    }
+
+    // permissão
+    if (msg.toLowerCase().includes("permission") || msg.toLowerCase().includes("unauthorized")){
+      setHolStatus("❌ Sem permissão para baixar holerite.");
+      return;
+    }
+
+    setHolStatus("❌ Falha ao baixar holerite.");
+  }finally{
+    setHoleriteBusy(false);
   }
 }
 
-/* PDF */
+/* =========================
+   PDF (seu original)
+   ========================= */
 async function loadImageAsDataURL(url){
   const res = await fetch(url);
   const blob = await res.blob();
@@ -802,11 +845,7 @@ async function exportarPdf(){
     docPdf.text(`RE: ${user.re}`, marginX, y); y += 12;
     docPdf.text(`Escala: ${user.escala}`, marginX, y); y += 12;
     docPdf.text(`Horário: ${horarioTxt(user)}`, marginX, y); y += 12;
-    if (user.dataAdmissao){
-      docPdf.text(`Admissão: ${brDateFromYmd(user.dataAdmissao)}`, marginX, y); y += 12;
-    } else {
-      docPdf.text(`Admissão: —`, marginX, y); y += 12;
-    }
+    docPdf.text(`Admissão: ${brDateFromYmd(user.dataAdmissao)}`, marginX, y); y += 12;
     docPdf.text(`Competência: ${mesTxt}/${ano}`, marginX, y); y += 12;
   }
   function drawFooter(){
@@ -825,8 +864,8 @@ async function exportarPdf(){
 
     let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="-", obs="";
 
-    if (isBeforeAdmission(linha.dateObj)){
-      obs = "— (não admitido)";
+    if (isAntesDaAdmissaoNoDia(dataKey)){
+      obs = "PRÉ-ADMISSÃO";
     } else if (ferias){
       obs = "FÉRIAS" + (ferias.motivo ? ` | ${ferias.motivo}` : "");
       if (ehFolga) obs += " (folga)";
