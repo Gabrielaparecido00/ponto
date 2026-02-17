@@ -984,19 +984,31 @@ window.editarColab = function(reDocId){
     const btnRep = document.getElementById("btnReplicar");
 
     function applyAutoDias(){
-      const esc = escSel?.value || escalaAtual;
-      const days = new Set(diasPadraoPorEscala(esc));
-      for (let d=0; d<=6; d++){
-        const chk = document.querySelector(`.wkChk[data-d="${d}"]`);
-        if (chk) chk.checked = days.has(d);
-        if (!days.has(d)){
-          const i = document.querySelector(`.wkIn[data-d="${d}"]`);
-          const o = document.querySelector(`.wkOut[data-d="${d}"]`);
-          if (i) i.value = "";
-          if (o) o.value = "";
-        }
-      }
+  const esc = escSel?.value || escalaAtual;
+  const days = new Set(diasPadraoPorEscala(esc));
+  const blocked = diasBloqueadosPorEscala(esc);
+
+  for (let d=0; d<=6; d++){
+    const chk = document.querySelector(`.wkChk[data-d="${d}"]`);
+    const i = document.querySelector(`.wkIn[data-d="${d}"]`);
+    const o = document.querySelector(`.wkOut[data-d="${d}"]`);
+
+    const isBlocked = blocked.has(d);
+
+    if (chk){
+      chk.disabled = isBlocked;
+      chk.checked = (!isBlocked && days.has(d));
     }
+    if (i){
+      i.disabled = isBlocked;
+      if (isBlocked) i.value = "";
+    }
+    if (o){
+      o.disabled = isBlocked;
+      if (isBlocked) o.value = "";
+    }
+  }
+}
     function replicateFromFirst(){
       let first = null;
       for (let d=0; d<=6; d++){
