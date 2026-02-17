@@ -262,6 +262,9 @@ tabHol.onclick = () => setTab("hol");
 
 function voltar(){ window.location.href = "index.html"; }
 
+// ===== constante pedida =====
+const NAO_ADMITIDO_TXT = "NÃO ADMITIDO";
+
 // estado
 let user = null;                // {re,nome,cpf,escala,horaEntrada,horaSaida,dataAdmissao,plantaoHistorico}
 let cacheLocais = [];
@@ -416,7 +419,7 @@ async function carregarOcorrenciasMesPorDocId(re, ano, mes, last){
         map[dataKey] = { id:snap.id, ...(snap.data()||{}) };
       }
     }catch{
-      // silêncio (produção)
+      // silêncio
     }
   }
   return map;
@@ -650,13 +653,12 @@ function renderTabela(){
 
     let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="-", obs="";
 
-    // antes da admissão: não aponta nada (nem falta)
-    const antesAdmissao = isCompetenciaAntesDaAdmissao(user, ano, mes) && false; // (competência inteira é tratada no holerite; aqui vamos por dia)
+    // ✅ antes da admissão: mostrar "NÃO ADMITIDO"
     const ad = (user?.dataAdmissao || "").slice(0,10);
     const diaAntesAdmissao = (ad && dataKey < ad);
 
     if (diaAntesAdmissao){
-      obs = "";
+      obs = NAO_ADMITIDO_TXT;
     } else if (ferias){
       obs = "FÉRIAS" + (ferias.motivo ? ` | ${ferias.motivo}` : "");
       if (ehFolga) obs += " (folga)";
@@ -712,27 +714,20 @@ function renderTabela(){
    HOLERITE (DOWNLOAD)
    ========================= */
 
-// Você já usa: holerites/<RE>/hol_<RE>_<MM>_<YYYY>.pdf
 function buildHoleriteFileNameMensal(re, mes, ano){
   return `hol_${re}_${pad2(mes)}_${String(ano)}.pdf`;
 }
 
-// 13º fixo: 1ª parcela = NOV (11), 2ª parcela = DEZ (12)
-// Nome sugerido para bater com seu padrão e não bagunçar:
-// hol_<RE>_11_<ANO>_13p1.pdf
-// hol_<RE>_12_<ANO>_13p2.pdf
 function buildHoleriteFileName13(re, ano, parcela){
   const mes = (parcela === 1) ? 11 : 12;
   const suf = (parcela === 1) ? "13p1" : "13p2";
   return `hol_${re}_${pad2(mes)}_${String(ano)}_${suf}.pdf`;
 }
 
-// tenta 2 padrões (se você já tiver algum outro nome antigo)
 function buildHoleriteCandidates(re, mes, ano, tipo){
   if (tipo === "mensal"){
     return [
       `holerites/${re}/${buildHoleriteFileNameMensal(re, mes, ano)}`,
-      // fallback opcional (se você usou outro padrão antes)
       `holerites/${re}/hol_${re}_${pad2(mes)}_${String(ano)}.pdf`,
     ];
   }
@@ -740,7 +735,6 @@ function buildHoleriteCandidates(re, mes, ano, tipo){
   if (tipo === "13_1"){
     return [
       `holerites/${re}/${buildHoleriteFileName13(re, ano, 1)}`,
-      // fallback (caso você queira guardar como novembro mensal mesmo)
       `holerites/${re}/${buildHoleriteFileNameMensal(re, 11, ano)}`
     ];
   }
@@ -774,41 +768,31 @@ async function baixarHoleriteDoMes(){
     const ano = Number(holAnoSel.value);
     let mes = Number(holMesSel.value);
 
-    // 13º: força mês correto
     if (tipo === "13_1") mes = 11;
     if (tipo === "13_2") mes = 12;
 
-    // regra de admissão por competência (mês/ano)
-    // - mês de admissão É permitido (mesmo se entrou no último dia)
     if (isCompetenciaAntesDaAdmissao(user, ano, mes)){
       setHolStatus(`❌ Sem holerite nesta competência.\nVocê foi admitido em ${humanAdmissao()}.`);
       return;
     }
 
-    // status de carregamento
     setHolStatus("Procurando holerite...");
 
     const candidates = buildHoleriteCandidates(user.re, mes, ano, tipo);
 
-    // tenta cada caminho uma vez (sem loop infinito)
     let foundUrl = null;
-    let foundPath = null;
 
     for (const path of candidates){
       try{
         const url = await getDownloadURL(sRef(storage, path));
         foundUrl = url;
-        foundPath = path;
         break;
       }catch{
-        // não encontrado / sem permissão / etc -> tenta próximo
+        // tenta próximo
       }
     }
 
     if (!foundUrl){
-      // Mensagem que você pediu (sem “F12”, e amigável):
-      // - Se competência válida: "ainda não foi disponibilizado"
-      // - Se 13º: também “ainda não foi disponibilizado”
       setHolStatus("❌ Holerite ainda não foi disponibilizado para esta competência.");
       return;
     }
@@ -821,7 +805,6 @@ async function baixarHoleriteDoMes(){
     const blob = await resp.blob();
     const blobUrl = URL.createObjectURL(blob);
 
-    // nome do arquivo local (download)
     let fileName = "";
     if (tipo === "mensal") fileName = buildHoleriteFileNameMensal(user.re, mes, ano);
     if (tipo === "13_1") fileName = buildHoleriteFileName13(user.re, ano, 1);
@@ -841,7 +824,6 @@ async function baixarHoleriteDoMes(){
   }catch(e){
     const msg = String(e?.message || e);
 
-    // Sem “F12”; mensagens diretas:
     if (msg.includes("permission") || msg.includes("unauthorized")){
       setHolStatus("❌ Sem permissão para baixar holerite no momento.");
       alert("Sem permissão para baixar holerite.");
@@ -906,7 +888,7 @@ async function exportarPdf(){
     logoH = Math.round(logoW * (logoNat.h / logoNat.w));
   }
 
-  const headerH = (logoDataUrl ? (logoH + 10) : 0) + 14 + 12 + 12 + 12 + 12 + 12 + 6;
+  const headerH = (logoDataUrl ? (logoH + 10) : 0) + 14 + 12 + 12 + 12 + 12 + 12 + 12 + 6;
 
   function drawHeader(){
     let y = headerTop;
@@ -945,7 +927,7 @@ async function exportarPdf(){
     let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="-", obs="";
 
     if (diaAntesAdmissao){
-      obs = "";
+      obs = NAO_ADMITIDO_TXT;
     } else if (ferias){
       obs = "FÉRIAS" + (ferias.motivo ? ` | ${ferias.motivo}` : "");
       if (ehFolga) obs += " (folga)";
