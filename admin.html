@@ -5,23 +5,81 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Painel Admin</title>
 
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+
 <style>
-  body { font-family: Arial; background:#f5f5f5; text-align:center; margin:0; }
-  .container { background:#fff; padding:20px; margin:20px auto; max-width:1300px; border-radius:10px; }
-  .logo { width:260px; margin-bottom: 10px; }
-  input, button, select { padding:10px; margin:5px; max-width:100%; }
-  button { cursor:pointer; }
-  .row { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:end; margin-top:10px; }
-  table { width:100%; border-collapse:collapse; margin-top:18px; font-size:13px; }
-  th, td { border:1px solid #ccc; padding:8px; }
-  th { background:#fafafa; }
-  .small { font-size:12px; color:#666; }
-  .hr { height:1px; background:#eee; margin:18px 0; border:0; }
-  .menu { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:10px; }
-  .menu button { background:#1f6feb; color:#fff; border:none; border-radius:8px; }
-  .menu button.secondary { background:#6c757d; }
-  .section { display:none; }
-  .section.active { display:block; }
+  *{ box-sizing:border-box; }
+  body{
+    font-family:'Montserrat', Arial, sans-serif;
+    background:#f0f0f0;
+    padding:12px;
+    margin:0;
+    text-align:center;
+  }
+  .container{
+    max-width:1300px;
+    margin:12px auto;
+    background:#fff;
+    padding:14px;
+    border-radius:12px;
+    box-shadow:0 2px 10px rgba(0,0,0,0.08);
+  }
+  .logo{ width:220px; display:block; margin:0 auto 8px; max-width:90vw; height:auto; }
+  h2{ margin:8px 0 10px; }
+  h3{ margin:10px 0 8px; text-align:left; }
+  .small{ font-size:12px; color:#666; text-align:left; }
+
+  input, select, button{
+    font-family:inherit;
+    padding:10px;
+    border-radius:10px;
+    border:1px solid #ddd;
+    outline:none;
+  }
+  button{ cursor:pointer; }
+  button:hover{ filter:brightness(0.98); }
+
+  .row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    justify-content:center;
+    align-items:end;
+    margin-top:10px;
+  }
+
+  .hr{ height:1px; background:#eee; margin:18px 0; border:0; }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    margin-top:14px;
+    font-size:13px;
+  }
+  th, td{
+    border:1px solid #e2e2e2;
+    padding:8px;
+    text-align:left;
+    vertical-align:top;
+  }
+  th{ background:#fafafa; }
+
+  .menu{
+    display:flex;
+    gap:8px;
+    justify-content:center;
+    flex-wrap:wrap;
+    margin-top:10px;
+  }
+  .menu button{
+    background:#1f6feb;
+    color:#fff;
+    border:none;
+    border-radius:10px;
+    padding:10px 14px;
+  }
+  .menu button.secondary{ background:#6c757d; }
+  .menu button.activeBtn{ filter:brightness(0.92); }
 
   .minBtn{
     border:1px solid #ddd;
@@ -32,21 +90,28 @@
   }
   .minBtn:hover{ background:#f3f3f3; }
 
-  /* Modal */
+  .section{ display:none; }
+  .section.active{ display:block; }
+
+  /* MODAL (POPUP) - agora cabe na tela com scroll interno */
   .modalOverlay{
-    position:fixed; inset:0;
+    position:fixed;
+    inset:0;
     background:rgba(0,0,0,0.45);
     display:none;
     align-items:center;
     justify-content:center;
     z-index:9999;
+    padding:10px;
   }
   .modal{
     background:#fff;
-    width:min(900px, 94vw);
+    width:min(920px, 96vw);
+    max-height:92vh;               /* ✅ limite de altura */
+    overflow:auto;                /* ✅ scroll interno */
     border-radius:12px;
-    padding:16px;
-    box-shadow:0 10px 30px rgba(0,0,0,0.2);
+    padding:14px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.22);
     text-align:left;
   }
   .modal h3{ margin:0 0 10px; }
@@ -58,14 +123,18 @@
   .modal label{ font-size:12px; color:#555; }
   .modal input, .modal select{
     width:100%;
-    box-sizing:border-box;
-    margin:4px 0 0;
+    margin-top:4px;
   }
   .modal .actions{
+    position:sticky;              /* ✅ ações sempre visíveis */
+    bottom:0;
+    background:#fff;
+    padding-top:10px;
+    margin-top:10px;
     display:flex;
     justify-content:flex-end;
     gap:8px;
-    margin-top:14px;
+    border-top:1px solid #eee;
   }
   .modal .actions button{
     border:none;
@@ -85,14 +154,10 @@
     color:#a10000;
   }
 
-  /* mobile ajustes */
-  @media (max-width: 720px){
-    .container{ margin:10px; padding:14px; }
-    .logo{ width:200px; }
+  @media (max-width: 820px){
     table{ font-size:12px; }
     th, td{ padding:6px; }
-    .modal .grid{ grid-template-columns: 1fr; }
-    .menu button{ padding:10px 12px; }
+    .modal .grid{ grid-template-columns:1fr; }
   }
 </style>
 </head>
@@ -103,8 +168,8 @@
 <div id="loginDiv" class="container">
   <img src="GW.png" class="logo" />
   <h2>Login Admin</h2>
-  <input id="email" placeholder="Email"><br>
-  <input id="senha" type="password" placeholder="Senha"><br>
+  <input id="email" placeholder="Email"><br><br>
+  <input id="senha" type="password" placeholder="Senha"><br><br>
   <button onclick="login()">Entrar</button>
 </div>
 
@@ -112,17 +177,19 @@
 <div id="painelDiv" class="container" style="display:none;">
   <img src="GW.png" class="logo" />
   <h2>Painel Admin</h2>
+
   <div class="small">
     Editar horários no formato: <b>DD/MM/AAAA HH:MM</b> (ex: 16/02/2026 07:10)
   </div>
 
   <div class="menu">
-    <button onclick="showSection('secJornadas')">Jornadas</button>
-    <button onclick="showSection('secColab')">Colaboradores</button>
-    <button onclick="showSection('secLocal')">Locais</button>
-    <button onclick="showSection('secOcorr')">Ocorrências (dia)</button>
-    <button onclick="showSection('secAfast')">Férias (período)</button>
-    <button onclick="showSection('secPlantoes')">Plantões 12x36</button>
+    <button id="btnJornadas" onclick="showSection('secJornadas', this)">Jornadas</button>
+    <button id="btnExportRH" onclick="showSection('secExportRH', this)">Exportação RH</button>
+    <button id="btnColab" onclick="showSection('secColab', this)">Colaboradores</button>
+    <button id="btnLocal" onclick="showSection('secLocal', this)">Locais</button>
+    <button id="btnOcorr" onclick="showSection('secOcorr', this)">Ocorrências (dia)</button>
+    <button id="btnAfast" onclick="showSection('secAfast', this)">Férias (período)</button>
+    <button id="btnPlantoes" onclick="showSection('secPlantoes', this)">Plantões 12x36</button>
     <button class="secondary" onclick="logout()">Sair</button>
   </div>
 
@@ -139,26 +206,6 @@
       <button onclick="buscar()">Buscar</button>
       <button onclick="exportar()">Exportar CSV</button>
     </div>
-
-    <hr class="hr">
-
-    <h3>Exportação RH (XLSX)</h3>
-    <div class="small">
-      Gera um único XLSX com: <b>Resumo por colaborador</b> + <b>Detalhe dia a dia</b> + <b>Calendário de escala</b>.
-      Classifica <b>Hora Normal</b> vs <b>HE</b> usando o horário planejado do dia (cadastro do colaborador).
-    </div>
-
-    <div class="row">
-      <label>Competência (mês):</label>
-      <select id="rhMes"></select>
-
-      <label>Ano:</label>
-      <select id="rhAno"></select>
-
-      <button onclick="exportarRHXLSX()">Exportar RH (XLSX)</button>
-    </div>
-
-    <div class="small" id="rhStatus"></div>
 
     <table>
       <thead>
@@ -179,6 +226,40 @@
       </thead>
       <tbody id="tbodyJornadas"></tbody>
     </table>
+  </div>
+
+  <!-- ✅ EXPORTAÇÃO RH (ABA SEPARADA) -->
+  <div id="secExportRH" class="section">
+    <h3>Exportação RH</h3>
+    <div class="small">
+      Gera um único XLSX com 3 abas: <b>Resumo</b>, <b>Diário</b> e <b>Escala</b>.<br>
+      Usa horário planejado (por dia da semana) para separar <b>Hora Normal</b> vs <b>HE</b>.<br>
+      <b>Exporta apenas colaboradores ATIVOS.</b>
+    </div>
+
+    <div class="row">
+      <label>Competência (mês):</label>
+      <select id="rhMes"></select>
+
+      <label>Ano:</label>
+      <select id="rhAno"></select>
+
+      <button onclick="exportarRHXLSX()">Exportar RH (XLSX)</button>
+    </div>
+
+    <div class="small" id="rhStatus" style="margin-top:10px;"></div>
+
+    <hr class="hr">
+
+    <div class="small">
+      Regras rápidas:
+      <ul style="margin:8px 0 0 16px; padding:0; text-align:left;">
+        <li>Ocorrência/ Férias têm prioridade e entram no Diário.</li>
+        <li>Sem horário planejado no dia: o trabalhado vira <b>Normal</b> (para não inventar HE).</li>
+        <li>Trabalho em folga: vira <b>FT</b> e conta como extra.</li>
+        <li>Campo HE (entrada_he/saida_he) soma como extra.</li>
+      </ul>
+    </div>
   </div>
 
   <!-- COLABORADORES -->
@@ -335,7 +416,7 @@
     <div class="small">
       Cadastre uma regra de base por vigência: se em <b>DATA</b> a pessoa estará em <b>TRABALHA</b> ou <b>FOLGA</b>.<br>
       O sistema usa o histórico (não altera o passado ao trocar o plantão depois).<br>
-      <b>IMPORTANTE:</b> após salvar, este admin sincroniza automaticamente em <b>colaboradores/{re}.plantaoHistorico</b> para o app do colaborador reconhecer.
+      <b>IMPORTANTE:</b> após salvar, sincroniza em <b>colaboradores/{re}.plantaoHistorico</b>.
     </div>
 
     <div class="row">
@@ -386,7 +467,7 @@
   </div>
 </div>
 
-<!-- XLSX (SheetJS) para exportar RH -->
+<!-- XLSX (SheetJS) -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <script type="module">
@@ -453,10 +534,13 @@ function initRhSelectors(){
 }
 initRhSelectors();
 
-// menu
-window.showSection = function(id){
+// ===== menu
+window.showSection = function(id, btnEl){
   document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
   document.getElementById(id).classList.add("active");
+
+  document.querySelectorAll(".menu button").forEach(b => b.classList.remove("activeBtn"));
+  if (btnEl) btnEl.classList.add("activeBtn");
 
   if (id === "secLocal") carregarLocais();
   if (id === "secColab") carregarColaboradores();
@@ -465,7 +549,7 @@ window.showSection = function(id){
   if (id === "secPlantoes") { carregarColaboradores().then(carregarPlantoes12x36); }
 };
 
-// auth
+// ===== auth
 window.login = async function(){
   const email = document.getElementById("email").value;
   const senha = document.getElementById("senha").value;
@@ -478,12 +562,15 @@ onAuthStateChanged(auth, user => {
   loginDiv.style.display = user ? "none" : "block";
   painelDiv.style.display = user ? "block" : "none";
   if (user){
+    // ativa visual do botão inicial
+    const b = document.getElementById("btnJornadas");
+    if (b) b.classList.add("activeBtn");
     carregarLocais();
     carregarColaboradores();
   }
 });
 
-// helpers gerais
+// ===== helpers
 function norm(s){ return (s||"").toString().trim().toLowerCase(); }
 function toDateAny(ts){
   if (!ts) return null;
@@ -529,53 +616,28 @@ function horarioTxt(c){
   if (he || hs) return `${he||"—"}–${hs||"—"}`;
   return "—";
 }
-
-// ===== 12x36 helpers (admin) =====
 function ymd(d){
   if (!d || isNaN(d)) return "";
   return d.toISOString().slice(0,10);
 }
-function getPlantaoReferencia(dateObj, historico){
-  if (!Array.isArray(historico) || !historico.length) return null;
-  const key = ymd(dateObj);
-  let best = null;
-  for (const p of historico){
-    const ini = String(p?.inicio || p?.vigencia || "").slice(0,10);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(ini)) continue;
-    if (ini <= key){
-      if (!best || ini > String(best.inicio||"")) best = { ...p, inicio: ini };
-    }
-  }
-  return best;
-}
-function isFolgaByEscala(dateObj, escala, plantaoHistorico){
-  const dow = dateObj.getDay();
-  const e = (escala || "5x2").toLowerCase();
-  if (e === "5x2") return (dow === 0 || dow === 6);
-  if (e === "6x1") return (dow === 0);
 
-  const eh12x36 = e.includes("12") && e.includes("36");
-  if (eh12x36){
-    const plantao = getPlantaoReferencia(dateObj, plantaoHistorico || []);
-    if (!plantao) return false; // sem base: NÃO considera folga aqui (admin usa só p/ férias e escala)
-    const baseYmd = String(plantao.inicio||"").slice(0,10);
-    const baseTipo = String(plantao.base||"trabalha").toLowerCase(); // trabalha|folga
+// ===== modal
+const overlay=document.getElementById("modalOverlay");
+const titleEl=document.getElementById("modalTitle");
+const bodyEl=document.getElementById("modalBody");
+const saveBtn=document.getElementById("modalSaveBtn");
 
-    const base = new Date(baseYmd + "T00:00:00");
-    const atual = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 12, 0, 0);
-    const diffDias = Math.floor((atual - base) / 86400000);
+window.closeModal=function(){ overlay.style.display="none"; bodyEl.innerHTML=""; saveBtn.onclick=null; };
+window.closeModalIfBackdrop=function(e){ if (e.target===overlay) closeModal(); };
 
-    const trabalha = (diffDias % 2) === 0 ? (baseTipo === "trabalha") : (baseTipo !== "trabalha");
-    return !trabalha;
-  }
-
-  return false;
-}
-function isDiaTrabalho(dateObj, escala, plantaoHistorico){
-  return !isFolgaByEscala(dateObj, escala, plantaoHistorico);
+function openModal({title, bodyHtml, onSave}){
+  titleEl.innerText=title;
+  bodyEl.innerHTML=bodyHtml;
+  overlay.style.display="flex";
+  saveBtn.onclick=onSave || null;
 }
 
-// localização/posto
+// ===== localização/posto
 function haversineMeters(lat1, lon1, lat2, lon2){
   const R=6371000; const toRad=x=>x*Math.PI/180;
   const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
@@ -606,27 +668,48 @@ function reconhecerLocal(locationStr){
   return best ? best.nome : "Não reconhecido";
 }
 
-// modal
-const overlay=document.getElementById("modalOverlay");
-const titleEl=document.getElementById("modalTitle");
-const bodyEl=document.getElementById("modalBody");
-const saveBtn=document.getElementById("modalSaveBtn");
+// ===== 12x36 helpers
+function getPlantaoReferencia(dateObj, historico){
+  if (!Array.isArray(historico) || !historico.length) return null;
+  const key = ymd(dateObj);
+  let best = null;
+  for (const p of historico){
+    const ini = String(p?.inicio || p?.vigencia || "").slice(0,10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ini)) continue;
+    if (ini <= key){
+      if (!best || ini > String(best.inicio||"")) best = { ...p, inicio: ini };
+    }
+  }
+  return best;
+}
+function isFolgaByEscala(dateObj, escala, plantaoHistorico){
+  const dow = dateObj.getDay();
+  const e = (escala || "5x2").toLowerCase();
+  if (e === "5x2") return (dow === 0 || dow === 6);
+  if (e === "6x1") return (dow === 0);
 
-window.closeModal=function(){ overlay.style.display="none"; bodyEl.innerHTML=""; saveBtn.onclick=null; };
-window.closeModalIfBackdrop=function(e){ if (e.target===overlay) closeModal(); };
-
-function openModal({title, bodyHtml, onSave}){
-  titleEl.innerText=title;
-  bodyEl.innerHTML=bodyHtml;
-  overlay.style.display="flex";
-  saveBtn.onclick=onSave || null;
+  const eh12x36 = e.includes("12") && e.includes("36");
+  if (eh12x36){
+    const plantao = getPlantaoReferencia(dateObj, plantaoHistorico || []);
+    if (!plantao) return false;
+    const baseYmd = String(plantao.inicio||"").slice(0,10);
+    const baseTipo = String(plantao.base||"trabalha").toLowerCase(); // trabalha|folga
+    const base = new Date(baseYmd + "T00:00:00");
+    const atual = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 12, 0, 0);
+    const diffDias = Math.floor((atual - base) / 86400000);
+    const trabalha = (diffDias % 2) === 0 ? (baseTipo === "trabalha") : (baseTipo !== "trabalha");
+    return !trabalha;
+  }
+  return false;
+}
+function isDiaTrabalho(dateObj, escala, plantaoHistorico){
+  return !isFolgaByEscala(dateObj, escala, plantaoHistorico);
 }
 
-// ===== SYNC 12x36 -> colaborador.plantaoHistorico =====
+// ===== SYNC 12x36 -> colaborador.plantaoHistorico
 async function syncPlantaoHistoricoToColaborador(re){
   const qP = query(collection(db,"plantoes12x36"), where("re","==",re));
   const snap = await getDocs(qP);
-
   let list = snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }));
   list.sort((a,b) => String(a.vigencia||"").localeCompare(String(b.vigencia||"")));
 
@@ -645,7 +728,7 @@ async function syncPlantaoHistoricoToColaborador(re){
   }, { merge:true });
 }
 
-// ===== COLABORADORES =====
+// ===== COLABORADORES
 window.cadastrarColab = async function(){
   const re = document.getElementById("cadRe").value.trim();
   const nome = document.getElementById("cadNome").value.trim();
@@ -667,7 +750,6 @@ window.cadastrarColab = async function(){
   await setDoc(doc(db,"colaboradores",re), {
     re, nome, cpf, escala, horaEntrada, horaSaida,
     dataAdmissao,
-    // ✅ novo campo (pode ficar vazio inicialmente)
     horariosSemana: {},
     ativo:true,
     updatedAt:new Date().toISOString()
@@ -711,7 +793,7 @@ window.carregarColaboradores = async function(){
   }
 };
 
-// ✅ helpers horário por semana
+// ===== horário por semana (modal) - mantém igual ao que já tinha
 function normalizeWeekSchedule(raw){
   const out = {};
   for (let d=0; d<=6; d++){
@@ -727,15 +809,13 @@ function normalizeWeekSchedule(raw){
 }
 function diasPadraoPorEscala(escala){
   const e = (escala||"5x2").toLowerCase();
-  // 0=dom, 1=seg, ... 6=sab
   if (e==="5x2") return [1,2,3,4,5];
   if (e==="6x1") return [1,2,3,4,5,6];
-  if (e.includes("12") && e.includes("36")) return [0,1,2,3,4,5,6]; // o plantão decide no calendário
+  if (e.includes("12") && e.includes("36")) return [0,1,2,3,4,5,6];
   return [1,2,3,4,5];
 }
-function weekLabel(d){
-  return ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"][d] || String(d);
-}
+function weekLabel(d){ return ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"][d] || String(d); }
+
 function buildHorarioSemanaHtml(horariosSemana, escala){
   const hs = normalizeWeekSchedule(horariosSemana);
   const marcadosDefault = new Set(diasPadraoPorEscala(escala));
@@ -776,15 +856,11 @@ function buildHorarioSemanaHtml(horariosSemana, escala){
       <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px;">
         <button type="button" class="minBtn" id="btnAutoDias">Marcar dias pela escala</button>
         <button type="button" class="minBtn" id="btnReplicar">Replicar do primeiro dia marcado</button>
-        <span class="small">* Para 12x36, isso só define “horário de plantão”; o calendário (trabalha/folga) vem do histórico.</span>
+        <span class="small">* Para 12x36, isso só define “horário de plantão”; o calendário vem do histórico.</span>
       </div>
 
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;" id="wkGrid">
         ${rows.join("")}
-      </div>
-
-      <div class="small" style="margin-top:10px;">
-        Dica: se quiser “sem intervalo padrão”, deixe assim mesmo — o cálculo usa os registros reais (entrada/saída/intervalo).
       </div>
     </div>
   `;
@@ -808,8 +884,6 @@ function readHorarioSemanaFromModal(){
       if (outEl) outEl.value="";
       continue;
     }
-
-    // se marcou, mas não colocou horário, deixa null (RH vai tratar como "sem horário planejado")
     if (!i || !o) hs[String(d)] = null;
     else hs[String(d)] = { in:i, out:o };
   }
@@ -872,10 +946,6 @@ window.editarColab = function(reDocId){
         </div>
 
         ${buildHorarioSemanaHtml(c.horariosSemana || {}, escalaAtual)}
-
-        <div class="small" style="grid-column:1 / -1">
-          Colaborador inativo NÃO consegue registrar ponto no sistema.
-        </div>
       </div>
     `,
     onSave: async () => {
@@ -886,7 +956,6 @@ window.editarColab = function(reDocId){
       const horaEntrada = (document.getElementById("mHoraEntrada").value || "").trim();
       const horaSaida = (document.getElementById("mHoraSaida").value || "").trim();
       const dataAdmissao = (document.getElementById("mAdmissao").value || "").trim();
-
       const horariosSemana = readHorarioSemanaFromModal();
 
       if (!nome) return alert("Nome não pode ficar vazio.");
@@ -909,10 +978,8 @@ window.editarColab = function(reDocId){
     }
   });
 
-  // listeners da UI do horário semana
   setTimeout(() => {
     const escSel = document.getElementById("mEscala");
-
     const btnAuto = document.getElementById("btnAutoDias");
     const btnRep = document.getElementById("btnReplicar");
 
@@ -922,7 +989,6 @@ window.editarColab = function(reDocId){
       for (let d=0; d<=6; d++){
         const chk = document.querySelector(`.wkChk[data-d="${d}"]`);
         if (chk) chk.checked = days.has(d);
-        // se desmarcou, limpa horários
         if (!days.has(d)){
           const i = document.querySelector(`.wkIn[data-d="${d}"]`);
           const o = document.querySelector(`.wkOut[data-d="${d}"]`);
@@ -931,19 +997,14 @@ window.editarColab = function(reDocId){
         }
       }
     }
-
     function replicateFromFirst(){
-      // acha primeiro dia marcado com horário preenchido
       let first = null;
       for (let d=0; d<=6; d++){
         const chk = document.querySelector(`.wkChk[data-d="${d}"]`);
         if (!chk || !chk.checked) continue;
         const i = document.querySelector(`.wkIn[data-d="${d}"]`)?.value || "";
         const o = document.querySelector(`.wkOut[data-d="${d}"]`)?.value || "";
-        if (i && o){
-          first = { in:i, out:o };
-          break;
-        }
+        if (i && o){ first = { in:i, out:o }; break; }
       }
       if (!first) return alert("Preencha o horário (entrada/saída) no primeiro dia marcado antes de replicar.");
 
@@ -960,14 +1021,6 @@ window.editarColab = function(reDocId){
     if (btnAuto) btnAuto.onclick = applyAutoDias;
     if (btnRep) btnRep.onclick = replicateFromFirst;
 
-    if (escSel){
-      escSel.addEventListener("change", () => {
-        // só re-marca dias automaticamente se o usuário quiser (btn), então aqui não faz nada
-        // (de propósito)
-      });
-    }
-
-    // quando desmarca um dia, limpa horários
     for (let d=0; d<=6; d++){
       const chk = document.querySelector(`.wkChk[data-d="${d}"]`);
       if (!chk) continue;
@@ -983,7 +1036,7 @@ window.editarColab = function(reDocId){
   }, 0);
 };
 
-// ===== LOCAIS =====
+// ===== LOCAIS
 window.cadastrarLocal = async function(){
   const nome = document.getElementById("locNome").value.trim();
   const lat = Number(document.getElementById("locLat").value.trim());
@@ -1067,7 +1120,6 @@ window.editarLocal = function(id){
       if (!confirm("Salvar alterações do local?")) return;
 
       await updateDoc(doc(db,"locais",id), { nome, lat, lng, raio, updatedAt:new Date().toISOString() });
-
       closeModal();
       carregarLocais();
       buscar();
@@ -1087,7 +1139,7 @@ window.editarLocal = function(id){
   }, 0);
 };
 
-// ===== JORNADAS =====
+// ===== JORNADAS
 window.buscar = async function(){
   const iniStr = document.getElementById("inicio").value || "2000-01-01";
   const fimStr = document.getElementById("fim").value || "2999-12-31";
@@ -1108,7 +1160,6 @@ window.buscar = async function(){
   if (filtroNome) jornadas = jornadas.filter(j => norm(j.nome).includes(filtroNome));
 
   jornadas.sort((a,b) => (toDateAny(b.entrada?.ts)||new Date(0)) - (toDateAny(a.entrada?.ts)||new Date(0)));
-
   ultimaTabela = jornadas;
   montarJornadas(jornadas);
 };
@@ -1174,17 +1225,13 @@ window.editarJornada = function(docId){
 
       for (const [path, txt] of campos){
         const t = (txt || "").trim();
-        if (!t){
-          payload[path] = deleteField();
-          continue;
-        }
+        if (!t){ payload[path] = deleteField(); continue; }
         const iso = isoFromBrDateTime(t);
         if (!iso) return alert(`Formato inválido. Use DD/MM/AAAA HH:MM`);
         payload[path] = iso;
       }
 
       if (!confirm("Salvar alterações desta jornada?")) return;
-
       await updateDoc(doc(db,"jornadas",docId), payload);
       closeModal();
       buscar();
@@ -1192,7 +1239,7 @@ window.editarJornada = function(docId){
   });
 };
 
-// ===== OCORRÊNCIAS (dia) =====
+// ===== OCORRÊNCIAS / FÉRIAS / PLANTÕES
 function ocDocId(re, ymd){ return `${re}_${ymd}`; }
 function nomePorRe(re){
   const c = cacheColabs.find(x => (x.re || x.id) === re);
@@ -1202,15 +1249,8 @@ async function apagarJornadasDoDia(re, dataYmd){
   const qJ = query(collection(db,"jornadas"), where("re","==",re));
   const snap = await getDocs(qJ);
   const all = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-
-  const doDia = all.filter(j => {
-    const d = (j?.entrada?.ts || "").toString().slice(0,10);
-    return d === dataYmd;
-  });
-
-  for (const j of doDia){
-    await deleteDoc(doc(db,"jornadas", j.id));
-  }
+  const doDia = all.filter(j => (j?.entrada?.ts || "").toString().slice(0,10) === dataYmd);
+  for (const j of doDia) await deleteDoc(doc(db,"jornadas", j.id));
   return doDia.length;
 }
 
@@ -1223,7 +1263,6 @@ window.salvarOcorrencia = async function(){
 
     if (!re) return alert("Informe o RE.");
     if (!data) return alert("Informe a data.");
-    if (!tipo) return alert("Selecione o tipo.");
 
     if (!confirm(`Salvar ocorrência?\nRE: ${re}\nData: ${brDateFromYmd(data)}\nTipo: ${tipo.toUpperCase()}\n\nIsso vai APAGAR registros do dia (se existirem).`)) return;
 
@@ -1239,7 +1278,6 @@ window.salvarOcorrencia = async function(){
     document.getElementById("ocFiltroRe").value = re;
     document.getElementById("ocFiltroData").value = data;
     await carregarOcorrencias();
-
   }catch(e){
     console.error(e);
     alert("Falha ao salvar ocorrência.\n\nMotivo: " + (e?.message || e));
@@ -1289,7 +1327,6 @@ window.carregarOcorrencias = async function(){
       `;
       tbody.appendChild(tr);
     }
-
   }catch(e){
     console.error(e);
     alert("Falha ao carregar ocorrências.\n\nMotivo: " + (e?.message || e));
@@ -1304,14 +1341,8 @@ window.editarOcorrencia = function(id){
     title: `Modificar Ocorrência — ${o.re} — ${brDateFromYmd(o.data)}`,
     bodyHtml: `
       <div class="grid">
-        <div>
-          <label>RE</label>
-          <input value="${o.re}" disabled>
-        </div>
-        <div>
-          <label>Data</label>
-          <input value="${o.data}" disabled>
-        </div>
+        <div><label>RE</label><input value="${o.re}" disabled></div>
+        <div><label>Data</label><input value="${o.data}" disabled></div>
         <div>
           <label>Tipo</label>
           <select id="moTipo">
@@ -1320,10 +1351,7 @@ window.editarOcorrencia = function(id){
             <option value="abono" ${o.tipo==="abono" ? "selected" : ""}>ABONO</option>
           </select>
         </div>
-        <div>
-          <label>Motivo</label>
-          <input id="moMotivo" value="${(o.motivo||"").replaceAll('"','&quot;')}">
-        </div>
+        <div><label>Motivo</label><input id="moMotivo" value="${(o.motivo||"").replaceAll('"','&quot;')}"></div>
         <div class="small" style="grid-column:1 / -1">
           <button class="btnDangerInline" id="btnExcluirOcorr">Excluir ocorrência</button>
         </div>
@@ -1332,15 +1360,8 @@ window.editarOcorrencia = function(id){
     onSave: async () => {
       const tipo = document.getElementById("moTipo").value;
       const motivo = (document.getElementById("moMotivo").value || "").trim();
-
       if (!confirm("Salvar alteração desta ocorrência?")) return;
-
-      await updateDoc(doc(db,"ocorrencias", id), {
-        tipo,
-        motivo,
-        updatedAt: new Date().toISOString()
-      });
-
+      await updateDoc(doc(db,"ocorrencias", id), { tipo, motivo, updatedAt: new Date().toISOString() });
       closeModal();
       carregarOcorrencias();
     }
@@ -1358,7 +1379,7 @@ window.editarOcorrencia = function(id){
   }, 0);
 };
 
-// ===== FÉRIAS (período) =====
+// ===== FÉRIAS
 async function getColab(re){
   const ref = doc(db,"colaboradores", re);
   const snap = await getDoc(ref);
@@ -1371,10 +1392,7 @@ function rangeDays(iniYmd, fimYmd){
   const [y2,m2,d2] = fimYmd.split("-").map(Number);
   let cur = new Date(y1, m1-1, d1, 12, 0, 0);
   const end = new Date(y2, m2-1, d2, 12, 0, 0);
-  while (cur <= end){
-    out.push(new Date(cur));
-    cur.setDate(cur.getDate()+1);
-  }
+  while (cur <= end){ out.push(new Date(cur)); cur.setDate(cur.getDate()+1); }
   return out;
 }
 async function apagarJornadasNoPeriodo(re, iniYmd, fimYmd, escala, somenteDiasTrabalho, plantaoHistorico){
@@ -1393,14 +1411,8 @@ async function apagarJornadasNoPeriodo(re, iniYmd, fimYmd, escala, somenteDiasTr
     alvo.add(dayKey);
   }
 
-  const apagar = all.filter(j => {
-    const d = (j?.entrada?.ts || "").toString().slice(0,10);
-    return alvo.has(d);
-  });
-
-  for (const j of apagar){
-    await deleteDoc(doc(db,"jornadas", j.id));
-  }
+  const apagar = all.filter(j => alvo.has((j?.entrada?.ts || "").toString().slice(0,10)));
+  for (const j of apagar) await deleteDoc(doc(db,"jornadas", j.id));
   return apagar.length;
 }
 
@@ -1425,19 +1437,15 @@ window.salvarFerias = async function(){
   )) return;
 
   await addDoc(collection(db,"afastamentos"), {
-    re,
-    tipo: "ferias",
-    inicio,
-    fim,
+    re, tipo:"ferias", inicio, fim,
     aplicarSomenteDiasTrabalho,
     motivo,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    createdAt:new Date().toISOString(),
+    updatedAt:new Date().toISOString()
   });
 
   const apagadas = await apagarJornadasNoPeriodo(re, inicio, fim, escala, aplicarSomenteDiasTrabalho, plantaoHistorico);
   alert(`Férias salvas.\nJornadas apagadas no período: ${apagadas}`);
-
   document.getElementById("afMotivo").value="";
   carregarFerias();
 };
@@ -1477,22 +1485,10 @@ window.editarFerias = function(id){
     title: `Modificar Férias — RE ${f.re}`,
     bodyHtml: `
       <div class="grid">
-        <div>
-          <label>RE</label>
-          <input id="mfRe" value="${f.re||""}" disabled>
-        </div>
-        <div>
-          <label>Tipo</label>
-          <input value="FÉRIAS" disabled>
-        </div>
-        <div>
-          <label>Início</label>
-          <input id="mfInicio" type="date" value="${String(f.inicio||"").slice(0,10)}">
-        </div>
-        <div>
-          <label>Fim</label>
-          <input id="mfFim" type="date" value="${String(f.fim||"").slice(0,10)}">
-        </div>
+        <div><label>RE</label><input value="${f.re||""}" disabled></div>
+        <div><label>Tipo</label><input value="FÉRIAS" disabled></div>
+        <div><label>Início</label><input id="mfInicio" type="date" value="${String(f.inicio||"").slice(0,10)}"></div>
+        <div><label>Fim</label><input id="mfFim" type="date" value="${String(f.fim||"").slice(0,10)}"></div>
         <div style="grid-column:1 / -1">
           <label style="display:flex;align-items:center;gap:8px;">
             <input id="mfDiasUteis" type="checkbox" ${f.aplicarSomenteDiasTrabalho===true ? "checked" : ""}>
@@ -1519,10 +1515,7 @@ window.editarFerias = function(id){
       if (!confirm("Salvar alteração do período de férias?")) return;
 
       await updateDoc(doc(db,"afastamentos", id), {
-        inicio: ini,
-        fim: fim,
-        aplicarSomenteDiasTrabalho: du,
-        motivo,
+        inicio: ini, fim: fim, aplicarSomenteDiasTrabalho: du, motivo,
         updatedAt: new Date().toISOString()
       });
 
@@ -1543,11 +1536,11 @@ window.editarFerias = function(id){
   }, 0);
 };
 
-// ===== PLANTÕES 12x36 (CORRIGIDO + SYNC) =====
+// ===== PLANTÕES 12x36
 window.salvarPlantao12x36 = async function(){
   const re = (document.getElementById("plRe").value || "").trim();
   const vigencia = (document.getElementById("plVigencia").value || "").trim();
-  const base = document.getElementById("plBase").value; // trabalha | folga
+  const base = document.getElementById("plBase").value;
   const obs = (document.getElementById("plObs").value || "").trim();
 
   if (!re) return alert("Informe o RE.");
@@ -1555,30 +1548,16 @@ window.salvarPlantao12x36 = async function(){
 
   try{
     const colSnap = await getDoc(doc(db, "colaboradores", re));
-    if (!colSnap.exists()){
-      return alert("Colaborador não encontrado no banco. Cadastre na aba Colaboradores.");
-    }
+    if (!colSnap.exists()) return alert("Colaborador não encontrado no banco. Cadastre na aba Colaboradores.");
     const col = colSnap.data() || {};
-    const nome = col.nome || "";
 
     const msg =
-      `Salvar ajuste 12x36?\n` +
-      `RE: ${re}\n` +
-      `Nome: ${nome}\n` +
-      `Vigente a partir de: ${brDateFromYmd(vigencia)}\n` +
-      `Base: ${base.toUpperCase()}\n` +
+      `Salvar ajuste 12x36?\nRE: ${re}\nNome: ${col.nome||""}\nVigente a partir de: ${brDateFromYmd(vigencia)}\nBase: ${base.toUpperCase()}\n` +
       (obs ? `Obs: ${obs}\n` : "");
 
     if (!confirm(msg)) return;
 
-    await addDoc(collection(db, "plantoes12x36"), {
-      re,
-      vigencia,
-      base,
-      obs,
-      updatedAt: new Date().toISOString()
-    });
-
+    await addDoc(collection(db, "plantoes12x36"), { re, vigencia, base, obs, updatedAt: new Date().toISOString() });
     await syncPlantaoHistoricoToColaborador(re);
 
     document.getElementById("plObs").value = "";
@@ -1586,9 +1565,8 @@ window.salvarPlantao12x36 = async function(){
 
     alert("✅ Plantão 12x36 salvo e sincronizado no colaborador.");
     await carregarPlantoes12x36();
-
   }catch(e){
-    console.error("Erro ao salvar plantão 12x36:", e);
+    console.error(e);
     alert("❌ Não foi possível salvar o plantão 12x36.\n\nMotivo: " + (e?.message || e));
   }
 };
@@ -1596,7 +1574,6 @@ window.salvarPlantao12x36 = async function(){
 window.carregarPlantoes12x36 = async function(){
   try{
     const filtroRe = (document.getElementById("plFiltroRe")?.value || "").trim();
-
     const snap = await getDocs(collection(db, "plantoes12x36"));
     let list = snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }));
 
@@ -1619,8 +1596,6 @@ window.carregarPlantoes12x36 = async function(){
     cachePlantoes = list;
 
     const tbody = document.getElementById("tbodyPlantoes");
-    if (!tbody) return;
-
     tbody.innerHTML = "";
 
     for (const p of cachePlantoes){
@@ -1636,9 +1611,8 @@ window.carregarPlantoes12x36 = async function(){
       `;
       tbody.appendChild(tr);
     }
-
   }catch(e){
-    console.error("Erro ao carregar plantões 12x36:", e);
+    console.error(e);
     alert("❌ Falha ao carregar plantões 12x36.\n\nMotivo: " + (e?.message || e));
   }
 };
@@ -1651,18 +1625,9 @@ window.editarPlantao = function(id){
     title: `Modificar 12x36 — RE ${p.re}`,
     bodyHtml: `
       <div class="grid">
-        <div>
-          <label>RE</label>
-          <input value="${p.re}" disabled>
-        </div>
-        <div>
-          <label>Nome</label>
-          <input value="${nomePorRe(p.re)}" disabled>
-        </div>
-        <div>
-          <label>Vigência (a partir)</label>
-          <input id="mpVigencia" type="date" value="${String(p.vigencia||"").slice(0,10)}">
-        </div>
+        <div><label>RE</label><input value="${p.re}" disabled></div>
+        <div><label>Nome</label><input value="${nomePorRe(p.re)}" disabled></div>
+        <div><label>Vigência (a partir)</label><input id="mpVigencia" type="date" value="${String(p.vigencia||"").slice(0,10)}"></div>
         <div>
           <label>Base</label>
           <select id="mpBase">
@@ -1683,17 +1648,10 @@ window.editarPlantao = function(id){
       const vig = (document.getElementById("mpVigencia").value || "").trim();
       const base = document.getElementById("mpBase").value;
       const obs = (document.getElementById("mpObs").value || "").trim();
-
       if (!vig) return alert("Informe a vigência.");
       if (!confirm("Salvar alteração deste plantão 12x36?")) return;
 
-      await updateDoc(doc(db, "plantoes12x36", id), {
-        vigencia: vig,
-        base,
-        obs,
-        updatedAt: new Date().toISOString()
-      });
-
+      await updateDoc(doc(db, "plantoes12x36", id), { vigencia: vig, base, obs, updatedAt: new Date().toISOString() });
       await syncPlantaoHistoricoToColaborador(p.re);
 
       closeModal();
@@ -1707,16 +1665,14 @@ window.editarPlantao = function(id){
     btn.onclick = async () => {
       if (!confirm("Excluir este registro de plantão 12x36?")) return;
       await deleteDoc(doc(db,"plantoes12x36", id));
-
       await syncPlantaoHistoricoToColaborador(p.re);
-
       closeModal();
       carregarPlantoes12x36();
     };
   }, 0);
 };
 
-// export simples (CSV)
+// ===== export simples CSV
 window.exportar = function(){
   let csv = "DataEntrada,Nome,RE,Entrada,InicioIntervalo,FimIntervalo,Saida,EntradaHE,SaidaHE,Coords,Local\n";
   for (const j of ultimaTabela){
@@ -1746,102 +1702,74 @@ window.exportar = function(){
 };
 
 // ============================================
-// ✅ EXPORTAÇÃO RH (XLSX) - ponta a ponta
+// ✅ EXPORTAÇÃO RH (XLSX) - SOMENTE ATIVOS
 // ============================================
-
 function setRhStatus(msg){
   const el = document.getElementById("rhStatus");
   if (el) el.textContent = msg || "";
 }
-
 function minutesToHHMM(min){
   const m = Math.max(0, Math.round(min||0));
   const hh = Math.floor(m/60);
   const mm = m%60;
   return `${String(hh).padStart(2,"0")}:${String(mm).padStart(2,"0")}`;
 }
-
 function parseHHMMToMinutes(h){
   const m = (h||"").trim().match(/^([01]\d|2[0-3]):([0-5]\d)$/);
   if (!m) return null;
   return Number(m[1])*60 + Number(m[2]);
 }
-
 function diffMinutes(a,b){
   const da = toDateAny(a);
   const db = toDateAny(b);
   if (!da || !db || isNaN(da) || isNaN(db)) return 0;
   return Math.round((db - da)/60000);
 }
-
 function getPlannedMinutesForDay(col, dateObj){
-  const dow = dateObj.getDay(); // 0..6
+  const dow = dateObj.getDay();
   const hs = col?.horariosSemana || {};
   const slot = hs?.[String(dow)];
   if (slot && slot.in && slot.out){
     const i = parseHHMMToMinutes(slot.in);
     const o = parseHHMMToMinutes(slot.out);
-    if (i != null && o != null){
-      // se sair < entrar, assume virou o dia
-      return (o >= i) ? (o - i) : (o + 24*60 - i);
-    }
+    if (i != null && o != null) return (o >= i) ? (o - i) : (o + 24*60 - i);
   }
-  // fallback: informativo horaEntrada/horaSaida
   const he = parseHHMMToMinutes(col?.horaEntrada||"");
   const hs2= parseHHMMToMinutes(col?.horaSaida||"");
-  if (he!=null && hs2!=null){
-    return (hs2>=he) ? (hs2-he) : (hs2+24*60-he);
-  }
+  if (he!=null && hs2!=null) return (hs2>=he) ? (hs2-he) : (hs2+24*60-he);
   return null;
 }
-
 function calcWorkedMinutesFromJornada(j){
-  // trabalhado = (saida - entrada) - (intervalo)
   const ent = j?.entrada?.ts;
   const sai = j?.saida?.ts;
   if (!ent || !sai) return { worked:0, intervalo:0, virou:false };
-
   const dEnt = toDateAny(ent);
   const dSai = toDateAny(sai);
   const virou = (dEnt && dSai) ? (ymd(dEnt) !== ymd(dSai)) : false;
 
   let total = diffMinutes(ent, sai);
   let intervalo = 0;
-
   const si = j?.saida_intervalo?.ts;
   const ri = j?.retorno_intervalo?.ts;
-
-  if (si && ri){
-    intervalo = Math.max(0, diffMinutes(si, ri));
-  } else {
-    // se não tem intervalo completo, não desconta
-    intervalo = 0;
-  }
-
+  if (si && ri) intervalo = Math.max(0, diffMinutes(si, ri));
   total = Math.max(0, total - intervalo);
   return { worked: total, intervalo, virou };
 }
-
 function calcHeMinutesFromJornada(j){
   const ehEnt = j?.entrada_he?.ts;
   const ehSai = j?.saida_he?.ts;
   if (!ehEnt || !ehSai) return 0;
   return Math.max(0, diffMinutes(ehEnt, ehSai));
 }
-
 function monthDays(year, month1to12){
   const last = new Date(year, month1to12, 0).getDate();
   const out = [];
-  for (let d=1; d<=last; d++){
-    out.push(new Date(year, month1to12-1, d, 12, 0, 0));
-  }
+  for (let d=1; d<=last; d++) out.push(new Date(year, month1to12-1, d, 12, 0, 0));
   return out;
 }
-
 function findOcorrencia(re, ymdKey, ocorrenciasList){
   return ocorrenciasList.find(o => o.re===re && String(o.data||"").slice(0,10)===ymdKey) || null;
 }
-
 function findFerias(re, ymdKey, dateObj, col, feriasList){
   const escala = (col?.escala || "5x2");
   const plantaoHistorico = Array.isArray(col?.plantaoHistorico) ? col.plantaoHistorico : [];
@@ -1851,7 +1779,6 @@ function findFerias(re, ymdKey, dateObj, col, feriasList){
     const fim = String(f.fim||"").slice(0,10);
     if (!ini || !fim) continue;
     if (!(ymdKey >= ini && ymdKey <= fim)) continue;
-
     const onlyWork = (f.aplicarSomenteDiasTrabalho === true);
     if (onlyWork){
       if (!isDiaTrabalho(dateObj, escala, plantaoHistorico)) continue;
@@ -1860,46 +1787,32 @@ function findFerias(re, ymdKey, dateObj, col, feriasList){
   }
   return null;
 }
-
 function isBeforeAdmissao(col, ymdKey){
   const ad = String(col?.dataAdmissao || "").slice(0,10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(ad)) return false;
   return ymdKey < ad;
 }
-
 function getScaleStatus(col, dateObj){
   const escala = (col?.escala || "5x2");
   const plantaoHistorico = Array.isArray(col?.plantaoHistorico) ? col.plantaoHistorico : [];
   const folga = isFolgaByEscala(dateObj, escala, plantaoHistorico);
   return folga ? "FOLGA" : "TRABALHA";
 }
-
 function getJornadaOfDay(re, ymdKey, jornadasList){
-  // jornada pertence ao dia da ENTRADA
   return jornadasList.find(j => j.re===re && String(j?.entrada?.ts||"").slice(0,10)===ymdKey) || null;
 }
-
-function formatDayBR(ymdKey){
-  return brDateFromYmd(ymdKey);
-}
-
-function weekdayPtShort(d){
-  return d.toLocaleDateString("pt-BR", { weekday:"short" });
-}
-
+function weekdayPtShort(d){ return d.toLocaleDateString("pt-BR", { weekday:"short" }); }
 function safeStr(v){ return (v==null) ? "" : String(v); }
+function formatDayBR(ymdKey){ return brDateFromYmd(ymdKey); }
 
-// ✅ principal
 window.exportarRHXLSX = async function(){
   try{
     setRhStatus("Carregando dados do Firestore...");
 
-    // competência
     const mes = Number(document.getElementById("rhMes").value);
     const ano = Number(document.getElementById("rhAno").value);
     const mes2 = pad2(mes);
 
-    // carrega tudo que precisa
     const [snapCol, snapJor, snapOco, snapAfa] = await Promise.all([
       getDocs(collection(db,"colaboradores")),
       getDocs(collection(db,"jornadas")),
@@ -1907,7 +1820,10 @@ window.exportarRHXLSX = async function(){
       getDocs(collection(db,"afastamentos"))
     ]);
 
-    const colaboradores = snapCol.docs.map(d => ({ id:d.id, ...(d.data()||{}) }))
+    // ✅ SOMENTE ATIVOS
+    const colaboradores = snapCol.docs
+      .map(d => ({ id:d.id, ...(d.data()||{}) }))
+      .filter(c => c.ativo !== false)
       .sort((a,b)=> (a.nome||"").localeCompare(b.nome||""));
 
     const jornadasAll = snapJor.docs.map(d => ({ id:d.id, ...(d.data()||{}) }));
@@ -1915,7 +1831,6 @@ window.exportarRHXLSX = async function(){
     const feriasAll = snapAfa.docs.map(d => ({ id:d.id, ...(d.data()||{}) }))
       .filter(x => String(x.tipo||"").toLowerCase() === "ferias");
 
-    // filtra jornadas do mês pela data da entrada
     const jornadasMes = jornadasAll.filter(j => {
       const ent = String(j?.entrada?.ts||"");
       if (!ent) return false;
@@ -1928,12 +1843,10 @@ window.exportarRHXLSX = async function(){
 
     const days = monthDays(ano, mes);
 
-    // planilhas
     const sheetResumo = [];
     const sheetDiario = [];
     const sheetEscala = [];
 
-    // cabeçalhos
     sheetResumo.push([
       "RE","Nome","CPF","Escala","Admissão",
       "Minutos Normais","Horas Normais",
@@ -1965,29 +1878,17 @@ window.exportarRHXLSX = async function(){
       const escala = safeStr(col.escala || "5x2");
       const adm = safeStr(col.dataAdmissao||"").slice(0,10);
 
-      let sumNormal = 0;
-      let sumExtra = 0;
-      let sumWorked = 0;
-
-      let qtdFalta = 0;
-      let qtdAtestado = 0;
-      let qtdAbono = 0;
-      let qtdFerias = 0;
-      let qtdFolga = 0;
-      let qtdFT = 0;
-
-      let diasTrabalhados = 0;
-      let diasPlanejadosTrabalhar = 0;
+      let sumNormal = 0, sumExtra = 0, sumWorked = 0;
+      let qtdFalta = 0, qtdAtestado = 0, qtdAbono = 0, qtdFerias = 0, qtdFolga = 0, qtdFT = 0;
+      let diasTrabalhados = 0, diasPlanejadosTrabalhar = 0;
 
       for (const dt of days){
         const ymdKey = ymd(dt);
-
         const diaAntesAdm = isBeforeAdmissao(col, ymdKey);
-        const escalaDia = getScaleStatus(col, dt); // TRABALHA/FOLGA
+        const escalaDia = getScaleStatus(col, dt);
         const planejadoMin = getPlannedMinutesForDay(col, dt);
         const planejadoTxt = (planejadoMin==null) ? "" : minutesToHHMM(planejadoMin);
 
-        // escala sheet
         sheetEscala.push([
           re, nome,
           formatDayBR(ymdKey),
@@ -2002,7 +1903,6 @@ window.exportarRHXLSX = async function(){
         const isTrabalha = (escalaDia === "TRABALHA");
         if (isTrabalha) diasPlanejadosTrabalhar++;
 
-        // prioridade: férias > ocorrência > jornada > falta/folga
         const fer = findFerias(re, ymdKey, dt, col, feriasAll);
         if (fer){
           qtdFerias++;
@@ -2023,7 +1923,6 @@ window.exportarRHXLSX = async function(){
           if (t==="falta") qtdFalta++;
           if (t==="atestado") qtdAtestado++;
           if (t==="abono") qtdAbono++;
-
           sheetDiario.push([
             re,nome,formatDayBR(ymdKey),weekdayPtShort(dt),
             escalaDia, planejadoTxt, (t||"").toUpperCase(),
@@ -2036,58 +1935,36 @@ window.exportarRHXLSX = async function(){
         }
 
         const j = getJornadaOfDay(re, ymdKey, jornadasMes);
-
         if (!j){
           if (!isTrabalha){
             qtdFolga++;
-            sheetDiario.push([
-              re,nome,formatDayBR(ymdKey),weekdayPtShort(dt),
-              escalaDia, planejadoTxt, "FOLGA",
-              "","","","",
-              "","",
-              "","","",
-              "", ""
-            ]);
+            sheetDiario.push([re,nome,formatDayBR(ymdKey),weekdayPtShort(dt),escalaDia,planejadoTxt,"FOLGA","","","","","", "","","","", "", ""]);
           } else {
             qtdFalta++;
-            sheetDiario.push([
-              re,nome,formatDayBR(ymdKey),weekdayPtShort(dt),
-              escalaDia, planejadoTxt, "FALTA",
-              "","","","",
-              "","",
-              "","","",
-              "", ""
-            ]);
+            sheetDiario.push([re,nome,formatDayBR(ymdKey),weekdayPtShort(dt),escalaDia,planejadoTxt,"FALTA","","","","","", "","","","", "", ""]);
           }
           continue;
         }
 
-        // tem jornada
         const workedInfo = calcWorkedMinutesFromJornada(j);
         const heFieldMin = calcHeMinutesFromJornada(j);
-
         const worked = workedInfo.worked;
         const intervaloMin = workedInfo.intervalo;
 
-        let normalMin = 0;
-        let extraMin = 0;
+        let normalMin = 0, extraMin = 0;
 
         if (!isTrabalha){
-          // trabalhou em folga => FT, tudo vira extra
           qtdFT++;
-          qtdFolga++; // ainda conta folga do calendário
+          qtdFolga++;
           extraMin += worked;
         } else {
-          if (planejadoMin == null){
-            // não tem planejado => tudo vira normal (pra não estourar HE errado)
-            normalMin += worked;
-          } else {
+          if (planejadoMin == null) normalMin += worked;
+          else {
             normalMin += Math.min(worked, planejadoMin);
             extraMin  += Math.max(0, worked - planejadoMin);
           }
         }
 
-        // HE do campo HE sempre soma como extra
         extraMin += heFieldMin;
 
         sumNormal += normalMin;
@@ -2098,7 +1975,6 @@ window.exportarRHXLSX = async function(){
 
         const posto = reconhecerLocal(getBestLocationFromJornada(j));
         const obs = [
-          (j?.flags?.intrajornada_nao_realizada ? "Intrajornada não realizada" : ""),
           (workedInfo.virou ? "Virou o dia" : ""),
           (!j?.saida?.ts ? "Sem saída" : ""),
           ((j?.saida_intervalo?.ts && !j?.retorno_intervalo?.ts) || (!j?.saida_intervalo?.ts && j?.retorno_intervalo?.ts)) ? "Intervalo incompleto" : ""
@@ -2134,20 +2010,13 @@ window.exportarRHXLSX = async function(){
       ]);
     }
 
-    // workbook
     const wb = XLSX.utils.book_new();
-
-    const wsResumo = XLSX.utils.aoa_to_sheet(sheetResumo);
-    const wsDiario = XLSX.utils.aoa_to_sheet(sheetDiario);
-    const wsEscala = XLSX.utils.aoa_to_sheet(sheetEscala);
-
-    XLSX.utils.book_append_sheet(wb, wsResumo, "Resumo");
-    XLSX.utils.book_append_sheet(wb, wsDiario, "Diario");
-    XLSX.utils.book_append_sheet(wb, wsEscala, "Escala");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sheetResumo), "Resumo");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sheetDiario), "Diario");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sheetEscala), "Escala");
 
     const filename = `RH_${mes2}-${ano}.xlsx`;
     XLSX.writeFile(wb, filename);
-
     setRhStatus(`✅ Exportado com sucesso: ${filename}`);
 
   }catch(e){
