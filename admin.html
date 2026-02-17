@@ -234,6 +234,29 @@
       <input id="ocMotivo" placeholder="Motivo (opcional)">
       <button onclick="salvarOcorrencia()">Salvar ocorrência (prioritária)</button>
     </div>
+
+    <hr class="hr">
+
+    <div class="row">
+      <input id="ocFiltroRe" placeholder="Filtrar RE (opcional)" inputmode="numeric">
+      <input id="ocFiltroData" type="date" title="Filtrar data (opcional)">
+      <button onclick="carregarOcorrencias()">Atualizar lista</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>RE</th>
+          <th>Nome</th>
+          <th>Tipo</th>
+          <th>Motivo</th>
+          <th>Atualizado</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tbodyOcorr"></tbody>
+    </table>
   </div>
 
   <!-- FÉRIAS (PERÍODO) -->
@@ -315,6 +338,7 @@ let ultimaTabela = [];
 let cacheLocais = [];
 let cacheColabs = [];
 let cacheFerias = [];
+let cacheOcorr = [];
 
 // menu
 window.showSection = function(id){
@@ -323,6 +347,7 @@ window.showSection = function(id){
   if (id === "secLocal") carregarLocais();
   if (id === "secColab") carregarColaboradores();
   if (id === "secAfast") { carregarColaboradores().then(carregarFerias); }
+  if (id === "secOcorr") { carregarColaboradores().then(carregarOcorrencias); }
 };
 
 // auth
@@ -330,7 +355,7 @@ window.login = async function(){
   const email = document.getElementById("email").value;
   const senha = document.getElementById("senha").value;
   try { await signInWithEmailAndPassword(auth, email, senha); }
-  catch(e){ alert("Erro no login"); console.error(e); }
+  catch(e){ alert("Erro no login: " + (e?.message || e)); console.error(e); }
 };
 window.logout = function(){ signOut(auth); };
 
@@ -576,6 +601,7 @@ window.editarColab = function(reDocId){
       closeModal();
       carregarColaboradores();
       carregarFerias();
+      carregarOcorrencias();
     }
   });
 };
@@ -792,6 +818,11 @@ window.editarJornada = function(docId){
 // ===== OCORRÊNCIAS (dia) =====
 function ocDocId(re, ymd){ return `${re}_${ymd}`; }
 
+function nomePorRe(re){
+  const c = cacheColabs.find(x => (x.re || x.id) === re);
+  return c?.nome || "";
+}
+
 async function apagarJornadasDoDia(re, dataYmd){
   const qJ = query(collection(db,"jornadas"), where("re","==",re));
   const snap = await getDocs(qJ);
@@ -809,25 +840,147 @@ async function apagarJornadasDoDia(re, dataYmd){
 }
 
 window.salvarOcorrencia = async function(){
-  const re = (document.getElementById("ocRe").value || "").trim();
-  const data = document.getElementById("ocData").value;
-  const tipo = document.getElementById("ocTipo").value;
-  const motivo = (document.getElementById("ocMotivo").value || "").trim();
+  try{
+    const re = (document.getElementById("ocRe").value || "").trim();
+    const data = document.getElementById("ocData").value;
+    const tipo = document.getElementById("ocTipo").value;
+    const motivo = (document.getElementById("ocMotivo").value || "").trim();
 
-  if (!re) return alert("Informe o RE.");
-  if (!data) return alert("Informe a data.");
-  if (!tipo) return alert("Selecione o tipo.");
+    if (!re) return alert("Informe o RE.");
+    if (!data) return alert("Informe a data.");
+    if (!tipo) return alert("Selecione o tipo.");
 
-  if (!confirm(`Salvar ocorrência?\nRE: ${re}\nData: ${brDateFromYmd(data)}\nTipo: ${tipo}\n\nIsso vai APAGAR registros do dia (se existirem).`)) return;
+    if (!confirm(`Salvar ocorrência?\nRE: ${re}\nData: ${brDateFromYmd(data)}\nTipo: ${tipo}\n\nIsso vai APAGAR registros do dia (se existirem).`)) return;
 
-  await setDoc(doc(db,"ocorrencias", ocDocId(re, data)), {
-    re, data, tipo, motivo,
-    updatedAt: new Date().toISOString()
-  }, { merge:true });
+    await setDoc(doc(db,"ocorrencias", ocDocId(re, data)), {
+      re, data, tipo, motivo,
+      updatedAt: new Date().toISOString()
+    }, { merge:true });
 
-  const n = await apagarJornadasDoDia(re, data);
-  alert(`Ocorrência salva.\nRegistros apagados do dia: ${n}`);
-  document.getElementById("ocMotivo").value = "";
+    const n = await apagarJornadasDoDia(re, data);
+    alert(`Ocorrência salva.\nRegistros apagados do dia: ${n}`);
+
+    document.getElementById("ocMotivo").value = "";
+
+    // ✅ atualiza lista automaticamente
+    document.getElementById("ocFiltroRe").value = re;
+    document.getElementById("ocFiltroData").value = data;
+    await carregarOcorrencias();
+
+  }catch(e){
+    console.error("ERRO salvarOcorrencia:", e);
+    alert("Falha ao salvar ocorrência: " + (e?.message || e));
+  }
+};
+
+window.carregarOcorrencias = async function(){
+  try{
+    const filtroRe = (document.getElementById("ocFiltroRe").value || "").trim();
+    const filtroData = document.getElementById("ocFiltroData").value; // YYYY-MM-DD
+
+    const snap = await getDocs(collection(db,"ocorrencias"));
+    let list = snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }));
+
+    // Normaliza campos mínimos
+    list = list.map(o => ({
+      ...o,
+      re: (o.re || "").toString().trim(),
+      data: (o.data || "").toString().slice(0,10),
+      tipo: (o.tipo || "").toString(),
+      motivo: (o.motivo || "").toString(),
+      updatedAt: (o.updatedAt || "")
+    }));
+
+    if (filtroRe) list = list.filter(o => o.re === filtroRe);
+    if (filtroData) list = list.filter(o => o.data === filtroData);
+
+    list.sort((a,b) => (String(b.data||"")).localeCompare(String(a.data||"")) || String(b.updatedAt||"").localeCompare(String(a.updatedAt||"")));
+
+    cacheOcorr = list;
+
+    const tbody = document.getElementById("tbodyOcorr");
+    tbody.innerHTML = "";
+
+    for (const o of cacheOcorr){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${brDateFromYmd(o.data||"")}</td>
+        <td>${o.re || ""}</td>
+        <td>${nomePorRe(o.re)}</td>
+        <td>${(o.tipo||"").toUpperCase()}</td>
+        <td>${o.motivo || ""}</td>
+        <td>${brDateTimeFromIso(o.updatedAt)}</td>
+        <td><button class="minBtn" onclick="editarOcorrencia('${o.id}')">Modificar</button></td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+  }catch(e){
+    console.error("ERRO carregarOcorrencias:", e);
+    alert("Falha ao carregar ocorrências: " + (e?.message || e));
+  }
+};
+
+window.editarOcorrencia = function(id){
+  const o = cacheOcorr.find(x => x.id === id);
+  if (!o) return alert("Ocorrência não encontrada.");
+
+  openModal({
+    title: `Modificar Ocorrência — ${o.re} — ${brDateFromYmd(o.data)}`,
+    bodyHtml: `
+      <div class="grid">
+        <div>
+          <label>RE</label>
+          <input value="${o.re}" disabled>
+        </div>
+        <div>
+          <label>Data</label>
+          <input value="${o.data}" disabled>
+        </div>
+        <div>
+          <label>Tipo</label>
+          <select id="moTipo">
+            <option value="falta" ${o.tipo==="falta" ? "selected" : ""}>FALTA</option>
+            <option value="atestado" ${o.tipo==="atestado" ? "selected" : ""}>ATESTADO</option>
+            <option value="abono" ${o.tipo==="abono" ? "selected" : ""}>ABONO</option>
+          </select>
+        </div>
+        <div>
+          <label>Motivo</label>
+          <input id="moMotivo" value="${(o.motivo||"").replaceAll('"','&quot;')}">
+        </div>
+        <div class="small" style="grid-column:1 / -1">
+          <button class="btnDangerInline" id="btnExcluirOcorr">Excluir ocorrência</button>
+        </div>
+      </div>
+    `,
+    onSave: async () => {
+      const tipo = document.getElementById("moTipo").value;
+      const motivo = (document.getElementById("moMotivo").value || "").trim();
+
+      if (!confirm("Salvar alteração desta ocorrência?")) return;
+
+      await updateDoc(doc(db,"ocorrencias", id), {
+        tipo,
+        motivo,
+        updatedAt: new Date().toISOString()
+      });
+
+      closeModal();
+      carregarOcorrencias();
+    }
+  });
+
+  setTimeout(() => {
+    const btn = document.getElementById("btnExcluirOcorr");
+    if (!btn) return;
+    btn.onclick = async () => {
+      if (!confirm("Excluir esta ocorrência?")) return;
+      await deleteDoc(doc(db,"ocorrencias", id));
+      closeModal();
+      carregarOcorrencias();
+    };
+  }, 0);
 };
 
 // ===== FÉRIAS (afastamentos por período) =====
@@ -856,7 +1009,6 @@ async function apagarJornadasNoPeriodo(re, iniYmd, fimYmd, escala, somenteDiasTr
   const snap = await getDocs(qJ);
   const all = snap.docs.map(d => ({ id:d.id, ...d.data() }));
 
-  // cria set de dias alvo
   const days = rangeDays(iniYmd, fimYmd);
   const alvo = new Set();
   for (const dt of days){
