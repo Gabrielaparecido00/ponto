@@ -1,430 +1,1010 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Área do Colaborador</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
+  body { font-family: 'Montserrat', Arial, sans-serif; background:#f0f0f0; padding:12px; margin:0; }
+  .container{
+    max-width:1100px; margin:auto; background:#fff; padding:14px;
+    border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.08);
+  }
+  .logo{ width:170px; display:block; margin:0 auto 8px; }
+  h2{ text-align:center; margin:8px 0 10px; }
 
-body{
-font-family:'Montserrat',Arial;
-background:#f0f0f0;
-margin:0;
-padding:10px;
-}
+  .row{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; align-items:end; }
+  input, select, button{
+    padding:10px; border-radius:8px; border:1px solid #ccc;
+    font-family:inherit;
+  }
+  input, select{ min-width:220px; }
+  button{ cursor:pointer; background:#1f6feb; color:#fff; border:none; font-weight:700; }
+  button.secondary{ background:#6c757d; }
+  button:disabled{ opacity:.6; cursor:not-allowed; }
 
-.container{
-background:#fff;
-padding:15px;
-border-radius:12px;
-max-width:1000px;
-margin:auto;
-}
+  .info{ text-align:center; margin:10px 0 6px; font-weight:700; }
+  .small{ text-align:center; font-size:12px; color:#666; margin-top:6px; }
+  .hint{ text-align:center; font-size:12px; color:#555; margin:8px 0 0; }
 
-.logo{
-width:180px;
-display:block;
-margin:auto;
-}
+  /* Tabs */
+  .tabs{
+    display:flex; gap:8px; justify-content:center; flex-wrap:wrap;
+    margin: 6px 0 12px;
+  }
+  .tabBtn{
+    background:#e9ecef; color:#1a1a1a;
+    border:1px solid #dfe3e8;
+    border-radius:10px; padding:10px 14px; font-weight:700; cursor:pointer;
+  }
+  .tabBtn.active{ background:#1f6feb; color:#fff; border-color:#1f6feb; }
+  .section{ display:none; }
+  .section.active{ display:block; }
 
-h2{
-text-align:center;
-}
+  /* Table */
+  .tableWrap{ overflow:auto; -webkit-overflow-scrolling:touch; border-radius:10px; border:1px solid #eee; }
+  table{ width:100%; border-collapse:collapse; font-size:12px; min-width:860px; }
+  th,td{ border:1px solid #ddd; padding:8px; text-align:center; white-space:nowrap; }
+  th{ background:#fafafa; }
+  .muted{ color:#999; }
 
-.row{
-display:flex;
-flex-wrap:wrap;
-gap:10px;
-justify-content:center;
-margin-bottom:10px;
-}
+  /* Holerite Card */
+  .card{
+    border:1px solid #eee; border-radius:12px; padding:14px;
+    background:#fbfbfb; max-width:760px; margin: 0 auto;
+  }
+  .card h3{ margin:0 0 10px; font-size:14px; text-align:center; }
+  .statusLine{
+    text-align:center; font-size:12px; margin-top:10px; color:#555;
+    min-height:18px; white-space:pre-line;
+  }
 
-input,select,button{
-padding:10px;
-border-radius:8px;
-border:1px solid #ccc;
-}
+  .pill{
+    display:inline-block;
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:12px;
+    background:#f3f4f6;
+    border:1px solid #e5e7eb;
+    color:#111;
+  }
 
-button{
-background:#1f6feb;
-color:white;
-border:none;
-cursor:pointer;
-}
-
-table{
-width:100%;
-border-collapse:collapse;
-font-size:13px;
-}
-
-th,td{
-border:1px solid #ccc;
-padding:6px;
-text-align:center;
-}
-
-th{
-background:#eee;
-}
-
+  @media (max-width: 640px){
+    body{ padding:10px; }
+    .container{ padding:12px; }
+    input, select{ min-width: 160px; flex:1; }
+    .logo{ width:150px; }
+  }
 </style>
 </head>
+
 <body>
-
 <div class="container">
+  <img src="GW.png" class="logo" />
+  <h2>Área do Colaborador</h2>
 
-<img src="GW.png" class="logo">
+  <!-- LOGIN -->
+  <div id="loginBox">
+    <div class="row">
+      <div>
+        <label>RE</label><br>
+        <input id="re" placeholder="Digite seu RE" inputmode="numeric" autocomplete="off">
+      </div>
+      <div>
+        <label>Senha (4 primeiros do CPF)</label><br>
+        <input id="senha" type="password" placeholder="Ex: 4382" inputmode="numeric" autocomplete="off">
+      </div>
+      <button id="btnEntrar">Entrar</button>
+      <button class="secondary" id="btnVoltar1">Voltar ao Registro</button>
+    </div>
+    <div class="small">A senha é os 4 primeiros dígitos do CPF cadastrado pelo administrador.</div>
+  </div>
 
-<h2>Área do Colaborador</h2>
+  <!-- CONTEÚDO -->
+  <div id="conteudo" style="display:none;">
+    <div class="info" id="infoUser">—</div>
 
-<div id="loginBox">
+    <!-- Abas -->
+    <div class="tabs">
+      <button class="tabBtn active" id="tabFreq">Folha de Frequência</button>
+      <button class="tabBtn" id="tabHol">Holerites</button>
+      <button class="secondary" id="btnVoltar2">Voltar ao Registro</button>
+    </div>
 
-<div class="row">
+    <!-- ===== Folha de Frequência ===== -->
+    <div id="secFreq" class="section active">
+      <div class="row">
+        <div>
+          <label>Mês</label><br>
+          <select id="mes"></select>
+        </div>
+        <div>
+          <label>Ano</label><br>
+          <select id="ano"></select>
+        </div>
 
-<input id="re" placeholder="RE">
+        <button id="btnCarregar">Carregar</button>
+        <button id="btnPdf">Exportar PDF</button>
+      </div>
 
-<input id="senha" type="password" placeholder="Senha">
+      <div class="hint" id="hintMes">
+        A jornada pertence ao dia da <b>ENTRADA</b>. Se virar o dia, a saída aparece com <b>(+1)</b>.
+      </div>
 
-<button onclick="login()">Entrar</button>
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Dia</th>
+              <th>Entrada</th>
+              <th>Início Intervalo</th>
+              <th>Fim Intervalo</th>
+              <th>Saída</th>
+              <th>Entrada HE</th>
+              <th>Saída HE</th>
+              <th>Posto</th>
+              <th>Obs</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
 
+      <div class="small" style="margin-top:10px;">
+        <span class="pill">FT = Folga Trabalhada</span>
+      </div>
+    </div>
+
+    <!-- ===== Holerites ===== -->
+    <div id="secHol" class="section">
+      <div class="card">
+        <h3>Baixar Holerite</h3>
+
+        <div class="row">
+          <div>
+            <label>Tipo</label><br>
+            <select id="holTipo">
+              <option value="mensal">Mensal</option>
+              <option value="13_1">13º — 1ª parcela (Novembro)</option>
+              <option value="13_2">13º — 2ª parcela (Dezembro)</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Mês</label><br>
+            <select id="holMes"></select>
+          </div>
+
+          <div>
+            <label>Ano</label><br>
+            <select id="holAno"></select>
+          </div>
+
+          <button id="btnBaixarHolerite">Baixar PDF</button>
+        </div>
+
+        <div class="statusLine" id="holStatus"></div>
+        <div class="small">Se não existir, você verá “ainda não foi disponibilizado”.</div>
+      </div>
+    </div>
+
+    <div class="small" style="margin-top:12px;">
+      Sistema desenvolvido por Gabriel Wandele, todos direitos reservados
+    </div>
+  </div>
 </div>
 
-</div>
-
-<div id="conteudo" style="display:none;">
-
-<div class="row">
-
-<select id="mes"></select>
-
-<select id="ano"></select>
-
-<button onclick="carregar()">Carregar</button>
-
-</div>
-
-<table>
-
-<thead>
-
-<tr>
-
-<th>Data</th>
-<th>Dia</th>
-<th>Entrada</th>
-<th>Saída</th>
-<th>Posto</th>
-<th>OBS</th>
-
-</tr>
-
-</thead>
-
-<tbody id="tbody"></tbody>
-
-</table>
-
-</div>
-
-</div>
+<!-- jsPDF -->
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
 <script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, getDoc, getDocs, collection, query, where } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getStorage, ref as sRef, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-import {
-
-initializeApp
-
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-
-import {
-
-getFirestore,
-doc,
-getDoc,
-getDocs,
-collection,
-query,
-where
-
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-const firebaseConfig={
-
-apiKey:"AIzaSy...",
-authDomain:"controle-ponto-f539b.firebaseapp.com",
-projectId:"controle-ponto-f539b"
-
+const firebaseConfig = {
+  apiKey: "AIzaSyD--zpWLbLg5X82oGTyz6SuPFQV0sd7NWc",
+  authDomain: "controle-ponto-f539b.firebaseapp.com",
+  projectId: "controle-ponto-f539b",
+  storageBucket: "controle-ponto-f539b.appspot.com",
+  messagingSenderId: "324716100257",
+  appId: "1:324716100257:web:32d49a9ab4916182dd4ee0"
 };
 
-const app=initializeApp(firebaseConfig);
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const storage = getStorage(app);
 
-const db=getFirestore(app);
+// DOM
+const loginBox = document.getElementById("loginBox");
+const conteudo = document.getElementById("conteudo");
+const infoUser = document.getElementById("infoUser");
+const tbody = document.getElementById("tbody");
 
-let user=null;
+const reEl = document.getElementById("re");
+const senhaEl = document.getElementById("senha");
+const btnEntrar = document.getElementById("btnEntrar");
 
-let jornadas=[];
+const mesSel = document.getElementById("mes");
+const anoSel = document.getElementById("ano");
+const btnCarregar = document.getElementById("btnCarregar");
+const btnPdf = document.getElementById("btnPdf");
 
-function pad(n){
+const holTipoSel = document.getElementById("holTipo");
+const holMesSel = document.getElementById("holMes");
+const holAnoSel = document.getElementById("holAno");
+const btnBaixarHolerite = document.getElementById("btnBaixarHolerite");
+const holStatus = document.getElementById("holStatus");
 
-return String(n).padStart(2,"0");
+document.getElementById("btnVoltar1").onclick = voltar;
+document.getElementById("btnVoltar2").onclick = voltar;
 
+// Abas
+const tabFreq = document.getElementById("tabFreq");
+const tabHol = document.getElementById("tabHol");
+const secFreq = document.getElementById("secFreq");
+const secHol = document.getElementById("secHol");
+
+function setTab(which){
+  const freq = (which === "freq");
+  tabFreq.classList.toggle("active", freq);
+  tabHol.classList.toggle("active", !freq);
+  secFreq.classList.toggle("active", freq);
+  secHol.classList.toggle("active", !freq);
 }
+tabFreq.onclick = () => setTab("freq");
+tabHol.onclick = () => setTab("hol");
 
-function dataYmd(d){
+function voltar(){ window.location.href = "index.html"; }
 
-return d.toISOString().slice(0,10);
+// estado
+let user = null;                // {re,nome,cpf,escala,horaEntrada,horaSaida,dataAdmissao,plantaoHistorico}
+let cacheLocais = [];
+let jornadasMes = [];
+let linhasMes = [];
+let mapOcorrencias = {};
+let feriasList = [];
 
+// ===== helpers =====
+function pad2(n){ return String(n).padStart(2,"0"); }
+function toDateAny(ts){
+  if (!ts) return null;
+  if (ts.toDate) return ts.toDate();
+  if (ts instanceof Date) return ts;
+  return new Date(ts);
 }
-
+function ymd(d){
+  if (!d || isNaN(d)) return "";
+  return d.toISOString().slice(0,10);
+}
 function brDate(d){
-
-return d.toLocaleDateString("pt-BR");
-
+  if (!d || isNaN(d)) return "";
+  return d.toLocaleDateString("pt-BR");
 }
-
-function weekday(d){
-
-return d.toLocaleDateString("pt-BR",{weekday:"short"});
-
-}
-
 function hm(d){
-
-return d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
-
+  if (!d || isNaN(d)) return "";
+  return d.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"});
+}
+function weekday(d){
+  if (!d || isNaN(d)) return "";
+  return d.toLocaleDateString("pt-BR", { weekday:"short" });
+}
+function daysInMonth(year, month1to12){
+  return new Date(year, month1to12, 0).getDate();
+}
+function horarioTxt(c){
+  const he = (c?.horaEntrada||"").trim();
+  const hs = (c?.horaSaida||"").trim();
+  if (he && hs) return `${he}–${hs}`;
+  if (he || hs) return `${he||"—"}–${hs||"—"}`;
+  return "—";
 }
 
-function getPlantaoReferencia(dateObj,historico){
-
-if(!historico) return null;
-
-const ymd=dataYmd(dateObj);
-
-let atual=null;
-
-for(const p of historico){
-
-if(p.inicio<=ymd){
-
-if(!atual || p.inicio>atual.inicio){
-
-atual=p;
-
+// ===== admissão =====
+// Regra: competência (ano/mês) é inválida SOMENTE se for ANTES do mês/ano da admissão.
+// (Se entrou no último dia do mês, aquele mês ainda é permitido.)
+function getAdmissaoYM(col){
+  const ad = (col?.dataAdmissao || "").toString().slice(0,10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ad)) return null;
+  const yy = Number(ad.slice(0,4));
+  const mm = Number(ad.slice(5,7));
+  return { yy, mm, ad };
+}
+function isCompetenciaAntesDaAdmissao(col, ano, mes){
+  const a = getAdmissaoYM(col);
+  if (!a) return false;
+  if (ano < a.yy) return true;
+  if (ano > a.yy) return false;
+  return mes < a.mm;
 }
 
+// ===== escala (com 12x36 por histórico) =====
+function getPlantaoReferencia(dateObj, historico){
+  if (!historico || !historico.length) return null;
+  const key = ymd(dateObj);
+  let best = null;
+  for (const p of historico){
+    const ini = String(p?.inicio || "").slice(0,10);
+    if (!ini) continue;
+    if (ini <= key){
+      if (!best || ini > String(best.inicio||"")) best = { ...p, inicio: ini };
+    }
+  }
+  return best;
+}
+function isFolgaByEscala(dateObj, col){
+  const escala = (col?.escala || "5x2").toLowerCase();
+  const dow = dateObj.getDay();
+
+  if (escala === "5x2") return (dow === 0 || dow === 6);
+  if (escala === "6x1") return (dow === 0);
+
+  if (escala === "12x36"){
+    const plantao = getPlantaoReferencia(dateObj, col?.plantaoHistorico || []);
+    if (!plantao) return true; // sem base = considera folga pra não gerar falta errada
+    const base = new Date(plantao.inicio + "T00:00:00");
+    const atual = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 12,0,0);
+    const diffDias = Math.floor((atual - base) / 86400000);
+    // dia de trabalho: diff%2==0, folga: diff%2==1
+    return (diffDias % 2) !== 0;
+  }
+
+  return false;
+}
+function isDiaTrabalho(dateObj, col){
+  return !isFolgaByEscala(dateObj, col);
 }
 
+// ===== locais =====
+function haversineMeters(lat1, lon1, lat2, lon2){
+  const R = 6371000;
+  const toRad = x => x * Math.PI / 180;
+  const dLat = toRad(lat2-lat1);
+  const dLon = toRad(lon2-lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return 2*R*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+function parseLocation(str){
+  if (!str) return null;
+  const p = str.split(",").map(s=>s.trim());
+  if (p.length !== 2) return null;
+  const lat = Number(p[0]), lng = Number(p[1]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return {lat,lng};
+}
+function getBestLocationFromJornada(j){
+  const steps = ["saida_he","entrada_he","saida","retorno_intervalo","saida_intervalo","entrada"];
+  for (const s of steps){
+    const loc = j?.[s]?.location;
+    if (loc) return loc;
+  }
+  return "";
+}
+function reconhecerLocal(locationStr){
+  const p = parseLocation(locationStr);
+  if (!p) return "Não disponível";
+  let best = null;
+  for (const l of cacheLocais){
+    const d = haversineMeters(p.lat,p.lng,l.lat,l.lng);
+    if (d <= l.raio){
+      if (!best || d < best.d) best = {nome:l.nome, d};
+    }
+  }
+  return best ? best.nome : "Não reconhecido";
+}
+async function carregarLocais(){
+  const snap = await getDocs(collection(db, "locais"));
+  cacheLocais = snap.docs.map(d => d.data())
+    .filter(l => Number.isFinite(l.lat) && Number.isFinite(l.lng) && Number.isFinite(l.raio));
 }
 
-return atual;
-
+// ===== ocorrências =====
+function ocDocId(re, ymd){ return `${re}_${ymd}`; }
+async function carregarOcorrenciasMesPorDocId(re, ano, mes, last){
+  const map = {};
+  for (let dia=1; dia<=last; dia++){
+    const dataKey = `${ano}-${pad2(mes)}-${pad2(dia)}`;
+    try{
+      const ref = doc(db, "ocorrencias", ocDocId(re, dataKey));
+      const snap = await getDoc(ref);
+      if (snap.exists()){
+        map[dataKey] = { id:snap.id, ...(snap.data()||{}) };
+      }
+    }catch{
+      // silêncio (produção)
+    }
+  }
+  return map;
+}
+function labelOc(o){
+  if (!o || !o.tipo) return "";
+  const t = (o.tipo || "").toString().toLowerCase();
+  if (t === "falta") return "FALTA (lançada pelo admin)";
+  if (t === "atestado") return "ATESTADO";
+  if (t === "abono") return "ABONO";
+  return (o.tipo || "").toString().toUpperCase();
 }
 
-function isDiaTrabalho(dateObj,col){
-
-if(!col) return false;
-
-if(col.escala==="5x2"){
-
-const d=dateObj.getDay();
-
-return d!==0 && d!==6;
-
+// ===== férias =====
+async function carregarFeriasDoRe(re){
+  const qA = query(collection(db,"afastamentos"), where("re","==",re));
+  const snap = await getDocs(qA);
+  return snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }))
+    .filter(a => String(a.tipo||"").toLowerCase() === "ferias");
+}
+function isWithinRange(ymdKey, ini, fim){
+  return !!(ymdKey && ini && fim && ymdKey >= ini && ymdKey <= fim);
+}
+function aplicaNoDia(ferias, dateObj, col){
+  const onlyWork = (ferias?.aplicarSomenteDiasTrabalho === true);
+  if (onlyWork && !isDiaTrabalho(dateObj, col)) return false;
+  return true;
+}
+function getFeriasNoDia(ymdKey, dateObj, col){
+  for (const f of feriasList){
+    const ini = String(f.inicio||"").slice(0,10);
+    const fim = String(f.fim||"").slice(0,10);
+    if (isWithinRange(ymdKey, ini, fim) && aplicaNoDia(f, dateObj, col)){
+      return f;
+    }
+  }
+  return null;
 }
 
-if(col.escala==="6x1"){
+// ===== selects mês/ano =====
+function popularMonthYear(selectMes, selectAno){
+  const now = new Date();
+  const y = now.getFullYear();
 
-const d=dateObj.getDay();
+  selectMes.innerHTML = "";
+  for (let m=1;m<=12;m++){
+    const opt = document.createElement("option");
+    opt.value = String(m);
+    opt.textContent = pad2(m);
+    if (m === (now.getMonth()+1)) opt.selected = true;
+    selectMes.appendChild(opt);
+  }
 
-return d!==0;
+  selectAno.innerHTML = "";
+  for (let yy=y-3; yy<=y+1; yy++){
+    const opt = document.createElement("option");
+    opt.value = String(yy);
+    opt.textContent = String(yy);
+    if (yy === y) opt.selected = true;
+    selectAno.appendChild(opt);
+  }
+}
+popularMonthYear(mesSel, anoSel);
+popularMonthYear(holMesSel, holAnoSel);
 
+// ===== UI holerite =====
+function setHolStatus(msg){ holStatus.textContent = msg || ""; }
+function applyTipoHoleriteUI(){
+  const tipo = holTipoSel.value;
+
+  if (tipo === "13_1"){
+    holMesSel.value = "11";
+    holMesSel.disabled = true;
+  } else if (tipo === "13_2"){
+    holMesSel.value = "12";
+    holMesSel.disabled = true;
+  } else {
+    holMesSel.disabled = false;
+  }
+}
+holTipoSel.addEventListener("change", () => { applyTipoHoleriteUI(); setHolStatus(""); });
+applyTipoHoleriteUI();
+
+// ===== login =====
+btnEntrar.addEventListener("click", entrar);
+
+btnCarregar.addEventListener("click", carregar);
+btnPdf.addEventListener("click", exportarPdf);
+btnBaixarHolerite.addEventListener("click", baixarHoleriteDoMes);
+
+mesSel.addEventListener("change", () => { if (user) carregar(); });
+anoSel.addEventListener("change", () => { if (user) carregar(); });
+
+// espelha mês/ano da frequência no holerite (quando tipo = mensal)
+function syncHolFromFreq(){
+  if (holTipoSel.value !== "mensal") return;
+  holMesSel.value = mesSel.value;
+  holAnoSel.value = anoSel.value;
+}
+function syncFreqFromHol(){
+  if (holTipoSel.value !== "mensal") return;
+  mesSel.value = holMesSel.value;
+  anoSel.value = holAnoSel.value;
+}
+mesSel.addEventListener("change", syncHolFromFreq);
+anoSel.addEventListener("change", syncHolFromFreq);
+holMesSel.addEventListener("change", () => { syncFreqFromHol(); setHolStatus(""); });
+holAnoSel.addEventListener("change", () => { syncFreqFromHol(); setHolStatus(""); });
+
+async function entrar(){
+  const re = reEl.value.trim();
+  const senha = senhaEl.value.trim();
+  if (!re || !senha) return alert("Digite RE e senha.");
+
+  const ref = doc(db, "colaboradores", re);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return alert("RE não cadastrado.");
+
+  const data = snap.data() || {};
+  const nome = (data.nome || "").trim();
+  const cpf  = (data.cpf  || "").toString().trim();
+  const ativo = (data.ativo !== false);
+
+  if (!ativo) return alert("Seu cadastro está INATIVO. Procure o administrador.");
+  if (!cpf || cpf.replace(/\D/g,"").length < 4) return alert("CPF não cadastrado corretamente. Procure o administrador.");
+
+  const senhaCorreta = cpf.replace(/\D/g,"").slice(0,4);
+  if (senha !== senhaCorreta) return alert("Senha incorreta.");
+
+  user = {
+    re,
+    nome,
+    cpf,
+    ativo,
+    escala: (data.escala || "5x2"),
+    horaEntrada: (data.horaEntrada || "").toString().trim(),
+    horaSaida: (data.horaSaida || "").toString().trim(),
+    dataAdmissao: (data.dataAdmissao || data.admissao || "").toString().slice(0,10),
+    plantaoHistorico: Array.isArray(data.plantaoHistorico) ? data.plantaoHistorico : []
+  };
+
+  await carregarLocais();
+
+  infoUser.textContent = `${user.nome} — RE ${user.re} — Escala ${user.escala} — Horário ${horarioTxt(user)}`;
+  loginBox.style.display = "none";
+  conteudo.style.display = "block";
+
+  setTab("freq");
+  syncHolFromFreq();
+  applyTipoHoleriteUI();
+  setHolStatus("");
+
+  await carregar();
 }
 
-if(col.escala==="12x36"){
+// ===== carga e render =====
+async function carregar(){
+  if (!user) return;
 
-const plantao=getPlantaoReferencia(dateObj,col.plantaoHistorico);
+  const mes = Number(mesSel.value);
+  const ano = Number(anoSel.value);
 
-if(!plantao) return false;
+  // jornadas do re
+  let jornadas = [];
+  try{
+    const qJ = query(collection(db, "jornadas"), where("re", "==", user.re));
+    const snapJ = await getDocs(qJ);
+    jornadas = snapJ.docs.map(d => ({ id:d.id, ...d.data() }));
+  }catch{
+    jornadas = [];
+  }
 
-const base=new Date(plantao.inicio);
+  jornadasMes = jornadas.filter(j => {
+    const dEnt = toDateAny(j.entrada?.ts);
+    if (!dEnt || isNaN(dEnt)) return false;
+    return (dEnt.getFullYear() === ano) && ((dEnt.getMonth()+1) === mes);
+  }).sort((a,b) => (toDateAny(a.entrada?.ts)||0) - (toDateAny(b.entrada?.ts)||0));
 
-const diff=Math.floor((dateObj-base)/86400000);
+  const last = daysInMonth(ano, mes);
 
-return diff%2===0;
+  mapOcorrencias = await carregarOcorrenciasMesPorDocId(user.re, ano, mes, last);
+  feriasList = await carregarFeriasDoRe(user.re);
 
+  // map dia -> jornadas
+  const mapDia = {};
+  for (const j of jornadasMes){
+    const dEnt = toDateAny(j.entrada?.ts);
+    const dia = dEnt.getDate();
+    if (!mapDia[dia]) mapDia[dia] = [];
+    mapDia[dia].push(j);
+  }
+
+  linhasMes = [];
+  for (let dia=1; dia<=last; dia++){
+    const dateObj = new Date(ano, mes-1, dia, 12, 0, 0);
+    const js = mapDia[dia] || [];
+    linhasMes.push({ dia, dateObj, jornadas: js });
+  }
+
+  renderTabela();
 }
 
-return false;
+function obsJornada(j){
+  const dEnt = toDateAny(j.entrada?.ts);
+  const dSai = toDateAny(j.saida?.ts);
+  let obs = [];
 
+  if (j?.flags?.intrajornada_nao_realizada) obs.push("Intrajornada não realizada");
+  if (dEnt && dSai && ymd(dEnt) !== ymd(dSai)) obs.push("Virou o dia");
+  if (!j.saida?.ts) obs.push("Sem saída");
+  if ((j.saida_intervalo?.ts && !j.retorno_intervalo?.ts) || (!j.saida_intervalo?.ts && j.retorno_intervalo?.ts)) {
+    obs.push("Intervalo incompleto");
+  }
+  const posto = reconhecerLocal(getBestLocationFromJornada(j));
+  if (posto === "Não reconhecido") obs.push("Fora do posto");
+
+  return obs.join(" | ");
 }
 
-function isAdmitido(dateObj,col){
+function renderTabela(){
+  tbody.innerHTML = "";
+  const mes = Number(mesSel.value);
+  const ano = Number(anoSel.value);
 
-if(!col.dataAdmissao) return true;
+  for (const linha of linhasMes){
+    const dataKey = `${ano}-${pad2(mes)}-${pad2(linha.dia)}`;
+    const oc = mapOcorrencias[dataKey] || null;
+    const ferias = getFeriasNoDia(dataKey, linha.dateObj, user);
+    const ehFolga = isFolgaByEscala(linha.dateObj, user);
+    const j1 = (linha.jornadas && linha.jornadas.length) ? linha.jornadas[0] : null;
 
-return dataYmd(dateObj)>=col.dataAdmissao;
+    let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="-", obs="";
 
+    // antes da admissão: não aponta nada (nem falta)
+    const antesAdmissao = isCompetenciaAntesDaAdmissao(user, ano, mes) && false; // (competência inteira é tratada no holerite; aqui vamos por dia)
+    const ad = (user?.dataAdmissao || "").slice(0,10);
+    const diaAntesAdmissao = (ad && dataKey < ad);
+
+    if (diaAntesAdmissao){
+      obs = "";
+    } else if (ferias){
+      obs = "FÉRIAS" + (ferias.motivo ? ` | ${ferias.motivo}` : "");
+      if (ehFolga) obs += " (folga)";
+    } else if (oc){
+      obs = labelOc(oc) + (oc.motivo ? ` | ${oc.motivo}` : "");
+      if (ehFolga) obs += " (folga)";
+    } else if (j1){
+      const dEnt = toDateAny(j1.entrada?.ts);
+      const dSai = toDateAny(j1.saida?.ts);
+
+      entrada = hm(toDateAny(j1.entrada?.ts));
+      saiInt  = hm(toDateAny(j1.saida_intervalo?.ts));
+      retInt  = hm(toDateAny(j1.retorno_intervalo?.ts));
+      saida   = hm(dSai) + ((dSai && dEnt && ymd(dSai) !== ymd(dEnt)) ? " (+1)" : "");
+      entHe   = hm(toDateAny(j1.entrada_he?.ts));
+      saiHe   = hm(toDateAny(j1.saida_he?.ts));
+      posto   = reconhecerLocal(getBestLocationFromJornada(j1));
+
+      obs = obsJornada(j1);
+
+      // ✅ FT: trabalhou em folga
+      if (ehFolga){
+        obs = (obs ? ("FT | " + obs) : "FT");
+      }
+
+      if (linha.jornadas.length > 1){
+        obs = (obs ? (obs + " | ") : "") + `2+ jornadas no dia (${linha.jornadas.length})`;
+      }
+    } else if (ehFolga){
+      obs = "FOLGA (escala)";
+    } else {
+      obs = "FALTA";
+    }
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${brDate(linha.dateObj)}</td>
+      <td class="${(j1 || ehFolga || oc || ferias || diaAntesAdmissao) ? "" : "muted"}">${weekday(linha.dateObj)}</td>
+      <td>${entrada}</td>
+      <td>${saiInt}</td>
+      <td>${retInt}</td>
+      <td>${saida}</td>
+      <td>${entHe}</td>
+      <td>${saiHe}</td>
+      <td>${posto}</td>
+      <td>${obs}</td>
+    `;
+    tbody.appendChild(tr);
+  }
 }
 
-window.login=async function(){
+/* =========================
+   HOLERITE (DOWNLOAD)
+   ========================= */
 
-const reVal=re.value.trim();
-
-const senhaVal=senha.value.trim();
-
-const ref=doc(db,"colaboradores",reVal);
-
-const snap=await getDoc(ref);
-
-if(!snap.exists()){
-
-alert("RE não encontrado");
-
-return;
-
+// Você já usa: holerites/<RE>/hol_<RE>_<MM>_<YYYY>.pdf
+function buildHoleriteFileNameMensal(re, mes, ano){
+  return `hol_${re}_${pad2(mes)}_${String(ano)}.pdf`;
 }
 
-const data=snap.data();
-
-const senhaCorreta=(data.cpf||"").slice(0,4);
-
-if(senhaVal!==senhaCorreta){
-
-alert("Senha incorreta");
-
-return;
-
+// 13º fixo: 1ª parcela = NOV (11), 2ª parcela = DEZ (12)
+// Nome sugerido para bater com seu padrão e não bagunçar:
+// hol_<RE>_11_<ANO>_13p1.pdf
+// hol_<RE>_12_<ANO>_13p2.pdf
+function buildHoleriteFileName13(re, ano, parcela){
+  const mes = (parcela === 1) ? 11 : 12;
+  const suf = (parcela === 1) ? "13p1" : "13p2";
+  return `hol_${re}_${pad2(mes)}_${String(ano)}_${suf}.pdf`;
 }
 
-user={id:reVal,...data};
+// tenta 2 padrões (se você já tiver algum outro nome antigo)
+function buildHoleriteCandidates(re, mes, ano, tipo){
+  if (tipo === "mensal"){
+    return [
+      `holerites/${re}/${buildHoleriteFileNameMensal(re, mes, ano)}`,
+      // fallback opcional (se você usou outro padrão antes)
+      `holerites/${re}/hol_${re}_${pad2(mes)}_${String(ano)}.pdf`,
+    ];
+  }
 
-loginBox.style.display="none";
+  if (tipo === "13_1"){
+    return [
+      `holerites/${re}/${buildHoleriteFileName13(re, ano, 1)}`,
+      // fallback (caso você queira guardar como novembro mensal mesmo)
+      `holerites/${re}/${buildHoleriteFileNameMensal(re, 11, ano)}`
+    ];
+  }
 
-conteudo.style.display="block";
+  if (tipo === "13_2"){
+    return [
+      `holerites/${re}/${buildHoleriteFileName13(re, ano, 2)}`,
+      `holerites/${re}/${buildHoleriteFileNameMensal(re, 12, ano)}`
+    ];
+  }
 
-initSelects();
-
+  return [];
 }
 
-function initSelects(){
-
-const now=new Date();
-
-for(let m=1;m<=12;m++){
-
-mes.innerHTML+=`<option value="${m}">${pad(m)}</option>`;
-
+function humanAdmissao(){
+  const ad = (user?.dataAdmissao || "").toString().slice(0,10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ad)) return "";
+  const [y,m,d] = ad.split("-");
+  return `${d}/${m}/${y}`;
 }
 
-for(let y=now.getFullYear()-2;y<=now.getFullYear()+1;y++){
+async function baixarHoleriteDoMes(){
+  if (!user?.re) return alert("Faça login primeiro.");
 
-ano.innerHTML+=`<option value="${y}">${y}</option>`;
+  btnBaixarHolerite.disabled = true;
 
+  try{
+    applyTipoHoleriteUI();
+
+    const tipo = holTipoSel.value;
+    const ano = Number(holAnoSel.value);
+    let mes = Number(holMesSel.value);
+
+    // 13º: força mês correto
+    if (tipo === "13_1") mes = 11;
+    if (tipo === "13_2") mes = 12;
+
+    // regra de admissão por competência (mês/ano)
+    // - mês de admissão É permitido (mesmo se entrou no último dia)
+    if (isCompetenciaAntesDaAdmissao(user, ano, mes)){
+      setHolStatus(`❌ Sem holerite nesta competência.\nVocê foi admitido em ${humanAdmissao()}.`);
+      return;
+    }
+
+    // status de carregamento
+    setHolStatus("Procurando holerite...");
+
+    const candidates = buildHoleriteCandidates(user.re, mes, ano, tipo);
+
+    // tenta cada caminho uma vez (sem loop infinito)
+    let foundUrl = null;
+    let foundPath = null;
+
+    for (const path of candidates){
+      try{
+        const url = await getDownloadURL(sRef(storage, path));
+        foundUrl = url;
+        foundPath = path;
+        break;
+      }catch{
+        // não encontrado / sem permissão / etc -> tenta próximo
+      }
+    }
+
+    if (!foundUrl){
+      // Mensagem que você pediu (sem “F12”, e amigável):
+      // - Se competência válida: "ainda não foi disponibilizado"
+      // - Se 13º: também “ainda não foi disponibilizado”
+      setHolStatus("❌ Holerite ainda não foi disponibilizado para esta competência.");
+      return;
+    }
+
+    setHolStatus("Baixando...");
+
+    const resp = await fetch(foundUrl);
+    if (!resp.ok) throw new Error(`Falha no download (HTTP ${resp.status})`);
+
+    const blob = await resp.blob();
+    const blobUrl = URL.createObjectURL(blob);
+
+    // nome do arquivo local (download)
+    let fileName = "";
+    if (tipo === "mensal") fileName = buildHoleriteFileNameMensal(user.re, mes, ano);
+    if (tipo === "13_1") fileName = buildHoleriteFileName13(user.re, ano, 1);
+    if (tipo === "13_2") fileName = buildHoleriteFileName13(user.re, ano, 2);
+    if (!fileName) fileName = "holerite.pdf";
+
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(blobUrl);
+
+    setHolStatus("✅ Holerite baixado com sucesso.");
+
+  }catch(e){
+    const msg = String(e?.message || e);
+
+    // Sem “F12”; mensagens diretas:
+    if (msg.includes("permission") || msg.includes("unauthorized")){
+      setHolStatus("❌ Sem permissão para baixar holerite no momento.");
+      alert("Sem permissão para baixar holerite.");
+      return;
+    }
+
+    setHolStatus("❌ Não foi possível baixar agora. Tente novamente.");
+    alert("Falha ao baixar holerite.");
+  }finally{
+    btnBaixarHolerite.disabled = false;
+  }
 }
 
-mes.value=now.getMonth()+1;
-
-ano.value=now.getFullYear();
-
+/* =========================
+   PDF (Frequência)
+   ========================= */
+async function loadImageAsDataURL(url){
+  const res = await fetch(url);
+  const blob = await res.blob();
+  return await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+}
+async function getImageNaturalSize(dataUrl){
+  return await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve({ w: img.naturalWidth || img.width, h: img.naturalHeight || img.height });
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
 }
 
-window.carregar=async function(){
+async function exportarPdf(){
+  if (!user) return;
 
-const m=Number(mes.value);
+  try{ await carregar(); }catch{}
 
-const y=Number(ano.value);
+  const mes = Number(mesSel.value);
+  const ano = Number(anoSel.value);
+  const mesTxt = pad2(mes);
 
-const q=query(collection(db,"jornadas"),where("re","==",user.id));
+  const { jsPDF } = window.jspdf;
+  const docPdf = new jsPDF({ orientation:"portrait", unit:"pt", format:"a4" });
+  const pageH = docPdf.internal.pageSize.getHeight();
 
-const snap=await getDocs(q);
+  let logoDataUrl = null;
+  let logoNat = null;
+  try {
+    logoDataUrl = await loadImageAsDataURL("GW.png");
+    logoNat = await getImageNaturalSize(logoDataUrl);
+  } catch {}
 
-jornadas=snap.docs.map(d=>d.data());
+  const marginX = 30;
+  const headerTop = 22;
 
-render(m,y);
+  const logoW = 110;
+  let logoH = 45;
+  if (logoNat && logoNat.w && logoNat.h){
+    logoH = Math.round(logoW * (logoNat.h / logoNat.w));
+  }
 
+  const headerH = (logoDataUrl ? (logoH + 10) : 0) + 14 + 12 + 12 + 12 + 12 + 12 + 6;
+
+  function drawHeader(){
+    let y = headerTop;
+    if (logoDataUrl){
+      docPdf.addImage(logoDataUrl, "PNG", marginX, y, logoW, logoH);
+      y += logoH + 10;
+    }
+    docPdf.setFontSize(12);
+    docPdf.text("Espelho de Ponto (Colaborador)", marginX, y); y += 14;
+
+    docPdf.setFontSize(9);
+    docPdf.text(`Nome: ${user.nome}`, marginX, y); y += 12;
+    docPdf.text(`RE: ${user.re}`, marginX, y); y += 12;
+    docPdf.text(`Escala: ${user.escala}`, marginX, y); y += 12;
+    docPdf.text(`Horário: ${horarioTxt(user)}`, marginX, y); y += 12;
+    if (user.dataAdmissao) docPdf.text(`Admissão: ${humanAdmissao()}`, marginX, y), y += 12;
+    docPdf.text(`Competência: ${mesTxt}/${ano}`, marginX, y); y += 12;
+  }
+  function drawFooter(){
+    docPdf.setFontSize(8);
+    docPdf.text("Sistema desenvolvido por Gabriel Wandele, todos direitos reservados", marginX, pageH - 10);
+  }
+
+  const head = [[ "Data","Dia","Ent","Ini Int","Fim Int","Sai","HE Ent","HE Sai","Posto","Obs" ]];
+
+  const body = linhasMes.map(linha => {
+    const dataKey = `${ano}-${pad2(mes)}-${pad2(linha.dia)}`;
+    const oc = mapOcorrencias[dataKey] || null;
+    const ferias = getFeriasNoDia(dataKey, linha.dateObj, user);
+    const ehFolga = isFolgaByEscala(linha.dateObj, user);
+    const j1 = (linha.jornadas && linha.jornadas.length) ? linha.jornadas[0] : null;
+
+    const ad = (user?.dataAdmissao || "").slice(0,10);
+    const diaAntesAdmissao = (ad && dataKey < ad);
+
+    let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="-", obs="";
+
+    if (diaAntesAdmissao){
+      obs = "";
+    } else if (ferias){
+      obs = "FÉRIAS" + (ferias.motivo ? ` | ${ferias.motivo}` : "");
+      if (ehFolga) obs += " (folga)";
+    } else if (oc){
+      obs = labelOc(oc) + (oc.motivo ? ` | ${oc.motivo}` : "");
+      if (ehFolga) obs += " (folga)";
+    } else if (ehFolga && !j1){
+      obs = "FOLGA";
+    } else if (j1){
+      const dEnt = toDateAny(j1.entrada?.ts);
+      const dSai = toDateAny(j1.saida?.ts);
+
+      entrada = hm(toDateAny(j1.entrada?.ts));
+      saiInt  = hm(toDateAny(j1.saida_intervalo?.ts));
+      retInt  = hm(toDateAny(j1.retorno_intervalo?.ts));
+      saida   = hm(dSai) + ((dSai && dEnt && ymd(dSai) !== ymd(dEnt)) ? " (+1)" : "");
+      entHe   = hm(toDateAny(j1.entrada_he?.ts));
+      saiHe   = hm(toDateAny(j1.saida_he?.ts));
+      posto   = reconhecerLocal(getBestLocationFromJornada(j1));
+      obs     = obsJornada(j1);
+      if (ehFolga) obs = (obs ? ("FT | " + obs) : "FT");
+    } else {
+      obs = "FALTA";
+    }
+
+    return [
+      brDate(linha.dateObj),
+      weekday(linha.dateObj),
+      entrada, saiInt, retInt, saida, entHe, saiHe,
+      posto, obs
+    ];
+  });
+
+  docPdf.autoTable({
+    head,
+    body,
+    theme: "grid",
+    startY: headerTop + headerH + 8,
+    margin: { left: marginX, right: marginX, top: headerTop + headerH + 8, bottom: 22 },
+    styles: { fontSize: 8, cellPadding: 3, overflow:"linebreak", valign:"middle", halign:"center" },
+    headStyles: { fillColor: [240,240,240], textColor: [0,0,0] },
+    columnStyles: {
+      0: { cellWidth: 72 },
+      1: { cellWidth: 38 },
+      2: { cellWidth: 38 },
+      3: { cellWidth: 52 },
+      4: { cellWidth: 52 },
+      5: { cellWidth: 44 },
+      6: { cellWidth: 44 },
+      7: { cellWidth: 44 },
+      8: { cellWidth: 86 },
+      9: { cellWidth: "auto" }
+    },
+    willDrawPage: () => drawHeader(),
+    didDrawPage: () => drawFooter()
+  });
+
+  docPdf.save(`espelho_${user.re}_${mesTxt}-${ano}.pdf`);
 }
-
-function render(m,y){
-
-tbody.innerHTML="";
-
-const dias=new Date(y,m,0).getDate();
-
-for(let dia=1;dia<=dias;dia++){
-
-const d=new Date(y,m-1,dia);
-
-const ymd=dataYmd(d);
-
-const j=jornadas.find(x=>x.entrada?.ts?.slice(0,10)===ymd);
-
-let entrada="",saida="",obs="",posto="";
-
-const admitido=isAdmitido(d,user);
-
-const trabalho=isDiaTrabalho(d,user);
-
-if(!admitido){
-
-obs="";
-
-}
-
-else if(j){
-
-entrada=hm(new Date(j.entrada.ts));
-
-saida=hm(new Date(j.saida?.ts));
-
-posto=j.entrada.location||"";
-
-if(!trabalho){
-
-obs="FT";
-
-}
-
-}
-
-else{
-
-if(trabalho){
-
-obs="FALTA";
-
-}
-
-else{
-
-obs="FOLGA";
-
-}
-
-}
-
-tbody.innerHTML+=`
-
-<tr>
-
-<td>${brDate(d)}</td>
-<td>${weekday(d)}</td>
-<td>${entrada}</td>
-<td>${saida}</td>
-<td>${posto}</td>
-<td>${obs}</td>
-
-</tr>
-
-`;
-
-}
-
-}
-
 </script>
 
 </body>
