@@ -6,52 +6,25 @@
 <title>Painel Admin</title>
 
 <style>
-  :root{
-    --bg:#f5f5f5;
-    --card:#fff;
-    --primary:#1f6feb;
-    --muted:#666;
-    --border:#ddd;
-    --danger:#a10000;
-  }
-  body { font-family: Arial, sans-serif; background:var(--bg); text-align:center; margin:0; padding:0; }
-  .container { background:var(--card); padding:20px; margin:16px auto; max-width:1300px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.06); }
+  body { font-family: Arial; background:#f5f5f5; text-align:center; margin:0; }
+  .container { background:#fff; padding:20px; margin:20px auto; max-width:1300px; border-radius:10px; }
   .logo { width:260px; margin-bottom: 10px; }
-  input, button, select { padding:10px; margin:5px; }
+  input, button, select { padding:10px; margin:5px; max-width:100%; }
   button { cursor:pointer; }
   .row { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:end; margin-top:10px; }
   table { width:100%; border-collapse:collapse; margin-top:18px; font-size:13px; }
   th, td { border:1px solid #ccc; padding:8px; }
-  th { background:#fafafa; position:sticky; top:0; z-index:1; }
-  .small { font-size:12px; color:var(--muted); }
+  th { background:#fafafa; }
+  .small { font-size:12px; color:#666; }
   .hr { height:1px; background:#eee; margin:18px 0; border:0; }
-
-  /* MENU RESPONSIVO (não some no celular) */
-  .menuWrap{
-    display:flex;
-    justify-content:center;
-  }
-  .menu {
-    display:flex;
-    gap:8px;
-    justify-content:flex-start;
-    flex-wrap:nowrap;
-    margin-top:10px;
-    overflow-x:auto;
-    -webkit-overflow-scrolling:touch;
-    padding-bottom:6px;
-    max-width:100%;
-  }
-  .menu::-webkit-scrollbar{ height:6px; }
-  .menu::-webkit-scrollbar-thumb{ background:#d7d7d7; border-radius:999px; }
-  .menu button { background:var(--primary); color:#fff; border:none; border-radius:10px; white-space:nowrap; flex:0 0 auto; }
+  .menu { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:10px; }
+  .menu button { background:#1f6feb; color:#fff; border:none; border-radius:8px; }
   .menu button.secondary { background:#6c757d; }
-
   .section { display:none; }
   .section.active { display:block; }
 
   .minBtn{
-    border:1px solid var(--border);
+    border:1px solid #ddd;
     background:#fff;
     border-radius:10px;
     padding:6px 10px;
@@ -70,7 +43,7 @@
   }
   .modal{
     background:#fff;
-    width:min(920px, 94vw);
+    width:min(900px, 94vw);
     border-radius:12px;
     padding:16px;
     box-shadow:0 10px 30px rgba(0,0,0,0.2);
@@ -81,12 +54,6 @@
     display:grid;
     grid-template-columns: 1fr 1fr;
     gap:10px;
-  }
-  @media (max-width: 760px){
-    .container{ margin:10px; padding:14px; }
-    .logo{ width:210px; }
-    table{ font-size:12px; }
-    .modal .grid{ grid-template-columns:1fr; }
   }
   .modal label{ font-size:12px; color:#555; }
   .modal input, .modal select{
@@ -105,7 +72,7 @@
     border-radius:10px;
     padding:10px 14px;
   }
-  .btnPrimary{ background:var(--primary); color:#fff; }
+  .btnPrimary{ background:#1f6feb; color:#fff; }
   .btnGhost{ background:#e9ecef; }
   .btnDangerInline{
     display:inline-block;
@@ -115,17 +82,17 @@
     padding:8px 10px;
     font-size:12px;
     cursor:pointer;
-    color:var(--danger);
+    color:#a10000;
   }
-  .pill{
-    display:inline-block;
-    padding:4px 8px;
-    border-radius:999px;
-    font-size:12px;
-    background:#f0f4ff;
-    border:1px solid #d7e3ff;
-    color:#1a3d8f;
-    margin-left:6px;
+
+  /* mobile ajustes */
+  @media (max-width: 720px){
+    .container{ margin:10px; padding:14px; }
+    .logo{ width:200px; }
+    table{ font-size:12px; }
+    th, td{ padding:6px; }
+    .modal .grid{ grid-template-columns: 1fr; }
+    .menu button{ padding:10px 12px; }
   }
 </style>
 </head>
@@ -149,17 +116,14 @@
     Editar horários no formato: <b>DD/MM/AAAA HH:MM</b> (ex: 16/02/2026 07:10)
   </div>
 
-  <div class="menuWrap">
-    <div class="menu">
-      <button onclick="showSection('secJornadas')">Jornadas</button>
-      <button onclick="showSection('secColab')">Colaboradores</button>
-      <button onclick="showSection('secPlantoes')">Plantões 12x36</button>
-      <button onclick="showSection('secHolerites')">Holerites</button>
-      <button onclick="showSection('secLocal')">Locais</button>
-      <button onclick="showSection('secOcorr')">Ocorrências (dia)</button>
-      <button onclick="showSection('secAfast')">Férias (período)</button>
-      <button class="secondary" onclick="logout()">Sair</button>
-    </div>
+  <div class="menu">
+    <button onclick="showSection('secJornadas')">Jornadas</button>
+    <button onclick="showSection('secColab')">Colaboradores</button>
+    <button onclick="showSection('secLocal')">Locais</button>
+    <button onclick="showSection('secOcorr')">Ocorrências (dia)</button>
+    <button onclick="showSection('secAfast')">Férias (período)</button>
+    <button onclick="showSection('secPlantoes')">Plantões 12x36</button>
+    <button class="secondary" onclick="logout()">Sair</button>
   </div>
 
   <hr class="hr">
@@ -210,19 +174,15 @@
       <select id="cadEscala">
         <option value="5x2">5x2 (Seg-Sex)</option>
         <option value="6x1">6x1 (Folga Dom)</option>
-        <option value="12x36">12x36 (Plantão)</option>
       </select>
 
       <input id="cadHoraEntrada" type="time" title="Hora prevista de entrada">
       <input id="cadHoraSaida" type="time" title="Hora prevista de saída">
+
       <input id="cadAdmissao" type="date" title="Data de admissão">
 
       <button onclick="cadastrarColab()">Cadastrar</button>
       <button onclick="carregarColaboradores()">Atualizar lista</button>
-    </div>
-
-    <div class="small">
-      Para <b>12x36</b>, depois de cadastrar vá em <b>Plantões 12x36</b> e registre a base (data + Trabalha/Folga).
     </div>
 
     <table>
@@ -239,90 +199,6 @@
         </tr>
       </thead>
       <tbody id="tbodyColab"></tbody>
-    </table>
-  </div>
-
-  <!-- PLANTÕES 12x36 -->
-  <div id="secPlantoes" class="section">
-    <h3>Plantões 12x36 <span class="pill">com histórico por data</span></h3>
-    <div class="small">
-      Aqui você define a “base” do colaborador em uma data: se naquela data ele <b>TRABALHA</b> ou está de <b>FOLGA</b>.<br>
-      Se mudar o plantão, você registra um <b>novo</b> ajuste com “vigente a partir de”, e o histórico antigo fica preservado.
-    </div>
-
-    <div class="row">
-      <input id="plRe" placeholder="RE" inputmode="numeric">
-      <input id="plVigencia" type="date" title="Vigente a partir de">
-      <select id="plBase">
-        <option value="trabalha">Nesta data TRABALHA</option>
-        <option value="folga">Nesta data é FOLGA</option>
-      </select>
-      <input id="plObs" placeholder="Obs (opcional)">
-      <button onclick="salvarPlantao12x36()">Salvar ajuste</button>
-      <button onclick="carregarPlantoes12x36()">Atualizar lista</button>
-    </div>
-
-    <div class="row">
-      <input id="plFiltroRe" placeholder="Filtrar RE (opcional)" inputmode="numeric">
-      <button onclick="carregarPlantoes12x36()">Filtrar</button>
-    </div>
-
-    <table>
-      <thead>
-        <tr>
-          <th>RE</th>
-          <th>Nome</th>
-          <th>Vigente a partir de</th>
-          <th>Base</th>
-          <th>Obs</th>
-          <th>Atualizado</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody id="tbodyPlantoes"></tbody>
-    </table>
-  </div>
-
-  <!-- HOLERITES -->
-  <div id="secHolerites" class="section">
-    <h3>Holerites <span class="pill">PDF</span></h3>
-    <div class="small">
-      Competência mensal no formato <b>AAAA-MM</b> (ex: 2026-02).<br>
-      13º: <b>1ª parcela = novembro</b> • <b>2ª parcela = dezembro</b> (tipo 13p1 e 13p2).
-    </div>
-
-    <div class="row">
-      <input id="holRe" placeholder="RE" inputmode="numeric">
-      <input id="holCompetencia" placeholder="Competência (AAAA-MM)" inputmode="numeric">
-      <select id="holTipo">
-        <option value="mensal">Mensal</option>
-        <option value="13p1">13º 1ª parcela (NOV)</option>
-        <option value="13p2">13º 2ª parcela (DEZ)</option>
-      </select>
-      <input id="holArquivo" type="file" accept="application/pdf">
-      <button onclick="uploadHolerite()">Enviar PDF</button>
-      <button onclick="carregarHolerites()">Atualizar lista</button>
-    </div>
-
-    <div class="row">
-      <input id="holFiltroRe" placeholder="Filtrar RE (opcional)" inputmode="numeric">
-      <input id="holFiltroComp" placeholder="Filtrar Competência (AAAA-MM) (opcional)" inputmode="numeric">
-      <button onclick="carregarHolerites()">Filtrar</button>
-    </div>
-
-    <table>
-      <thead>
-        <tr>
-          <th>RE</th>
-          <th>Nome</th>
-          <th>Competência</th>
-          <th>Tipo</th>
-          <th>Arquivo</th>
-          <th>Enviado</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody id="tbodyHolerites"></tbody>
     </table>
   </div>
 
@@ -432,6 +308,48 @@
     </table>
   </div>
 
+  <!-- PLANTÕES 12x36 -->
+  <div id="secPlantoes" class="section">
+    <h3>Plantões 12x36</h3>
+    <div class="small">
+      Cadastre uma regra de base por vigência: se em <b>DATA</b> a pessoa estará em <b>TRABALHA</b> ou <b>FOLGA</b>.
+      O sistema usa o histórico (não altera o passado ao trocar o plantão depois).
+    </div>
+
+    <div class="row">
+      <input id="plRe" placeholder="RE" inputmode="numeric">
+      <input id="plVigencia" type="date" title="A partir desta data (inclusive)">
+      <select id="plBase">
+        <option value="trabalha">TRABALHA (dia base)</option>
+        <option value="folga">FOLGA (dia base)</option>
+      </select>
+      <input id="plObs" placeholder="Obs (opcional) ex: Mudança de plantão">
+      <button onclick="salvarPlantao12x36()">Salvar 12x36</button>
+    </div>
+
+    <hr class="hr">
+
+    <div class="row">
+      <input id="plFiltroRe" placeholder="Filtrar RE (opcional)" inputmode="numeric">
+      <button onclick="carregarPlantoes12x36()">Atualizar lista</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>RE</th>
+          <th>Nome</th>
+          <th>Vigência</th>
+          <th>Base</th>
+          <th>Obs</th>
+          <th>Atualizado</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tbodyPlantoes"></tbody>
+    </table>
+  </div>
+
 </div>
 
 <!-- MODAL -->
@@ -449,15 +367,12 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
-  getFirestore, doc, setDoc, getDocs, collection, updateDoc, addDoc, deleteDoc, deleteField,
-  query, where, getDoc, orderBy
+  getFirestore, doc, setDoc, getDocs, collection, updateDoc, addDoc,
+  deleteDoc, deleteField, query, where, getDoc
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import {
   getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import {
-  getStorage, ref as sRef, uploadBytes, getDownloadURL, deleteObject
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD--zpWLbLg5X82oGTyz6SuPFQV0sd7NWc",
@@ -472,7 +387,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
-const storage = getStorage(app);
 
 const loginDiv = document.getElementById("loginDiv");
 const painelDiv = document.getElementById("painelDiv");
@@ -483,7 +397,6 @@ let cacheColabs = [];
 let cacheFerias = [];
 let cacheOcorr = [];
 let cachePlantoes = [];
-let cacheHolerites = [];
 
 // menu
 window.showSection = function(id){
@@ -495,7 +408,6 @@ window.showSection = function(id){
   if (id === "secAfast") { carregarColaboradores().then(carregarFerias); }
   if (id === "secOcorr") { carregarColaboradores().then(carregarOcorrencias); }
   if (id === "secPlantoes") { carregarColaboradores().then(carregarPlantoes12x36); }
-  if (id === "secHolerites") { carregarColaboradores().then(carregarHolerites); }
 };
 
 // auth
@@ -513,6 +425,7 @@ onAuthStateChanged(auth, user => {
   if (user){
     carregarLocais();
     carregarColaboradores();
+    // não força carregar tudo pra não pesar no mobile
   }
 });
 
@@ -567,7 +480,6 @@ function isFolgaByEscala(dateObj, escala){
   const e = (escala || "5x2").toLowerCase();
   if (e === "5x2") return (dow === 0 || dow === 6);
   if (e === "6x1") return (dow === 0);
-  // 12x36 não é fixo por DOW, é por alternância (tratado no meu_ponto.html)
   return false;
 }
 function isDiaTrabalho(dateObj, escala){
@@ -629,7 +541,7 @@ window.cadastrarColab = async function(){
   const escala = document.getElementById("cadEscala").value;
   const horaEntrada = (document.getElementById("cadHoraEntrada").value || "").trim();
   const horaSaida = (document.getElementById("cadHoraSaida").value || "").trim();
-  const dataAdmissao = (document.getElementById("cadAdmissao").value || "").trim();
+  const dataAdmissao = (document.getElementById("cadAdmissao").value || "").trim(); // YYYY-MM-DD
 
   if (!re || !nome) return alert("Preencha RE e Nome.");
   cpf = cpf.replace(/\D/g,"");
@@ -712,7 +624,6 @@ window.editarColab = function(reDocId){
           <select id="mEscala">
             <option value="5x2" ${(c.escala||"5x2")==="5x2" ? "selected" : ""}>5x2 (Seg-Sex)</option>
             <option value="6x1" ${(c.escala||"5x2")==="6x1" ? "selected" : ""}>6x1 (Folga Dom)</option>
-            <option value="12x36" ${(c.escala||"5x2")==="12x36" ? "selected" : ""}>12x36 (Plantão)</option>
           </select>
         </div>
 
@@ -739,7 +650,7 @@ window.editarColab = function(reDocId){
         </div>
 
         <div class="small" style="grid-column:1 / -1">
-          Se a escala for <b>12x36</b>, configure a base em <b>Plantões 12x36</b>.
+          Colaborador inativo NÃO consegue registrar ponto no sistema.
         </div>
       </div>
     `,
@@ -769,317 +680,8 @@ window.editarColab = function(reDocId){
       carregarFerias();
       carregarOcorrencias();
       carregarPlantoes12x36();
-      carregarHolerites();
     }
   });
-};
-
-// ===== PLANTÕES 12x36 (histórico por data) =====
-// coleção: plantoes12x36 (docs: autoID)
-// campos: re, vigencia(YYYY-MM-DD), base(trabalha|folga), obs, updatedAt
-function nomePorRe(re){
-  const c = cacheColabs.find(x => (x.re || x.id) === re);
-  return c?.nome || "";
-}
-
-window.salvarPlantao12x36 = async function(){
-  const re = (document.getElementById("plRe").value || "").trim();
-  const vigencia = (document.getElementById("plVigencia").value || "").trim();
-  const base = document.getElementById("plBase").value;
-  const obs = (document.getElementById("plObs").value || "").trim();
-
-  if (!re) return alert("Informe o RE.");
-  if (!vigencia) return alert("Informe a data de vigência.");
-  const col = cacheColabs.find(c => (c.re||c.id) === re) || null;
-  if (!col) return alert("Colaborador não encontrado (cadastre na aba Colaboradores).");
-
-  if (!confirm(
-    `Salvar ajuste 12x36?\nRE: ${re}\nNome: ${col.nome||""}\nVigente a partir de: ${brDateFromYmd(vigencia)}\nBase: ${base.toUpperCase()}`
-  )) return;
-
-  await addDoc(collection(db,"plantoes12x36"), {
-    re, vigencia, base, obs,
-    updatedAt: new Date().toISOString()
-  });
-
-  document.getElementById("plObs").value="";
-  document.getElementById("plFiltroRe").value=re;
-  await carregarPlantoes12x36();
-};
-
-window.carregarPlantoes12x36 = async function(){
-  const filtroRe = (document.getElementById("plFiltroRe")?.value || "").trim();
-
-  const snap = await getDocs(collection(db,"plantoes12x36"));
-  let list = snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }));
-
-  list = list.map(x => ({
-    ...x,
-    re: (x.re||"").toString().trim(),
-    vigencia: (x.vigencia||"").toString().slice(0,10),
-    base: (x.base||"").toString(),
-    obs: (x.obs||"").toString(),
-    updatedAt: (x.updatedAt||"").toString()
-  }));
-
-  if (filtroRe) list = list.filter(x => x.re === filtroRe);
-
-  // mais recente primeiro (por vigência)
-  list.sort((a,b) => (String(b.vigencia||"")).localeCompare(String(a.vigencia||"")) || String(b.updatedAt||"").localeCompare(String(a.updatedAt||"")));
-
-  cachePlantoes = list;
-
-  const tbody = document.getElementById("tbodyPlantoes");
-  if (!tbody) return;
-  tbody.innerHTML="";
-
-  for (const p of cachePlantoes){
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${p.re}</td>
-      <td>${nomePorRe(p.re)}</td>
-      <td>${brDateFromYmd(p.vigencia)}</td>
-      <td>${(p.base||"").toUpperCase()}</td>
-      <td>${p.obs || ""}</td>
-      <td>${brDateTimeFromIso(p.updatedAt)}</td>
-      <td><button class="minBtn" onclick="editarPlantao('${p.id}')">Modificar</button></td>
-    `;
-    tbody.appendChild(tr);
-  }
-};
-
-window.editarPlantao = function(id){
-  const p = cachePlantoes.find(x => x.id === id);
-  if (!p) return alert("Ajuste não encontrado.");
-
-  openModal({
-    title: `Modificar Plantão 12x36 — RE ${p.re}`,
-    bodyHtml: `
-      <div class="grid">
-        <div>
-          <label>RE</label>
-          <input value="${p.re}" disabled>
-        </div>
-        <div>
-          <label>Vigência</label>
-          <input id="mpVig" type="date" value="${p.vigencia}">
-        </div>
-        <div>
-          <label>Base</label>
-          <select id="mpBase">
-            <option value="trabalha" ${p.base==="trabalha" ? "selected":""}>TRABALHA</option>
-            <option value="folga" ${p.base==="folga" ? "selected":""}>FOLGA</option>
-          </select>
-        </div>
-        <div>
-          <label>Obs</label>
-          <input id="mpObs" value="${(p.obs||"").replaceAll('"','&quot;')}">
-        </div>
-        <div class="small" style="grid-column:1 / -1">
-          <button class="btnDangerInline" id="btnExcluirPlantao">Excluir ajuste</button>
-        </div>
-      </div>
-    `,
-    onSave: async () => {
-      const vigencia = (document.getElementById("mpVig").value || "").trim();
-      const base = document.getElementById("mpBase").value;
-      const obs = (document.getElementById("mpObs").value || "").trim();
-
-      if (!vigencia) return alert("Informe a vigência.");
-      if (!confirm("Salvar alteração do plantão?")) return;
-
-      await updateDoc(doc(db,"plantoes12x36", id), {
-        vigencia, base, obs,
-        updatedAt: new Date().toISOString()
-      });
-
-      closeModal();
-      carregarPlantoes12x36();
-    }
-  });
-
-  setTimeout(() => {
-    const btn = document.getElementById("btnExcluirPlantao");
-    if (!btn) return;
-    btn.onclick = async () => {
-      if (!confirm("Excluir este ajuste?")) return;
-      await deleteDoc(doc(db,"plantoes12x36", id));
-      closeModal();
-      carregarPlantoes12x36();
-    };
-  }, 0);
-};
-
-// ===== HOLERITES =====
-// coleção: holerites (docs: autoID)
-// campos: re, competencia(AAAA-MM), tipo(mensal|13p1|13p2), url, storagePath, uploadedAt
-function validCompetencia(comp){
-  return /^20\d{2}-(0[1-9]|1[0-2])$/.test((comp||"").trim());
-}
-function tipoLabel(t){
-  if (t==="mensal") return "Mensal";
-  if (t==="13p1") return "13º 1ª parcela";
-  if (t==="13p2") return "13º 2ª parcela";
-  return t || "";
-}
-
-window.uploadHolerite = async function(){
-  const re = (document.getElementById("holRe").value || "").trim();
-  const competencia = (document.getElementById("holCompetencia").value || "").trim();
-  const tipo = document.getElementById("holTipo").value;
-  const file = document.getElementById("holArquivo").files?.[0];
-
-  if (!re) return alert("Informe o RE.");
-  if (!validCompetencia(competencia)) return alert("Competência inválida. Use AAAA-MM (ex: 2026-02).");
-  if (!file) return alert("Selecione um PDF.");
-  if (file.type !== "application/pdf") return alert("O arquivo precisa ser PDF.");
-
-  const col = cacheColabs.find(c => (c.re||c.id) === re) || null;
-  if (!col) return alert("Colaborador não encontrado.");
-
-  // storage path
-  const safeTipo = tipo.replace(/[^a-z0-9]/gi,"");
-  const storagePath = `holerites/${re}/${competencia}_${safeTipo}.pdf`;
-  const storageRef = sRef(storage, storagePath);
-
-  if (!confirm(`Enviar holerite?\nRE: ${re}\nNome: ${col.nome||""}\nCompetência: ${competencia}\nTipo: ${tipoLabel(tipo)}`)) return;
-
-  try{
-    await uploadBytes(storageRef, file);
-    const url = await getDownloadURL(storageRef);
-
-    await addDoc(collection(db,"holerites"), {
-      re, competencia, tipo,
-      url,
-      storagePath,
-      uploadedAt: new Date().toISOString()
-    });
-
-    alert("Holerite enviado com sucesso.");
-    document.getElementById("holArquivo").value="";
-    document.getElementById("holFiltroRe").value=re;
-    document.getElementById("holFiltroComp").value=competencia;
-    carregarHolerites();
-  }catch(e){
-    alert("Falha ao enviar holerite.");
-  }
-};
-
-window.carregarHolerites = async function(){
-  const filtroRe = (document.getElementById("holFiltroRe")?.value || "").trim();
-  const filtroComp = (document.getElementById("holFiltroComp")?.value || "").trim();
-
-  const snap = await getDocs(collection(db,"holerites"));
-  let list = snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }));
-
-  list = list.map(h => ({
-    ...h,
-    re: (h.re||"").toString().trim(),
-    competencia: (h.competencia||"").toString().trim(),
-    tipo: (h.tipo||"").toString().trim(),
-    url: (h.url||"").toString(),
-    storagePath: (h.storagePath||"").toString(),
-    uploadedAt: (h.uploadedAt||"").toString()
-  }));
-
-  if (filtroRe) list = list.filter(h => h.re === filtroRe);
-  if (filtroComp) list = list.filter(h => h.competencia === filtroComp);
-
-  list.sort((a,b) =>
-    (String(b.competencia||"")).localeCompare(String(a.competencia||"")) ||
-    (String(b.uploadedAt||"")).localeCompare(String(a.uploadedAt||""))
-  );
-
-  cacheHolerites = list;
-
-  const tbody = document.getElementById("tbodyHolerites");
-  if (!tbody) return;
-  tbody.innerHTML="";
-
-  for (const h of cacheHolerites){
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${h.re}</td>
-      <td>${nomePorRe(h.re)}</td>
-      <td>${h.competencia}</td>
-      <td>${tipoLabel(h.tipo)}</td>
-      <td>${h.url ? `<a href="${h.url}" target="_blank" rel="noopener">Abrir PDF</a>` : ""}</td>
-      <td>${brDateTimeFromIso(h.uploadedAt)}</td>
-      <td><button class="minBtn" onclick="editarHolerite('${h.id}')">Modificar</button></td>
-    `;
-    tbody.appendChild(tr);
-  }
-};
-
-window.editarHolerite = function(id){
-  const h = cacheHolerites.find(x => x.id === id);
-  if (!h) return alert("Holerite não encontrado.");
-
-  openModal({
-    title: `Modificar Holerite — RE ${h.re}`,
-    bodyHtml: `
-      <div class="grid">
-        <div>
-          <label>RE</label>
-          <input value="${h.re}" disabled>
-        </div>
-        <div>
-          <label>Competência (AAAA-MM)</label>
-          <input id="mhComp" value="${h.competencia}">
-        </div>
-        <div>
-          <label>Tipo</label>
-          <select id="mhTipo">
-            <option value="mensal" ${h.tipo==="mensal" ? "selected":""}>Mensal</option>
-            <option value="13p1" ${h.tipo==="13p1" ? "selected":""}>13º 1ª parcela</option>
-            <option value="13p2" ${h.tipo==="13p2" ? "selected":""}>13º 2ª parcela</option>
-          </select>
-        </div>
-        <div>
-          <label>Arquivo (somente leitura)</label>
-          <input value="${h.storagePath || ""}" disabled>
-        </div>
-        <div class="small" style="grid-column:1 / -1">
-          <button class="btnDangerInline" id="btnExcluirHolerite">Excluir holerite (apaga Firestore + Storage)</button>
-        </div>
-      </div>
-    `,
-    onSave: async () => {
-      const competencia = (document.getElementById("mhComp").value || "").trim();
-      const tipo = document.getElementById("mhTipo").value;
-
-      if (!validCompetencia(competencia)) return alert("Competência inválida. Use AAAA-MM.");
-      if (!confirm("Salvar alteração do holerite?")) return;
-
-      await updateDoc(doc(db,"holerites", id), {
-        competencia, tipo
-      });
-
-      closeModal();
-      carregarHolerites();
-    }
-  });
-
-  setTimeout(() => {
-    const btn = document.getElementById("btnExcluirHolerite");
-    if (!btn) return;
-    btn.onclick = async () => {
-      if (!confirm("Excluir holerite? Isso apaga o PDF do Storage também.")) return;
-
-      try{
-        if (h.storagePath){
-          const r = sRef(storage, h.storagePath);
-          await deleteObject(r);
-        }
-      }catch(e){
-        // se não achar no storage, ainda assim apaga no firestore
-      }
-
-      await deleteDoc(doc(db,"holerites", id));
-      closeModal();
-      carregarHolerites();
-    };
-  }, 0);
 };
 
 // ===== LOCAIS =====
@@ -1293,7 +895,10 @@ window.editarJornada = function(docId){
 
 // ===== OCORRÊNCIAS (dia) =====
 function ocDocId(re, ymd){ return `${re}_${ymd}`; }
-
+function nomePorRe(re){
+  const c = cacheColabs.find(x => (x.re || x.id) === re);
+  return c?.nome || "";
+}
 async function apagarJornadasDoDia(re, dataYmd){
   const qJ = query(collection(db,"jornadas"), where("re","==",re));
   const snap = await getDocs(qJ);
@@ -1337,7 +942,8 @@ window.salvarOcorrencia = async function(){
     await carregarOcorrencias();
 
   }catch(e){
-    alert("Falha ao salvar ocorrência.");
+    console.error(e);
+    alert("Falha ao salvar ocorrência.\n\nMotivo: " + (e?.message || e));
   }
 };
 
@@ -1361,7 +967,10 @@ window.carregarOcorrencias = async function(){
     if (filtroRe) list = list.filter(o => o.re === filtroRe);
     if (filtroData) list = list.filter(o => o.data === filtroData);
 
-    list.sort((a,b) => (String(b.data||"")).localeCompare(String(a.data||"")) || String(b.updatedAt||"").localeCompare(String(a.updatedAt||"")));
+    list.sort((a,b) =>
+      (String(b.data||"")).localeCompare(String(a.data||"")) ||
+      String(b.updatedAt||"").localeCompare(String(a.updatedAt||""))
+    );
 
     cacheOcorr = list;
 
@@ -1383,7 +992,8 @@ window.carregarOcorrencias = async function(){
     }
 
   }catch(e){
-    alert("Falha ao carregar ocorrências.");
+    console.error(e);
+    alert("Falha ao carregar ocorrências.\n\nMotivo: " + (e?.message || e));
   }
 };
 
@@ -1478,7 +1088,6 @@ async function apagarJornadasNoPeriodo(re, iniYmd, fimYmd, escala, somenteDiasTr
   for (const dt of days){
     const ymd = dt.toISOString().slice(0,10);
     if (somenteDiasTrabalho){
-      // 12x36 não usa isso aqui (férias você vai aplicar mesmo assim, então deixa "somente dias trabalho" desmarcado se quiser pegar todos)
       if (!isDiaTrabalho(dt, escala)) continue;
     }
     alvo.add(ymd);
@@ -1630,6 +1239,177 @@ window.editarFerias = function(id){
       await deleteDoc(doc(db,"afastamentos", id));
       closeModal();
       carregarFerias();
+    };
+  }, 0);
+};
+
+// ===== PLANTÕES 12x36 =====
+window.salvarPlantao12x36 = async function(){
+  const re = (document.getElementById("plRe").value || "").trim();
+  const vigencia = (document.getElementById("plVigencia").value || "").trim(); // YYYY-MM-DD
+  const base = document.getElementById("plBase").value; // trabalha | folga
+  const obs = (document.getElementById("plObs").value || "").trim();
+
+  if (!re) return alert("Informe o RE.");
+  if (!vigencia) return alert("Informe a data de vigência.");
+
+  try{
+    // ✅ NÃO depende do cache: busca colaborador no Firestore
+    const colSnap = await getDoc(doc(db, "colaboradores", re));
+    if (!colSnap.exists()){
+      return alert("Colaborador não encontrado no banco. Cadastre na aba Colaboradores.");
+    }
+    const col = colSnap.data() || {};
+    const nome = col.nome || "";
+
+    const msg =
+      `Salvar ajuste 12x36?\n` +
+      `RE: ${re}\n` +
+      `Nome: ${nome}\n` +
+      `Vigente a partir de: ${brDateFromYmd(vigencia)}\n` +
+      `Base: ${base.toUpperCase()}\n` +
+      (obs ? `Obs: ${obs}\n` : "");
+
+    if (!confirm(msg)) return;
+
+    await addDoc(collection(db, "plantoes12x36"), {
+      re,
+      vigencia,
+      base,
+      obs,
+      updatedAt: new Date().toISOString()
+    });
+
+    document.getElementById("plObs").value = "";
+    document.getElementById("plFiltroRe").value = re;
+
+    alert("✅ Plantão 12x36 salvo no Firestore.");
+    await carregarPlantoes12x36();
+
+  }catch(e){
+    console.error("Erro ao salvar plantão 12x36:", e);
+    alert(
+      "❌ Não foi possível salvar o plantão 12x36.\n\n" +
+      "Motivo: " + (e?.message || e)
+    );
+  }
+};
+
+window.carregarPlantoes12x36 = async function(){
+  try{
+    const filtroRe = (document.getElementById("plFiltroRe")?.value || "").trim();
+
+    const snap = await getDocs(collection(db, "plantoes12x36"));
+    let list = snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }));
+
+    list = list.map(x => ({
+      ...x,
+      re: (x.re||"").toString().trim(),
+      vigencia: (x.vigencia||"").toString().slice(0,10),
+      base: (x.base||"").toString(),
+      obs: (x.obs||"").toString(),
+      updatedAt: (x.updatedAt||"").toString()
+    }));
+
+    if (filtroRe) list = list.filter(x => x.re === filtroRe);
+
+    list.sort((a,b) =>
+      (String(b.vigencia||"")).localeCompare(String(a.vigencia||"")) ||
+      (String(b.updatedAt||"")).localeCompare(String(a.updatedAt||""))
+    );
+
+    cachePlantoes = list;
+
+    const tbody = document.getElementById("tbodyPlantoes");
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+
+    for (const p of cachePlantoes){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${p.re}</td>
+        <td>${nomePorRe(p.re)}</td>
+        <td>${brDateFromYmd(p.vigencia)}</td>
+        <td>${(p.base||"").toUpperCase()}</td>
+        <td>${p.obs || ""}</td>
+        <td>${brDateTimeFromIso(p.updatedAt)}</td>
+        <td><button class="minBtn" onclick="editarPlantao('${p.id}')">Modificar</button></td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+  }catch(e){
+    console.error("Erro ao carregar plantões 12x36:", e);
+    alert("❌ Falha ao carregar plantões 12x36.\n\nMotivo: " + (e?.message || e));
+  }
+};
+
+window.editarPlantao = function(id){
+  const p = cachePlantoes.find(x => x.id === id);
+  if (!p) return alert("Plantão não encontrado.");
+
+  openModal({
+    title: `Modificar 12x36 — RE ${p.re}`,
+    bodyHtml: `
+      <div class="grid">
+        <div>
+          <label>RE</label>
+          <input value="${p.re}" disabled>
+        </div>
+        <div>
+          <label>Nome</label>
+          <input value="${nomePorRe(p.re)}" disabled>
+        </div>
+        <div>
+          <label>Vigência (a partir)</label>
+          <input id="mpVigencia" type="date" value="${String(p.vigencia||"").slice(0,10)}">
+        </div>
+        <div>
+          <label>Base</label>
+          <select id="mpBase">
+            <option value="trabalha" ${String(p.base)==="trabalha" ? "selected" : ""}>TRABALHA</option>
+            <option value="folga" ${String(p.base)==="folga" ? "selected" : ""}>FOLGA</option>
+          </select>
+        </div>
+        <div style="grid-column:1 / -1">
+          <label>Obs</label>
+          <input id="mpObs" value="${(p.obs||"").replaceAll('"','&quot;')}">
+        </div>
+        <div class="small" style="grid-column:1 / -1">
+          <button class="btnDangerInline" id="btnExcluirPlantao">Excluir este registro</button>
+        </div>
+      </div>
+    `,
+    onSave: async () => {
+      const vig = (document.getElementById("mpVigencia").value || "").trim();
+      const base = document.getElementById("mpBase").value;
+      const obs = (document.getElementById("mpObs").value || "").trim();
+
+      if (!vig) return alert("Informe a vigência.");
+
+      if (!confirm("Salvar alteração deste plantão 12x36?")) return;
+
+      await updateDoc(doc(db, "plantoes12x36", id), {
+        vigencia: vig,
+        base,
+        obs,
+        updatedAt: new Date().toISOString()
+      });
+
+      closeModal();
+      carregarPlantoes12x36();
+    }
+  });
+
+  setTimeout(() => {
+    const btn = document.getElementById("btnExcluirPlantao");
+    if (!btn) return;
+    btn.onclick = async () => {
+      if (!confirm("Excluir este registro de plantão 12x36?")) return;
+      await deleteDoc(doc(db,"plantoes12x36", id));
+      closeModal();
+      carregarPlantoes12x36();
     };
   }, 0);
 };
