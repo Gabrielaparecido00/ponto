@@ -1,448 +1,1667 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Painel Admin</title>
 
 <style>
+  :root{
+    --bg:#f5f5f5;
+    --card:#fff;
+    --primary:#1f6feb;
+    --muted:#666;
+    --border:#ddd;
+    --danger:#a10000;
+  }
+  body { font-family: Arial, sans-serif; background:var(--bg); text-align:center; margin:0; padding:0; }
+  .container { background:var(--card); padding:20px; margin:16px auto; max-width:1300px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.06); }
+  .logo { width:260px; margin-bottom: 10px; }
+  input, button, select { padding:10px; margin:5px; }
+  button { cursor:pointer; }
+  .row { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:end; margin-top:10px; }
+  table { width:100%; border-collapse:collapse; margin-top:18px; font-size:13px; }
+  th, td { border:1px solid #ccc; padding:8px; }
+  th { background:#fafafa; position:sticky; top:0; z-index:1; }
+  .small { font-size:12px; color:var(--muted); }
+  .hr { height:1px; background:#eee; margin:18px 0; border:0; }
 
-body{
-  font-family: Arial;
-  background:#f5f5f5;
-  margin:0;
-  padding:20px;
-}
+  /* MENU RESPONSIVO (não some no celular) */
+  .menuWrap{
+    display:flex;
+    justify-content:center;
+  }
+  .menu {
+    display:flex;
+    gap:8px;
+    justify-content:flex-start;
+    flex-wrap:nowrap;
+    margin-top:10px;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    padding-bottom:6px;
+    max-width:100%;
+  }
+  .menu::-webkit-scrollbar{ height:6px; }
+  .menu::-webkit-scrollbar-thumb{ background:#d7d7d7; border-radius:999px; }
+  .menu button { background:var(--primary); color:#fff; border:none; border-radius:10px; white-space:nowrap; flex:0 0 auto; }
+  .menu button.secondary { background:#6c757d; }
 
-.container{
-  background:#fff;
-  padding:20px;
-  border-radius:10px;
-  max-width:1200px;
-  margin:auto;
-}
+  .section { display:none; }
+  .section.active { display:block; }
 
-.logo{
-  width:220px;
-  display:block;
-  margin:auto;
-}
+  .minBtn{
+    border:1px solid var(--border);
+    background:#fff;
+    border-radius:10px;
+    padding:6px 10px;
+    font-size:12px;
+  }
+  .minBtn:hover{ background:#f3f3f3; }
 
-h2{
-  text-align:center;
-}
-
-.row{
-  display:flex;
-  flex-wrap:wrap;
-  gap:10px;
-  margin-bottom:10px;
-}
-
-input, select, button{
-  padding:10px;
-}
-
-button{
-  cursor:pointer;
-  border:none;
-  border-radius:8px;
-  background:#1f6feb;
-  color:white;
-}
-
-table{
-  width:100%;
-  border-collapse:collapse;
-}
-
-th, td{
-  border:1px solid #ccc;
-  padding:8px;
-}
-
-th{
-  background:#eee;
-}
-
-.minBtn{
-  background:#6c757d;
-}
-
-.modalOverlay{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.5);
-  display:none;
-  justify-content:center;
-  align-items:center;
-}
-
-.modal{
-  background:white;
-  padding:20px;
-  border-radius:10px;
-  width:600px;
-}
-
-.grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
-}
-
+  /* Modal */
+  .modalOverlay{
+    position:fixed; inset:0;
+    background:rgba(0,0,0,0.45);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:9999;
+  }
+  .modal{
+    background:#fff;
+    width:min(920px, 94vw);
+    border-radius:12px;
+    padding:16px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.2);
+    text-align:left;
+  }
+  .modal h3{ margin:0 0 10px; }
+  .modal .grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:10px;
+  }
+  @media (max-width: 760px){
+    .container{ margin:10px; padding:14px; }
+    .logo{ width:210px; }
+    table{ font-size:12px; }
+    .modal .grid{ grid-template-columns:1fr; }
+  }
+  .modal label{ font-size:12px; color:#555; }
+  .modal input, .modal select{
+    width:100%;
+    box-sizing:border-box;
+    margin:4px 0 0;
+  }
+  .modal .actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:8px;
+    margin-top:14px;
+  }
+  .modal .actions button{
+    border:none;
+    border-radius:10px;
+    padding:10px 14px;
+  }
+  .btnPrimary{ background:var(--primary); color:#fff; }
+  .btnGhost{ background:#e9ecef; }
+  .btnDangerInline{
+    display:inline-block;
+    border:1px solid #f2b8b5;
+    background:#fff0f0;
+    border-radius:10px;
+    padding:8px 10px;
+    font-size:12px;
+    cursor:pointer;
+    color:var(--danger);
+  }
+  .pill{
+    display:inline-block;
+    padding:4px 8px;
+    border-radius:999px;
+    font-size:12px;
+    background:#f0f4ff;
+    border:1px solid #d7e3ff;
+    color:#1a3d8f;
+    margin-left:6px;
+  }
 </style>
 </head>
+
 <body>
 
-<div class="container">
+<!-- LOGIN -->
+<div id="loginDiv" class="container">
+  <img src="GW.png" class="logo" />
+  <h2>Login Admin</h2>
+  <input id="email" placeholder="Email"><br>
+  <input id="senha" type="password" placeholder="Senha"><br>
+  <button onclick="login()">Entrar</button>
+</div>
 
-<img src="GW.png" class="logo">
+<!-- PAINEL -->
+<div id="painelDiv" class="container" style="display:none;">
+  <img src="GW.png" class="logo" />
+  <h2>Painel Admin</h2>
+  <div class="small">
+    Editar horários no formato: <b>DD/MM/AAAA HH:MM</b> (ex: 16/02/2026 07:10)
+  </div>
 
-<h2>Painel Admin</h2>
+  <div class="menuWrap">
+    <div class="menu">
+      <button onclick="showSection('secJornadas')">Jornadas</button>
+      <button onclick="showSection('secColab')">Colaboradores</button>
+      <button onclick="showSection('secPlantoes')">Plantões 12x36</button>
+      <button onclick="showSection('secHolerites')">Holerites</button>
+      <button onclick="showSection('secLocal')">Locais</button>
+      <button onclick="showSection('secOcorr')">Ocorrências (dia)</button>
+      <button onclick="showSection('secAfast')">Férias (período)</button>
+      <button class="secondary" onclick="logout()">Sair</button>
+    </div>
+  </div>
 
-<div class="row">
+  <hr class="hr">
 
-<input id="cadRe" placeholder="RE">
-<input id="cadNome" placeholder="Nome">
+  <!-- JORNADAS -->
+  <div id="secJornadas" class="section active">
+    <h3>Jornadas</h3>
+    <div class="row">
+      <label>De:</label><input type="date" id="inicio">
+      <label>Até:</label><input type="date" id="fim">
+      <input id="filtroRe" placeholder="Filtrar por RE (opcional)" inputmode="numeric">
+      <input id="filtroNome" placeholder="Filtrar por Nome (opcional)">
+      <button onclick="buscar()">Buscar</button>
+      <button onclick="exportar()">Exportar CSV</button>
+    </div>
 
-<select id="cadEscala">
-<option value="5x2">5x2</option>
-<option value="6x1">6x1</option>
-<option value="12x36">12x36</option>
-</select>
+    <table>
+      <thead>
+        <tr>
+          <th>Data (Entrada)</th>
+          <th>Nome</th>
+          <th>RE</th>
+          <th>Entrada</th>
+          <th>Início Intervalo</th>
+          <th>Fim Intervalo</th>
+          <th>Saída</th>
+          <th>Entrada HE</th>
+          <th>Saída HE</th>
+          <th>Coords</th>
+          <th>Local</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tbodyJornadas"></tbody>
+    </table>
+  </div>
 
-<input type="date" id="cadAdmissao">
+  <!-- COLABORADORES -->
+  <div id="secColab" class="section">
+    <h3>Colaboradores</h3>
+    <div class="small">CPF é obrigatório • Sem excluir colaborador • Cadastre escala, horário previsto e data de admissão</div>
 
-<input type="date" id="cadInicioPlantao">
+    <div class="row">
+      <input id="cadRe" placeholder="RE" inputmode="numeric">
+      <input id="cadNome" placeholder="Nome completo">
+      <input id="cadCpf" placeholder="CPF (obrigatório)" inputmode="numeric">
 
-<input type="time" id="cadHoraEntrada">
-<input type="time" id="cadHoraSaida">
+      <select id="cadEscala">
+        <option value="5x2">5x2 (Seg-Sex)</option>
+        <option value="6x1">6x1 (Folga Dom)</option>
+        <option value="12x36">12x36 (Plantão)</option>
+      </select>
 
-<button onclick="cadastrar()">Cadastrar</button>
+      <input id="cadHoraEntrada" type="time" title="Hora prevista de entrada">
+      <input id="cadHoraSaida" type="time" title="Hora prevista de saída">
+      <input id="cadAdmissao" type="date" title="Data de admissão">
+
+      <button onclick="cadastrarColab()">Cadastrar</button>
+      <button onclick="carregarColaboradores()">Atualizar lista</button>
+    </div>
+
+    <div class="small">
+      Para <b>12x36</b>, depois de cadastrar vá em <b>Plantões 12x36</b> e registre a base (data + Trabalha/Folga).
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>RE</th>
+          <th>Nome</th>
+          <th>CPF</th>
+          <th>Escala</th>
+          <th>Horário</th>
+          <th>Admissão</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tbodyColab"></tbody>
+    </table>
+  </div>
+
+  <!-- PLANTÕES 12x36 -->
+  <div id="secPlantoes" class="section">
+    <h3>Plantões 12x36 <span class="pill">com histórico por data</span></h3>
+    <div class="small">
+      Aqui você define a “base” do colaborador em uma data: se naquela data ele <b>TRABALHA</b> ou está de <b>FOLGA</b>.<br>
+      Se mudar o plantão, você registra um <b>novo</b> ajuste com “vigente a partir de”, e o histórico antigo fica preservado.
+    </div>
+
+    <div class="row">
+      <input id="plRe" placeholder="RE" inputmode="numeric">
+      <input id="plVigencia" type="date" title="Vigente a partir de">
+      <select id="plBase">
+        <option value="trabalha">Nesta data TRABALHA</option>
+        <option value="folga">Nesta data é FOLGA</option>
+      </select>
+      <input id="plObs" placeholder="Obs (opcional)">
+      <button onclick="salvarPlantao12x36()">Salvar ajuste</button>
+      <button onclick="carregarPlantoes12x36()">Atualizar lista</button>
+    </div>
+
+    <div class="row">
+      <input id="plFiltroRe" placeholder="Filtrar RE (opcional)" inputmode="numeric">
+      <button onclick="carregarPlantoes12x36()">Filtrar</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>RE</th>
+          <th>Nome</th>
+          <th>Vigente a partir de</th>
+          <th>Base</th>
+          <th>Obs</th>
+          <th>Atualizado</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tbodyPlantoes"></tbody>
+    </table>
+  </div>
+
+  <!-- HOLERITES -->
+  <div id="secHolerites" class="section">
+    <h3>Holerites <span class="pill">PDF</span></h3>
+    <div class="small">
+      Competência mensal no formato <b>AAAA-MM</b> (ex: 2026-02).<br>
+      13º: <b>1ª parcela = novembro</b> • <b>2ª parcela = dezembro</b> (tipo 13p1 e 13p2).
+    </div>
+
+    <div class="row">
+      <input id="holRe" placeholder="RE" inputmode="numeric">
+      <input id="holCompetencia" placeholder="Competência (AAAA-MM)" inputmode="numeric">
+      <select id="holTipo">
+        <option value="mensal">Mensal</option>
+        <option value="13p1">13º 1ª parcela (NOV)</option>
+        <option value="13p2">13º 2ª parcela (DEZ)</option>
+      </select>
+      <input id="holArquivo" type="file" accept="application/pdf">
+      <button onclick="uploadHolerite()">Enviar PDF</button>
+      <button onclick="carregarHolerites()">Atualizar lista</button>
+    </div>
+
+    <div class="row">
+      <input id="holFiltroRe" placeholder="Filtrar RE (opcional)" inputmode="numeric">
+      <input id="holFiltroComp" placeholder="Filtrar Competência (AAAA-MM) (opcional)" inputmode="numeric">
+      <button onclick="carregarHolerites()">Filtrar</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>RE</th>
+          <th>Nome</th>
+          <th>Competência</th>
+          <th>Tipo</th>
+          <th>Arquivo</th>
+          <th>Enviado</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tbodyHolerites"></tbody>
+    </table>
+  </div>
+
+  <!-- LOCAIS -->
+  <div id="secLocal" class="section">
+    <h3>Locais</h3>
+    <div class="small">margem = raio (metros) • locais podem ser excluídos</div>
+
+    <div class="row">
+      <input id="locNome" placeholder="Nome do posto (ex: Posto A)">
+      <input id="locLat" placeholder="Latitude (X) ex: -12.3456">
+      <input id="locLng" placeholder="Longitude (Y) ex: -38.1234">
+      <input id="locRaio" placeholder="Margem (metros) ex: 150" inputmode="numeric">
+      <button onclick="cadastrarLocal()">Cadastrar</button>
+      <button onclick="carregarLocais()">Atualizar lista</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Latitude</th>
+          <th>Longitude</th>
+          <th>Raio (m)</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tbodyLocais"></tbody>
+    </table>
+  </div>
+
+  <!-- OCORRÊNCIAS -->
+  <div id="secOcorr" class="section">
+    <h3>Ocorrências (por dia)</h3>
+    <div class="small">
+      Ao salvar (FALTA/ATESTADO/ABONO), a ocorrência vira prioridade e apaga jornadas do dia (pela data da ENTRADA).
+    </div>
+
+    <div class="row">
+      <input id="ocRe" placeholder="RE" inputmode="numeric">
+      <input id="ocData" type="date">
+      <select id="ocTipo">
+        <option value="falta">FALTA</option>
+        <option value="atestado">ATESTADO</option>
+        <option value="abono">ABONO</option>
+      </select>
+      <input id="ocMotivo" placeholder="Motivo (opcional)">
+      <button onclick="salvarOcorrencia()">Salvar ocorrência (prioritária)</button>
+    </div>
+
+    <hr class="hr">
+
+    <div class="row">
+      <input id="ocFiltroRe" placeholder="Filtrar RE (opcional)" inputmode="numeric">
+      <input id="ocFiltroData" type="date" title="Filtrar data (opcional)">
+      <button onclick="carregarOcorrencias()">Atualizar lista</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>RE</th>
+          <th>Nome</th>
+          <th>Tipo</th>
+          <th>Motivo</th>
+          <th>Atualizado</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tbodyOcorr"></tbody>
+    </table>
+  </div>
+
+  <!-- FÉRIAS (PERÍODO) -->
+  <div id="secAfast" class="section">
+    <h3>Férias (por período)</h3>
+    <div class="small">
+      Cadastre 1 período e o sistema marca automaticamente no espelho (somente dias de trabalho).<br>
+      Ao salvar férias, o sistema apaga jornadas do período (dias úteis, conforme escala do colaborador).
+    </div>
+
+    <div class="row">
+      <input id="afRe" placeholder="RE" inputmode="numeric">
+      <input id="afInicio" type="date">
+      <input id="afFim" type="date">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;">
+        <input type="checkbox" id="afDiasUteis" checked> Somente dias de trabalho
+      </label>
+      <input id="afMotivo" placeholder="Motivo (opcional)">
+      <button onclick="salvarFerias()">Salvar FÉRIAS</button>
+      <button onclick="carregarFerias()">Atualizar lista</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>RE</th>
+          <th>Nome</th>
+          <th>Período</th>
+          <th>Somente dias trabalho?</th>
+          <th>Motivo</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tbodyFerias"></tbody>
+    </table>
+  </div>
 
 </div>
 
-<table>
-
-<thead>
-
-<tr>
-
-<th>RE</th>
-<th>Nome</th>
-<th>Escala</th>
-<th>Admissão</th>
-<th>Plantão atual</th>
-<th>Ações</th>
-
-</tr>
-
-</thead>
-
-<tbody id="tbody"></tbody>
-
-</table>
-
-</div>
-
-<div class="modalOverlay" id="modalOverlay">
-
-<div class="modal">
-
-<h3>Modificar colaborador</h3>
-
-<div id="modalBody"></div>
-
-<br>
-
-<button onclick="salvarModal()">Salvar</button>
-<button onclick="fecharModal()">Cancelar</button>
-
-</div>
-
+<!-- MODAL -->
+<div id="modalOverlay" class="modalOverlay" onclick="closeModalIfBackdrop(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3 id="modalTitle">Editar</h3>
+    <div id="modalBody"></div>
+    <div class="actions">
+      <button class="btnGhost" onclick="closeModal()">Cancelar</button>
+      <button id="modalSaveBtn" class="btnPrimary">Salvar</button>
+    </div>
+  </div>
 </div>
 
 <script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-
 import {
-
-getFirestore,
-doc,
-setDoc,
-getDocs,
-getDoc,
-collection
-
+  getFirestore, doc, setDoc, getDocs, collection, updateDoc, addDoc, deleteDoc, deleteField,
+  query, where, getDoc, orderBy
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {
+  getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  getStorage, ref as sRef, uploadBytes, getDownloadURL, deleteObject
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
 const firebaseConfig = {
-
-apiKey:"AIzaSy...",
-authDomain:"controle-ponto-f539b.firebaseapp.com",
-projectId:"controle-ponto-f539b"
-
+  apiKey: "AIzaSyD--zpWLbLg5X82oGTyz6SuPFQV0sd7NWc",
+  authDomain: "controle-ponto-f539b.firebaseapp.com",
+  projectId: "controle-ponto-f539b",
+  storageBucket: "controle-ponto-f539b.firebasestorage.app",
+  messagingSenderId: "324716100257",
+  appId: "1:324716100257:web:32d49a9ab4916182dd4ee0",
+  measurementId: "G-P81H3C4SFK"
 };
 
 const app = initializeApp(firebaseConfig);
-
 const db = getFirestore(app);
+const auth = getAuth(app);
+const storage = getStorage(app);
 
-let editandoId = null;
+const loginDiv = document.getElementById("loginDiv");
+const painelDiv = document.getElementById("painelDiv");
 
+let ultimaTabela = [];
+let cacheLocais = [];
 let cacheColabs = [];
+let cacheFerias = [];
+let cacheOcorr = [];
+let cachePlantoes = [];
+let cacheHolerites = [];
 
-function hojeIso(){
+// menu
+window.showSection = function(id){
+  document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
 
-return new Date().toISOString().slice(0,10);
+  if (id === "secLocal") carregarLocais();
+  if (id === "secColab") carregarColaboradores();
+  if (id === "secAfast") { carregarColaboradores().then(carregarFerias); }
+  if (id === "secOcorr") { carregarColaboradores().then(carregarOcorrencias); }
+  if (id === "secPlantoes") { carregarColaboradores().then(carregarPlantoes12x36); }
+  if (id === "secHolerites") { carregarColaboradores().then(carregarHolerites); }
+};
 
-}
+// auth
+window.login = async function(){
+  const email = document.getElementById("email").value;
+  const senha = document.getElementById("senha").value;
+  try { await signInWithEmailAndPassword(auth, email, senha); }
+  catch(e){ alert("Erro no login."); }
+};
+window.logout = function(){ signOut(auth); };
 
-function getPlantaoAtual(col){
-
-if(!col.plantaoHistorico || !col.plantaoHistorico.length) return "-";
-
-return col.plantaoHistorico[col.plantaoHistorico.length-1].inicio;
-
-}
-
-window.cadastrar = async function(){
-
-const re = cadRe.value.trim();
-
-const nome = cadNome.value.trim();
-
-const escala = cadEscala.value;
-
-const admissao = cadAdmissao.value;
-
-const inicioPlantao = cadInicioPlantao.value;
-
-const horaEntrada = cadHoraEntrada.value;
-
-const horaSaida = cadHoraSaida.value;
-
-if(!re || !nome) return;
-
-let historico = [];
-
-if(escala==="12x36" && inicioPlantao){
-
-historico.push({
-
-inicio:inicioPlantao,
-
-createdAt:new Date().toISOString()
-
+onAuthStateChanged(auth, user => {
+  loginDiv.style.display = user ? "none" : "block";
+  painelDiv.style.display = user ? "block" : "none";
+  if (user){
+    carregarLocais();
+    carregarColaboradores();
+  }
 });
 
+// helpers gerais
+function norm(s){ return (s||"").toString().trim().toLowerCase(); }
+function toDateAny(ts){
+  if (!ts) return null;
+  if (ts.toDate) return ts.toDate();
+  if (ts instanceof Date) return ts;
+  return new Date(ts);
+}
+function formatHHMM(ts){
+  const d = toDateAny(ts);
+  if (!d || isNaN(d)) return "";
+  return d.toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit" });
+}
+function formatBRDate(ts){
+  const d = toDateAny(ts);
+  if (!d || isNaN(d)) return "";
+  return d.toLocaleDateString("pt-BR");
+}
+function brDateFromYmd(ymd){
+  if (!ymd) return "";
+  const [y,m,d] = ymd.split("-");
+  if (!y||!m||!d) return ymd;
+  return `${d}/${m}/${y}`;
+}
+function isoFromBrDateTime(str){
+  const m = (str||"").trim().match(/^(\d{2})\/(\d{2})\/(\d{4})\s+([01]\d|2[0-3]):([0-5]\d)$/);
+  if (!m) return null;
+  const dd=m[1], mm=m[2], yyyy=m[3], hh=m[4], mi=m[5];
+  const dt = new Date(`${yyyy}-${mm}-${dd}T${hh}:${mi}:00`);
+  if (isNaN(dt)) return null;
+  return dt.toISOString();
+}
+function brDateTimeFromIso(ts){
+  const d = toDateAny(ts);
+  if (!d || isNaN(d)) return "";
+  const data = d.toLocaleDateString("pt-BR");
+  const hora = d.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"});
+  return `${data} ${hora}`;
+}
+function horarioTxt(c){
+  const he = (c?.horaEntrada||"").trim();
+  const hs = (c?.horaSaida||"").trim();
+  if (he && hs) return `${he}–${hs}`;
+  if (he || hs) return `${he||"—"}–${hs||"—"}`;
+  return "—";
+}
+function isFolgaByEscala(dateObj, escala){
+  const dow = dateObj.getDay();
+  const e = (escala || "5x2").toLowerCase();
+  if (e === "5x2") return (dow === 0 || dow === 6);
+  if (e === "6x1") return (dow === 0);
+  // 12x36 não é fixo por DOW, é por alternância (tratado no meu_ponto.html)
+  return false;
+}
+function isDiaTrabalho(dateObj, escala){
+  return !isFolgaByEscala(dateObj, escala);
 }
 
-await setDoc(doc(db,"colaboradores",re),{
-
-re,
-nome,
-escala,
-dataAdmissao:admissao,
-horaEntrada,
-horaSaida,
-plantaoHistorico:historico,
-createdAt:new Date().toISOString()
-
-},{merge:true});
-
-carregar();
-
+// localização/posto
+function haversineMeters(lat1, lon1, lat2, lon2){
+  const R=6371000; const toRad=x=>x*Math.PI/180;
+  const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
+  const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return 2*R*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+function parseLocation(str){
+  if (!str) return null;
+  const p=str.split(",").map(s=>s.trim());
+  if (p.length!==2) return null;
+  const lat=Number(p[0]), lng=Number(p[1]);
+  if (!Number.isFinite(lat)||!Number.isFinite(lng)) return null;
+  return {lat,lng};
+}
+function getBestLocationFromJornada(j){
+  const steps=["saida_he","entrada_he","saida","retorno_intervalo","saida_intervalo","entrada"];
+  for (const s of steps){ const loc=j?.[s]?.location; if (loc) return loc; }
+  return "";
+}
+function reconhecerLocal(locationStr){
+  const p=parseLocation(locationStr);
+  if (!p) return "Não disponível";
+  let best=null;
+  for (const l of cacheLocais){
+    const d=haversineMeters(p.lat,p.lng,l.lat,l.lng);
+    if (d<=l.raio){ if (!best || d<best.d) best={nome:l.nome,d}; }
+  }
+  return best ? best.nome : "Não reconhecido";
 }
 
-async function carregar(){
+// modal
+const overlay=document.getElementById("modalOverlay");
+const titleEl=document.getElementById("modalTitle");
+const bodyEl=document.getElementById("modalBody");
+const saveBtn=document.getElementById("modalSaveBtn");
 
-const snap = await getDocs(collection(db,"colaboradores"));
+window.closeModal=function(){ overlay.style.display="none"; bodyEl.innerHTML=""; saveBtn.onclick=null; };
+window.closeModalIfBackdrop=function(e){ if (e.target===overlay) closeModal(); };
 
-cacheColabs = snap.docs.map(d=>({
-
-id:d.id,
-
-...d.data()
-
-}));
-
-render();
-
+function openModal({title, bodyHtml, onSave}){
+  titleEl.innerText=title;
+  bodyEl.innerHTML=bodyHtml;
+  overlay.style.display="flex";
+  saveBtn.onclick=onSave || null;
 }
 
-function render(){
+// ===== COLABORADORES =====
+window.cadastrarColab = async function(){
+  const re = document.getElementById("cadRe").value.trim();
+  const nome = document.getElementById("cadNome").value.trim();
+  let cpf = document.getElementById("cadCpf").value.trim();
+  const escala = document.getElementById("cadEscala").value;
+  const horaEntrada = (document.getElementById("cadHoraEntrada").value || "").trim();
+  const horaSaida = (document.getElementById("cadHoraSaida").value || "").trim();
+  const dataAdmissao = (document.getElementById("cadAdmissao").value || "").trim();
 
-tbody.innerHTML="";
+  if (!re || !nome) return alert("Preencha RE e Nome.");
+  cpf = cpf.replace(/\D/g,"");
+  if (!cpf || cpf.length < 4) return alert("CPF é obrigatório (mínimo 4 dígitos).");
+  if (!dataAdmissao) return alert("Data de admissão é obrigatória.");
 
-for(const c of cacheColabs){
+  if (!confirm(
+    `Cadastrar?\nRE: ${re}\nNome: ${nome}\nEscala: ${escala}\nHorário: ${horaEntrada||"—"}–${horaSaida||"—"}\nAdmissão: ${brDateFromYmd(dataAdmissao)}`
+  )) return;
 
-const tr=document.createElement("tr");
+  await setDoc(doc(db,"colaboradores",re), {
+    re, nome, cpf, escala, horaEntrada, horaSaida,
+    dataAdmissao,
+    ativo:true,
+    updatedAt:new Date().toISOString()
+  }, { merge:true });
 
-tr.innerHTML=`
+  document.getElementById("cadRe").value="";
+  document.getElementById("cadNome").value="";
+  document.getElementById("cadCpf").value="";
+  document.getElementById("cadEscala").value="5x2";
+  document.getElementById("cadHoraEntrada").value="";
+  document.getElementById("cadHoraSaida").value="";
+  document.getElementById("cadAdmissao").value="";
+  carregarColaboradores();
+};
 
-<td>${c.re}</td>
-<td>${c.nome}</td>
-<td>${c.escala}</td>
-<td>${c.dataAdmissao||""}</td>
-<td>${getPlantaoAtual(c)}</td>
-<td>
+window.carregarColaboradores = async function(){
+  const snap = await getDocs(collection(db,"colaboradores"));
+  cacheColabs = snap.docs.map(d => ({ id:d.id, ...d.data() }))
+    .sort((a,b)=> (a.nome||"").localeCompare(b.nome||""));
 
-<button class="minBtn" onclick="abrirModal('${c.id}')">
+  const tbody=document.getElementById("tbodyColab");
+  if (tbody){
+    tbody.innerHTML="";
+    for (const c of cacheColabs){
+      const status = (c.ativo === false) ? "Inativo" : "Ativo";
+      const escala = (c.escala || "5x2");
+      const adm = (c.dataAdmissao ? brDateFromYmd(String(c.dataAdmissao).slice(0,10)) : "—");
+      const tr=document.createElement("tr");
+      tr.innerHTML = `
+        <td>${c.re || c.id}</td>
+        <td>${c.nome || ""}</td>
+        <td>${c.cpf || ""}</td>
+        <td>${escala}</td>
+        <td>${horarioTxt(c)}</td>
+        <td>${adm}</td>
+        <td>${status}</td>
+        <td><button class="minBtn" onclick="editarColab('${c.id}')">Modificar</button></td>
+      `;
+      tbody.appendChild(tr);
+    }
+  }
+};
 
-Modificar
+window.editarColab = function(reDocId){
+  const c = cacheColabs.find(x => x.id === reDocId);
+  if (!c) return alert("Colaborador não encontrado.");
 
-</button>
+  openModal({
+    title: "Modificar colaborador",
+    bodyHtml: `
+      <div class="grid">
+        <div>
+          <label>RE</label>
+          <input id="mRe" value="${c.re || c.id}" disabled>
+        </div>
+        <div>
+          <label>CPF (obrigatório)</label>
+          <input id="mCpf" value="${c.cpf || ""}" placeholder="Somente números">
+        </div>
 
-</td>
+        <div style="grid-column:1 / -1">
+          <label>Nome</label>
+          <input id="mNome" value="${c.nome || ""}">
+        </div>
 
-`;
+        <div>
+          <label>Escala</label>
+          <select id="mEscala">
+            <option value="5x2" ${(c.escala||"5x2")==="5x2" ? "selected" : ""}>5x2 (Seg-Sex)</option>
+            <option value="6x1" ${(c.escala||"5x2")==="6x1" ? "selected" : ""}>6x1 (Folga Dom)</option>
+            <option value="12x36" ${(c.escala||"5x2")==="12x36" ? "selected" : ""}>12x36 (Plantão)</option>
+          </select>
+        </div>
 
-tbody.appendChild(tr);
+        <div>
+          <label>Status</label>
+          <select id="mAtivo">
+            <option value="true" ${c.ativo === false ? "" : "selected"}>Ativo</option>
+            <option value="false" ${c.ativo === false ? "selected" : ""}>Inativo</option>
+          </select>
+        </div>
 
+        <div>
+          <label>Hora entrada prevista</label>
+          <input id="mHoraEntrada" type="time" value="${(c.horaEntrada||"").toString().trim()}">
+        </div>
+        <div>
+          <label>Hora saída prevista</label>
+          <input id="mHoraSaida" type="time" value="${(c.horaSaida||"").toString().trim()}">
+        </div>
+
+        <div style="grid-column:1 / -1">
+          <label>Data de admissão (obrigatório)</label>
+          <input id="mAdmissao" type="date" value="${String(c.dataAdmissao||"").slice(0,10)}">
+        </div>
+
+        <div class="small" style="grid-column:1 / -1">
+          Se a escala for <b>12x36</b>, configure a base em <b>Plantões 12x36</b>.
+        </div>
+      </div>
+    `,
+    onSave: async () => {
+      const nome = document.getElementById("mNome").value.trim();
+      let cpf = document.getElementById("mCpf").value.trim().replace(/\D/g,"");
+      const ativo = document.getElementById("mAtivo").value === "true";
+      const escala = document.getElementById("mEscala").value;
+      const horaEntrada = (document.getElementById("mHoraEntrada").value || "").trim();
+      const horaSaida = (document.getElementById("mHoraSaida").value || "").trim();
+      const dataAdmissao = (document.getElementById("mAdmissao").value || "").trim();
+
+      if (!nome) return alert("Nome não pode ficar vazio.");
+      if (!cpf || cpf.length < 4) return alert("CPF é obrigatório (mínimo 4 dígitos).");
+      if (!dataAdmissao) return alert("Data de admissão é obrigatória.");
+
+      if (!confirm("Salvar alteração do colaborador?")) return;
+
+      await setDoc(doc(db,"colaboradores",reDocId), {
+        nome, cpf, ativo, escala, horaEntrada, horaSaida,
+        dataAdmissao,
+        updatedAt:new Date().toISOString()
+      }, { merge:true });
+
+      closeModal();
+      carregarColaboradores();
+      carregarFerias();
+      carregarOcorrencias();
+      carregarPlantoes12x36();
+      carregarHolerites();
+    }
+  });
+};
+
+// ===== PLANTÕES 12x36 (histórico por data) =====
+// coleção: plantoes12x36 (docs: autoID)
+// campos: re, vigencia(YYYY-MM-DD), base(trabalha|folga), obs, updatedAt
+function nomePorRe(re){
+  const c = cacheColabs.find(x => (x.re || x.id) === re);
+  return c?.nome || "";
 }
 
+window.salvarPlantao12x36 = async function(){
+  const re = (document.getElementById("plRe").value || "").trim();
+  const vigencia = (document.getElementById("plVigencia").value || "").trim();
+  const base = document.getElementById("plBase").value;
+  const obs = (document.getElementById("plObs").value || "").trim();
+
+  if (!re) return alert("Informe o RE.");
+  if (!vigencia) return alert("Informe a data de vigência.");
+  const col = cacheColabs.find(c => (c.re||c.id) === re) || null;
+  if (!col) return alert("Colaborador não encontrado (cadastre na aba Colaboradores).");
+
+  if (!confirm(
+    `Salvar ajuste 12x36?\nRE: ${re}\nNome: ${col.nome||""}\nVigente a partir de: ${brDateFromYmd(vigencia)}\nBase: ${base.toUpperCase()}`
+  )) return;
+
+  await addDoc(collection(db,"plantoes12x36"), {
+    re, vigencia, base, obs,
+    updatedAt: new Date().toISOString()
+  });
+
+  document.getElementById("plObs").value="";
+  document.getElementById("plFiltroRe").value=re;
+  await carregarPlantoes12x36();
+};
+
+window.carregarPlantoes12x36 = async function(){
+  const filtroRe = (document.getElementById("plFiltroRe")?.value || "").trim();
+
+  const snap = await getDocs(collection(db,"plantoes12x36"));
+  let list = snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }));
+
+  list = list.map(x => ({
+    ...x,
+    re: (x.re||"").toString().trim(),
+    vigencia: (x.vigencia||"").toString().slice(0,10),
+    base: (x.base||"").toString(),
+    obs: (x.obs||"").toString(),
+    updatedAt: (x.updatedAt||"").toString()
+  }));
+
+  if (filtroRe) list = list.filter(x => x.re === filtroRe);
+
+  // mais recente primeiro (por vigência)
+  list.sort((a,b) => (String(b.vigencia||"")).localeCompare(String(a.vigencia||"")) || String(b.updatedAt||"").localeCompare(String(a.updatedAt||"")));
+
+  cachePlantoes = list;
+
+  const tbody = document.getElementById("tbodyPlantoes");
+  if (!tbody) return;
+  tbody.innerHTML="";
+
+  for (const p of cachePlantoes){
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${p.re}</td>
+      <td>${nomePorRe(p.re)}</td>
+      <td>${brDateFromYmd(p.vigencia)}</td>
+      <td>${(p.base||"").toUpperCase()}</td>
+      <td>${p.obs || ""}</td>
+      <td>${brDateTimeFromIso(p.updatedAt)}</td>
+      <td><button class="minBtn" onclick="editarPlantao('${p.id}')">Modificar</button></td>
+    `;
+    tbody.appendChild(tr);
+  }
+};
+
+window.editarPlantao = function(id){
+  const p = cachePlantoes.find(x => x.id === id);
+  if (!p) return alert("Ajuste não encontrado.");
+
+  openModal({
+    title: `Modificar Plantão 12x36 — RE ${p.re}`,
+    bodyHtml: `
+      <div class="grid">
+        <div>
+          <label>RE</label>
+          <input value="${p.re}" disabled>
+        </div>
+        <div>
+          <label>Vigência</label>
+          <input id="mpVig" type="date" value="${p.vigencia}">
+        </div>
+        <div>
+          <label>Base</label>
+          <select id="mpBase">
+            <option value="trabalha" ${p.base==="trabalha" ? "selected":""}>TRABALHA</option>
+            <option value="folga" ${p.base==="folga" ? "selected":""}>FOLGA</option>
+          </select>
+        </div>
+        <div>
+          <label>Obs</label>
+          <input id="mpObs" value="${(p.obs||"").replaceAll('"','&quot;')}">
+        </div>
+        <div class="small" style="grid-column:1 / -1">
+          <button class="btnDangerInline" id="btnExcluirPlantao">Excluir ajuste</button>
+        </div>
+      </div>
+    `,
+    onSave: async () => {
+      const vigencia = (document.getElementById("mpVig").value || "").trim();
+      const base = document.getElementById("mpBase").value;
+      const obs = (document.getElementById("mpObs").value || "").trim();
+
+      if (!vigencia) return alert("Informe a vigência.");
+      if (!confirm("Salvar alteração do plantão?")) return;
+
+      await updateDoc(doc(db,"plantoes12x36", id), {
+        vigencia, base, obs,
+        updatedAt: new Date().toISOString()
+      });
+
+      closeModal();
+      carregarPlantoes12x36();
+    }
+  });
+
+  setTimeout(() => {
+    const btn = document.getElementById("btnExcluirPlantao");
+    if (!btn) return;
+    btn.onclick = async () => {
+      if (!confirm("Excluir este ajuste?")) return;
+      await deleteDoc(doc(db,"plantoes12x36", id));
+      closeModal();
+      carregarPlantoes12x36();
+    };
+  }, 0);
+};
+
+// ===== HOLERITES =====
+// coleção: holerites (docs: autoID)
+// campos: re, competencia(AAAA-MM), tipo(mensal|13p1|13p2), url, storagePath, uploadedAt
+function validCompetencia(comp){
+  return /^20\d{2}-(0[1-9]|1[0-2])$/.test((comp||"").trim());
+}
+function tipoLabel(t){
+  if (t==="mensal") return "Mensal";
+  if (t==="13p1") return "13º 1ª parcela";
+  if (t==="13p2") return "13º 2ª parcela";
+  return t || "";
 }
 
-window.abrirModal = function(id){
+window.uploadHolerite = async function(){
+  const re = (document.getElementById("holRe").value || "").trim();
+  const competencia = (document.getElementById("holCompetencia").value || "").trim();
+  const tipo = document.getElementById("holTipo").value;
+  const file = document.getElementById("holArquivo").files?.[0];
 
-editandoId=id;
+  if (!re) return alert("Informe o RE.");
+  if (!validCompetencia(competencia)) return alert("Competência inválida. Use AAAA-MM (ex: 2026-02).");
+  if (!file) return alert("Selecione um PDF.");
+  if (file.type !== "application/pdf") return alert("O arquivo precisa ser PDF.");
 
-const c = cacheColabs.find(x=>x.id===id);
+  const col = cacheColabs.find(c => (c.re||c.id) === re) || null;
+  if (!col) return alert("Colaborador não encontrado.");
 
-modalBody.innerHTML=`
+  // storage path
+  const safeTipo = tipo.replace(/[^a-z0-9]/gi,"");
+  const storagePath = `holerites/${re}/${competencia}_${safeTipo}.pdf`;
+  const storageRef = sRef(storage, storagePath);
 
-<div class="grid">
+  if (!confirm(`Enviar holerite?\nRE: ${re}\nNome: ${col.nome||""}\nCompetência: ${competencia}\nTipo: ${tipoLabel(tipo)}`)) return;
 
-<div>
+  try{
+    await uploadBytes(storageRef, file);
+    const url = await getDownloadURL(storageRef);
 
-<label>Nome</label>
+    await addDoc(collection(db,"holerites"), {
+      re, competencia, tipo,
+      url,
+      storagePath,
+      uploadedAt: new Date().toISOString()
+    });
 
-<input id="mNome" value="${c.nome}">
+    alert("Holerite enviado com sucesso.");
+    document.getElementById("holArquivo").value="";
+    document.getElementById("holFiltroRe").value=re;
+    document.getElementById("holFiltroComp").value=competencia;
+    carregarHolerites();
+  }catch(e){
+    alert("Falha ao enviar holerite.");
+  }
+};
 
-</div>
+window.carregarHolerites = async function(){
+  const filtroRe = (document.getElementById("holFiltroRe")?.value || "").trim();
+  const filtroComp = (document.getElementById("holFiltroComp")?.value || "").trim();
 
-<div>
+  const snap = await getDocs(collection(db,"holerites"));
+  let list = snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }));
 
-<label>Escala</label>
+  list = list.map(h => ({
+    ...h,
+    re: (h.re||"").toString().trim(),
+    competencia: (h.competencia||"").toString().trim(),
+    tipo: (h.tipo||"").toString().trim(),
+    url: (h.url||"").toString(),
+    storagePath: (h.storagePath||"").toString(),
+    uploadedAt: (h.uploadedAt||"").toString()
+  }));
 
-<select id="mEscala">
+  if (filtroRe) list = list.filter(h => h.re === filtroRe);
+  if (filtroComp) list = list.filter(h => h.competencia === filtroComp);
 
-<option value="5x2">5x2</option>
-<option value="6x1">6x1</option>
-<option value="12x36">12x36</option>
+  list.sort((a,b) =>
+    (String(b.competencia||"")).localeCompare(String(a.competencia||"")) ||
+    (String(b.uploadedAt||"")).localeCompare(String(a.uploadedAt||""))
+  );
 
-</select>
+  cacheHolerites = list;
 
-</div>
+  const tbody = document.getElementById("tbodyHolerites");
+  if (!tbody) return;
+  tbody.innerHTML="";
 
-<div>
+  for (const h of cacheHolerites){
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${h.re}</td>
+      <td>${nomePorRe(h.re)}</td>
+      <td>${h.competencia}</td>
+      <td>${tipoLabel(h.tipo)}</td>
+      <td>${h.url ? `<a href="${h.url}" target="_blank" rel="noopener">Abrir PDF</a>` : ""}</td>
+      <td>${brDateTimeFromIso(h.uploadedAt)}</td>
+      <td><button class="minBtn" onclick="editarHolerite('${h.id}')">Modificar</button></td>
+    `;
+    tbody.appendChild(tr);
+  }
+};
 
-<label>Data admissão</label>
+window.editarHolerite = function(id){
+  const h = cacheHolerites.find(x => x.id === id);
+  if (!h) return alert("Holerite não encontrado.");
 
-<input type="date" id="mAdmissao" value="${c.dataAdmissao||""}">
+  openModal({
+    title: `Modificar Holerite — RE ${h.re}`,
+    bodyHtml: `
+      <div class="grid">
+        <div>
+          <label>RE</label>
+          <input value="${h.re}" disabled>
+        </div>
+        <div>
+          <label>Competência (AAAA-MM)</label>
+          <input id="mhComp" value="${h.competencia}">
+        </div>
+        <div>
+          <label>Tipo</label>
+          <select id="mhTipo">
+            <option value="mensal" ${h.tipo==="mensal" ? "selected":""}>Mensal</option>
+            <option value="13p1" ${h.tipo==="13p1" ? "selected":""}>13º 1ª parcela</option>
+            <option value="13p2" ${h.tipo==="13p2" ? "selected":""}>13º 2ª parcela</option>
+          </select>
+        </div>
+        <div>
+          <label>Arquivo (somente leitura)</label>
+          <input value="${h.storagePath || ""}" disabled>
+        </div>
+        <div class="small" style="grid-column:1 / -1">
+          <button class="btnDangerInline" id="btnExcluirHolerite">Excluir holerite (apaga Firestore + Storage)</button>
+        </div>
+      </div>
+    `,
+    onSave: async () => {
+      const competencia = (document.getElementById("mhComp").value || "").trim();
+      const tipo = document.getElementById("mhTipo").value;
 
-</div>
+      if (!validCompetencia(competencia)) return alert("Competência inválida. Use AAAA-MM.");
+      if (!confirm("Salvar alteração do holerite?")) return;
 
-<div>
+      await updateDoc(doc(db,"holerites", id), {
+        competencia, tipo
+      });
 
-<label>Novo início plantão</label>
+      closeModal();
+      carregarHolerites();
+    }
+  });
 
-<input type="date" id="mInicioPlantao">
+  setTimeout(() => {
+    const btn = document.getElementById("btnExcluirHolerite");
+    if (!btn) return;
+    btn.onclick = async () => {
+      if (!confirm("Excluir holerite? Isso apaga o PDF do Storage também.")) return;
 
-</div>
+      try{
+        if (h.storagePath){
+          const r = sRef(storage, h.storagePath);
+          await deleteObject(r);
+        }
+      }catch(e){
+        // se não achar no storage, ainda assim apaga no firestore
+      }
 
-<div>
+      await deleteDoc(doc(db,"holerites", id));
+      closeModal();
+      carregarHolerites();
+    };
+  }, 0);
+};
 
-<label>Hora entrada</label>
+// ===== LOCAIS =====
+window.cadastrarLocal = async function(){
+  const nome = document.getElementById("locNome").value.trim();
+  const lat = Number(document.getElementById("locLat").value.trim());
+  const lng = Number(document.getElementById("locLng").value.trim());
+  const raio = Number(document.getElementById("locRaio").value.trim());
 
-<input type="time" id="mHoraEntrada" value="${c.horaEntrada||""}">
+  if (!nome || !Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(raio)){
+    return alert("Preencha Nome, Latitude, Longitude e Raio.");
+  }
+  if (!confirm(`Cadastrar local?\n${nome}\n(${lat}, ${lng})\nRaio: ${raio}m`)) return;
 
-</div>
+  await addDoc(collection(db,"locais"), { nome, lat, lng, raio, updatedAt:new Date().toISOString() });
 
-<div>
+  document.getElementById("locNome").value="";
+  document.getElementById("locLat").value="";
+  document.getElementById("locLng").value="";
+  document.getElementById("locRaio").value="";
+  carregarLocais();
+};
 
-<label>Hora saída</label>
+window.carregarLocais = async function(){
+  const snap = await getDocs(collection(db,"locais"));
+  cacheLocais = snap.docs.map(d => ({ id:d.id, ...d.data() }))
+    .filter(l => Number.isFinite(l.lat) && Number.isFinite(l.lng) && Number.isFinite(l.raio))
+    .sort((a,b)=> (a.nome||"").localeCompare(b.nome||""));
 
-<input type="time" id="mHoraSaida" value="${c.horaSaida||""}">
+  const tbody=document.getElementById("tbodyLocais");
+  tbody.innerHTML="";
 
-</div>
+  for (const l of cacheLocais){
+    const tr=document.createElement("tr");
+    tr.innerHTML = `
+      <td>${l.nome || ""}</td>
+      <td>${l.lat}</td>
+      <td>${l.lng}</td>
+      <td>${l.raio}</td>
+      <td><button class="minBtn" onclick="editarLocal('${l.id}')">Modificar</button></td>
+    `;
+    tbody.appendChild(tr);
+  }
+};
 
-</div>
+window.editarLocal = function(id){
+  const l = cacheLocais.find(x => x.id === id);
+  if (!l) return alert("Local não encontrado.");
 
-`;
+  openModal({
+    title: "Modificar local",
+    bodyHtml: `
+      <div class="grid">
+        <div style="grid-column:1 / -1">
+          <label>Nome</label>
+          <input id="mlNome" value="${l.nome || ""}">
+        </div>
+        <div>
+          <label>Latitude</label>
+          <input id="mlLat" value="${l.lat}">
+        </div>
+        <div>
+          <label>Longitude</label>
+          <input id="mlLng" value="${l.lng}">
+        </div>
+        <div style="grid-column:1 / -1">
+          <label>Raio (m)</label>
+          <input id="mlRaio" value="${l.raio}">
+        </div>
+        <div class="small" style="grid-column:1 / -1">
+          <button class="btnDangerInline" id="btnExcluirLocal">Excluir local</button>
+        </div>
+      </div>
+    `,
+    onSave: async () => {
+      const nome = document.getElementById("mlNome").value.trim();
+      const lat = Number(document.getElementById("mlLat").value.trim());
+      const lng = Number(document.getElementById("mlLng").value.trim());
+      const raio = Number(document.getElementById("mlRaio").value.trim());
 
-modalOverlay.style.display="flex";
+      if (!nome || !Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(raio)){
+        return alert("Preencha corretamente Nome, Latitude, Longitude e Raio.");
+      }
+      if (!confirm("Salvar alterações do local?")) return;
 
+      await updateDoc(doc(db,"locais",id), { nome, lat, lng, raio, updatedAt:new Date().toISOString() });
+
+      closeModal();
+      carregarLocais();
+      buscar();
+    }
+  });
+
+  setTimeout(() => {
+    const btn = document.getElementById("btnExcluirLocal");
+    if (!btn) return;
+    btn.onclick = async () => {
+      if (!confirm("Excluir este local?")) return;
+      await deleteDoc(doc(db,"locais",id));
+      closeModal();
+      carregarLocais();
+      buscar();
+    };
+  }, 0);
+};
+
+// ===== JORNADAS =====
+window.buscar = async function(){
+  const iniStr = document.getElementById("inicio").value || "2000-01-01";
+  const fimStr = document.getElementById("fim").value || "2999-12-31";
+  const filtroRe = norm(document.getElementById("filtroRe").value);
+  const filtroNome = norm(document.getElementById("filtroNome").value);
+
+  const snap = await getDocs(collection(db,"jornadas"));
+  let jornadas = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+
+  jornadas = jornadas.filter(j => {
+    const iso = (j.entrada?.ts || "").toString();
+    const d = iso ? iso.slice(0,10) : "";
+    if (!d) return false;
+    return d >= iniStr && d <= fimStr;
+  });
+
+  if (filtroRe) jornadas = jornadas.filter(j => norm(j.re) === filtroRe);
+  if (filtroNome) jornadas = jornadas.filter(j => norm(j.nome).includes(filtroNome));
+
+  jornadas.sort((a,b) => (toDateAny(b.entrada?.ts)||new Date(0)) - (toDateAny(a.entrada?.ts)||new Date(0)));
+
+  ultimaTabela = jornadas;
+  montarJornadas(jornadas);
+};
+
+function montarJornadas(jornadas){
+  const tbody=document.getElementById("tbodyJornadas");
+  tbody.innerHTML="";
+
+  for (const j of jornadas){
+    const dataEntrada = formatBRDate(j.entrada?.ts);
+    const loc = getBestLocationFromJornada(j);
+    const rec = reconhecerLocal(loc);
+
+    const tr=document.createElement("tr");
+    tr.innerHTML = `
+      <td>${dataEntrada}</td>
+      <td>${j.nome || ""}</td>
+      <td>${j.re || ""}</td>
+      <td>${formatHHMM(j.entrada?.ts)}</td>
+      <td>${formatHHMM(j.saida_intervalo?.ts)}</td>
+      <td>${formatHHMM(j.retorno_intervalo?.ts)}</td>
+      <td>${formatHHMM(j.saida?.ts)}</td>
+      <td>${formatHHMM(j.entrada_he?.ts)}</td>
+      <td>${formatHHMM(j.saida_he?.ts)}</td>
+      <td>${loc || ""}</td>
+      <td>${rec}</td>
+      <td><button class="minBtn" onclick="editarJornada('${j.id}')">Modificar</button></td>
+    `;
+    tbody.appendChild(tr);
+  }
 }
 
-window.fecharModal=function(){
+window.editarJornada = function(docId){
+  const j = ultimaTabela.find(x => x.id === docId);
+  if (!j) return alert("Jornada não encontrada.");
 
-modalOverlay.style.display="none";
+  const val = (ts) => brDateTimeFromIso(ts);
 
+  openModal({
+    title: `Modificar Jornada — RE ${j.re}`,
+    bodyHtml: `
+      <div class="grid">
+        <div><label>ENTRADA</label><input id="fEntrada" placeholder="DD/MM/AAAA HH:MM" value="${val(j.entrada?.ts)}"></div>
+        <div><label>INÍCIO INTERVALO</label><input id="fSaiInt" placeholder="DD/MM/AAAA HH:MM" value="${val(j.saida_intervalo?.ts)}"></div>
+        <div><label>FIM INTERVALO</label><input id="fRetInt" placeholder="DD/MM/AAAA HH:MM" value="${val(j.retorno_intervalo?.ts)}"></div>
+        <div><label>SAÍDA</label><input id="fSaida" placeholder="DD/MM/AAAA HH:MM" value="${val(j.saida?.ts)}"></div>
+        <div><label>ENTRADA HE</label><input id="fEntHe" placeholder="DD/MM/AAAA HH:MM" value="${val(j.entrada_he?.ts)}"></div>
+        <div><label>SAÍDA HE</label><input id="fSaiHe" placeholder="DD/MM/AAAA HH:MM" value="${val(j.saida_he?.ts)}"></div>
+      </div>
+      <div class="small" style="margin-top:8px">Deixe em branco para remover o campo (apaga no banco).</div>
+    `,
+    onSave: async () => {
+      const campos = [
+        ["entrada.ts", document.getElementById("fEntrada").value],
+        ["saida_intervalo.ts", document.getElementById("fSaiInt").value],
+        ["retorno_intervalo.ts", document.getElementById("fRetInt").value],
+        ["saida.ts", document.getElementById("fSaida").value],
+        ["entrada_he.ts", document.getElementById("fEntHe").value],
+        ["saida_he.ts", document.getElementById("fSaiHe").value],
+      ];
+
+      const payload = { updatedAt: new Date().toISOString() };
+
+      for (const [path, txt] of campos){
+        const t = (txt || "").trim();
+        if (!t){
+          payload[path] = deleteField();
+          continue;
+        }
+        const iso = isoFromBrDateTime(t);
+        if (!iso) return alert(`Formato inválido. Use DD/MM/AAAA HH:MM`);
+        payload[path] = iso;
+      }
+
+      if (!confirm("Salvar alterações desta jornada?")) return;
+
+      await updateDoc(doc(db,"jornadas",docId), payload);
+      closeModal();
+      buscar();
+    }
+  });
+};
+
+// ===== OCORRÊNCIAS (dia) =====
+function ocDocId(re, ymd){ return `${re}_${ymd}`; }
+
+async function apagarJornadasDoDia(re, dataYmd){
+  const qJ = query(collection(db,"jornadas"), where("re","==",re));
+  const snap = await getDocs(qJ);
+  const all = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+
+  const doDia = all.filter(j => {
+    const d = (j?.entrada?.ts || "").toString().slice(0,10);
+    return d === dataYmd;
+  });
+
+  for (const j of doDia){
+    await deleteDoc(doc(db,"jornadas", j.id));
+  }
+  return doDia.length;
 }
 
-window.salvarModal=async function(){
+window.salvarOcorrencia = async function(){
+  try{
+    const re = (document.getElementById("ocRe").value || "").trim();
+    const data = document.getElementById("ocData").value;
+    const tipo = document.getElementById("ocTipo").value;
+    const motivo = (document.getElementById("ocMotivo").value || "").trim();
 
-const nome=mNome.value;
+    if (!re) return alert("Informe o RE.");
+    if (!data) return alert("Informe a data.");
+    if (!tipo) return alert("Selecione o tipo.");
 
-const escala=mEscala.value;
+    if (!confirm(`Salvar ocorrência?\nRE: ${re}\nData: ${brDateFromYmd(data)}\nTipo: ${tipo.toUpperCase()}\n\nIsso vai APAGAR registros do dia (se existirem).`)) return;
 
-const admissao=mAdmissao.value;
+    await setDoc(doc(db,"ocorrencias", ocDocId(re, data)), {
+      re, data, tipo, motivo,
+      updatedAt: new Date().toISOString()
+    }, { merge:true });
 
-const inicioPlantao=mInicioPlantao.value;
+    const n = await apagarJornadasDoDia(re, data);
+    alert(`Ocorrência salva.\nRegistros apagados do dia: ${n}`);
 
-const horaEntrada=mHoraEntrada.value;
+    document.getElementById("ocMotivo").value = "";
+    document.getElementById("ocFiltroRe").value = re;
+    document.getElementById("ocFiltroData").value = data;
+    await carregarOcorrencias();
 
-const horaSaida=mHoraSaida.value;
+  }catch(e){
+    alert("Falha ao salvar ocorrência.");
+  }
+};
 
-const ref = doc(db,"colaboradores",editandoId);
+window.carregarOcorrencias = async function(){
+  try{
+    const filtroRe = (document.getElementById("ocFiltroRe").value || "").trim();
+    const filtroData = document.getElementById("ocFiltroData").value;
 
-const snap = await getDoc(ref);
+    const snap = await getDocs(collection(db,"ocorrencias"));
+    let list = snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }));
 
-let historico=[];
+    list = list.map(o => ({
+      ...o,
+      re: (o.re || "").toString().trim(),
+      data: (o.data || "").toString().slice(0,10),
+      tipo: (o.tipo || "").toString(),
+      motivo: (o.motivo || "").toString(),
+      updatedAt: (o.updatedAt || "")
+    }));
 
-if(snap.exists()){
+    if (filtroRe) list = list.filter(o => o.re === filtroRe);
+    if (filtroData) list = list.filter(o => o.data === filtroData);
 
-historico=snap.data().plantaoHistorico||[];
+    list.sort((a,b) => (String(b.data||"")).localeCompare(String(a.data||"")) || String(b.updatedAt||"").localeCompare(String(a.updatedAt||"")));
 
+    cacheOcorr = list;
+
+    const tbody = document.getElementById("tbodyOcorr");
+    tbody.innerHTML = "";
+
+    for (const o of cacheOcorr){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${brDateFromYmd(o.data||"")}</td>
+        <td>${o.re || ""}</td>
+        <td>${nomePorRe(o.re)}</td>
+        <td>${(o.tipo||"").toUpperCase()}</td>
+        <td>${o.motivo || ""}</td>
+        <td>${brDateTimeFromIso(o.updatedAt)}</td>
+        <td><button class="minBtn" onclick="editarOcorrencia('${o.id}')">Modificar</button></td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+  }catch(e){
+    alert("Falha ao carregar ocorrências.");
+  }
+};
+
+window.editarOcorrencia = function(id){
+  const o = cacheOcorr.find(x => x.id === id);
+  if (!o) return alert("Ocorrência não encontrada.");
+
+  openModal({
+    title: `Modificar Ocorrência — ${o.re} — ${brDateFromYmd(o.data)}`,
+    bodyHtml: `
+      <div class="grid">
+        <div>
+          <label>RE</label>
+          <input value="${o.re}" disabled>
+        </div>
+        <div>
+          <label>Data</label>
+          <input value="${o.data}" disabled>
+        </div>
+        <div>
+          <label>Tipo</label>
+          <select id="moTipo">
+            <option value="falta" ${o.tipo==="falta" ? "selected" : ""}>FALTA</option>
+            <option value="atestado" ${o.tipo==="atestado" ? "selected" : ""}>ATESTADO</option>
+            <option value="abono" ${o.tipo==="abono" ? "selected" : ""}>ABONO</option>
+          </select>
+        </div>
+        <div>
+          <label>Motivo</label>
+          <input id="moMotivo" value="${(o.motivo||"").replaceAll('"','&quot;')}">
+        </div>
+        <div class="small" style="grid-column:1 / -1">
+          <button class="btnDangerInline" id="btnExcluirOcorr">Excluir ocorrência</button>
+        </div>
+      </div>
+    `,
+    onSave: async () => {
+      const tipo = document.getElementById("moTipo").value;
+      const motivo = (document.getElementById("moMotivo").value || "").trim();
+
+      if (!confirm("Salvar alteração desta ocorrência?")) return;
+
+      await updateDoc(doc(db,"ocorrencias", id), {
+        tipo,
+        motivo,
+        updatedAt: new Date().toISOString()
+      });
+
+      closeModal();
+      carregarOcorrencias();
+    }
+  });
+
+  setTimeout(() => {
+    const btn = document.getElementById("btnExcluirOcorr");
+    if (!btn) return;
+    btn.onclick = async () => {
+      if (!confirm("Excluir esta ocorrência?")) return;
+      await deleteDoc(doc(db,"ocorrencias", id));
+      closeModal();
+      carregarOcorrencias();
+    };
+  }, 0);
+};
+
+// ===== FÉRIAS (período) =====
+async function getColab(re){
+  const ref = doc(db,"colaboradores", re);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
+  return { id:snap.id, ...(snap.data()||{}) };
+}
+function rangeDays(iniYmd, fimYmd){
+  const out = [];
+  const [y1,m1,d1] = iniYmd.split("-").map(Number);
+  const [y2,m2,d2] = fimYmd.split("-").map(Number);
+  let cur = new Date(y1, m1-1, d1, 12, 0, 0);
+  const end = new Date(y2, m2-1, d2, 12, 0, 0);
+  while (cur <= end){
+    out.push(new Date(cur));
+    cur.setDate(cur.getDate()+1);
+  }
+  return out;
+}
+async function apagarJornadasNoPeriodo(re, iniYmd, fimYmd, escala, somenteDiasTrabalho){
+  const qJ = query(collection(db,"jornadas"), where("re","==",re));
+  const snap = await getDocs(qJ);
+  const all = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+
+  const days = rangeDays(iniYmd, fimYmd);
+  const alvo = new Set();
+  for (const dt of days){
+    const ymd = dt.toISOString().slice(0,10);
+    if (somenteDiasTrabalho){
+      // 12x36 não usa isso aqui (férias você vai aplicar mesmo assim, então deixa "somente dias trabalho" desmarcado se quiser pegar todos)
+      if (!isDiaTrabalho(dt, escala)) continue;
+    }
+    alvo.add(ymd);
+  }
+
+  const apagar = all.filter(j => {
+    const d = (j?.entrada?.ts || "").toString().slice(0,10);
+    return alvo.has(d);
+  });
+
+  for (const j of apagar){
+    await deleteDoc(doc(db,"jornadas", j.id));
+  }
+  return apagar.length;
 }
 
-if(escala==="12x36" && inicioPlantao){
+window.salvarFerias = async function(){
+  const re = (document.getElementById("afRe").value || "").trim();
+  const inicio = document.getElementById("afInicio").value;
+  const fim = document.getElementById("afFim").value;
+  const aplicarSomenteDiasTrabalho = document.getElementById("afDiasUteis").checked;
+  const motivo = (document.getElementById("afMotivo").value || "").trim();
 
-historico.push({
+  if (!re) return alert("Informe o RE.");
+  if (!inicio || !fim) return alert("Informe início e fim.");
+  if (fim < inicio) return alert("Fim não pode ser menor que início.");
 
-inicio:inicioPlantao,
+  const col = await getColab(re);
+  if (!col) return alert("Colaborador não encontrado.");
+  const escala = (col.escala || "5x2");
 
-createdAt:new Date().toISOString()
+  if (!confirm(
+    `Salvar FÉRIAS?\nRE: ${re}\nNome: ${col.nome||""}\nPeríodo: ${brDateFromYmd(inicio)} até ${brDateFromYmd(fim)}\nSomente dias de trabalho: ${aplicarSomenteDiasTrabalho ? "SIM" : "NÃO"}\n\nIsso vai APAGAR jornadas dentro do período (conforme regra).`
+  )) return;
 
-});
+  await addDoc(collection(db,"afastamentos"), {
+    re,
+    tipo: "ferias",
+    inicio,
+    fim,
+    aplicarSomenteDiasTrabalho,
+    motivo,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  });
 
-}
+  const apagadas = await apagarJornadasNoPeriodo(re, inicio, fim, escala, aplicarSomenteDiasTrabalho);
+  alert(`Férias salvas.\nJornadas apagadas no período: ${apagadas}`);
 
-await setDoc(ref,{
+  document.getElementById("afMotivo").value="";
+  carregarFerias();
+};
 
-nome,
-escala,
-dataAdmissao:admissao,
-horaEntrada,
-horaSaida,
-plantaoHistorico:historico,
-updatedAt:new Date().toISOString()
+window.carregarFerias = async function(){
+  const snap = await getDocs(collection(db,"afastamentos"));
+  cacheFerias = snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }))
+    .filter(x => String(x.tipo||"").toLowerCase() === "ferias")
+    .sort((a,b) => (String(b.inicio||"")).localeCompare(String(a.inicio||"")));
 
-},{merge:true});
+  const tbody = document.getElementById("tbodyFerias");
+  tbody.innerHTML="";
 
-fecharModal();
+  for (const f of cacheFerias){
+    const col = cacheColabs.find(c => (c.re||c.id) === f.re) || null;
+    const nome = col?.nome || "";
+    const periodo = `${brDateFromYmd(String(f.inicio||"").slice(0,10))} até ${brDateFromYmd(String(f.fim||"").slice(0,10))}`;
+    const du = (f.aplicarSomenteDiasTrabalho === true) ? "SIM" : "NÃO";
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${f.re || ""}</td>
+      <td>${nome}</td>
+      <td>${periodo}</td>
+      <td>${du}</td>
+      <td>${(f.motivo||"")}</td>
+      <td><button class="minBtn" onclick="editarFerias('${f.id}')">Modificar</button></td>
+    `;
+    tbody.appendChild(tr);
+  }
+};
 
-carregar();
+window.editarFerias = function(id){
+  const f = cacheFerias.find(x => x.id === id);
+  if (!f) return alert("Férias não encontradas.");
 
-}
+  openModal({
+    title: `Modificar Férias — RE ${f.re}`,
+    bodyHtml: `
+      <div class="grid">
+        <div>
+          <label>RE</label>
+          <input id="mfRe" value="${f.re||""}" disabled>
+        </div>
+        <div>
+          <label>Tipo</label>
+          <input value="FÉRIAS" disabled>
+        </div>
+        <div>
+          <label>Início</label>
+          <input id="mfInicio" type="date" value="${String(f.inicio||"").slice(0,10)}">
+        </div>
+        <div>
+          <label>Fim</label>
+          <input id="mfFim" type="date" value="${String(f.fim||"").slice(0,10)}">
+        </div>
+        <div style="grid-column:1 / -1">
+          <label style="display:flex;align-items:center;gap:8px;">
+            <input id="mfDiasUteis" type="checkbox" ${f.aplicarSomenteDiasTrabalho===true ? "checked" : ""}>
+            Somente dias de trabalho
+          </label>
+        </div>
+        <div style="grid-column:1 / -1">
+          <label>Motivo</label>
+          <input id="mfMotivo" value="${(f.motivo||"").toString().replaceAll('"','&quot;')}">
+        </div>
+        <div class="small" style="grid-column:1 / -1">
+          <button class="btnDangerInline" id="btnExcluirFerias">Excluir período de férias</button>
+        </div>
+      </div>
+    `,
+    onSave: async () => {
+      const ini = document.getElementById("mfInicio").value;
+      const fim = document.getElementById("mfFim").value;
+      const du = document.getElementById("mfDiasUteis").checked;
+      const motivo = (document.getElementById("mfMotivo").value || "").trim();
 
-carregar();
+      if (!ini || !fim) return alert("Informe início e fim.");
+      if (fim < ini) return alert("Fim não pode ser menor que início.");
 
+      if (!confirm("Salvar alteração do período de férias?")) return;
+
+      await updateDoc(doc(db,"afastamentos", id), {
+        inicio: ini,
+        fim: fim,
+        aplicarSomenteDiasTrabalho: du,
+        motivo,
+        updatedAt: new Date().toISOString()
+      });
+
+      closeModal();
+      carregarFerias();
+    }
+  });
+
+  setTimeout(() => {
+    const btn = document.getElementById("btnExcluirFerias");
+    if (!btn) return;
+    btn.onclick = async () => {
+      if (!confirm("Excluir este período de férias?")) return;
+      await deleteDoc(doc(db,"afastamentos", id));
+      closeModal();
+      carregarFerias();
+    };
+  }, 0);
+};
+
+// export
+window.exportar = function(){
+  let csv = "DataEntrada,Nome,RE,Entrada,InicioIntervalo,FimIntervalo,Saida,EntradaHE,SaidaHE,Coords,Local\n";
+  for (const j of ultimaTabela){
+    const loc = getBestLocationFromJornada(j);
+    const rec = reconhecerLocal(loc);
+    const linha = [
+      formatBRDate(j.entrada?.ts),
+      j.nome || "",
+      j.re || "",
+      formatHHMM(j.entrada?.ts),
+      formatHHMM(j.saida_intervalo?.ts),
+      formatHHMM(j.retorno_intervalo?.ts),
+      formatHHMM(j.saida?.ts),
+      formatHHMM(j.entrada_he?.ts),
+      formatHHMM(j.saida_he?.ts),
+      loc || "",
+      rec || ""
+    ].map(v => `"${String(v).replaceAll('"','""')}"`).join(",");
+    csv += linha + "\n";
+  }
+  const blob = new Blob([csv], { type:"text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "jornadas.csv";
+  a.click();
+};
 </script>
-
 </body>
 </html>
