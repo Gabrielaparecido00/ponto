@@ -606,7 +606,8 @@ function login(){
   }
 
   auth.signInWithEmailAndPassword(email, senha)
-    .catch(function(){
+    .catch(function(e){
+      console.error("LOGIN ERRO:", e);
       alert("Email ou senha inválidos.");
     })
     .finally(function(){
@@ -619,8 +620,10 @@ window.login = login;
 function logout(){ auth.signOut(); }
 window.logout = logout;
 
-auth.onAuthStateChanged(function(user){
+auth.onAuthStateChanged(async function(user){
   if(user){
+    try{ await user.getIdToken(true); }catch(e){ console.warn("token refresh falhou:", e); }
+
     loginDiv.style.display = "none";
     painelDiv.style.display = "block";
     try{
@@ -629,49 +632,41 @@ auth.onAuthStateChanged(function(user){
       carregarLocais();
       carregarColaboradores();
       carregarSupervisores();
-    }catch{}
+    }catch(e){
+      console.error("Erro ao iniciar painel:", e);
+    }
   }else{
     loginDiv.style.display = "block";
     painelDiv.style.display = "none";
   }
 });
 
- <script>
+/* ========= DEBUG (chame no console: debugAuthAndSupervisores()) ========= */
 async function debugAuthAndSupervisores(){
   const u = auth.currentUser;
   console.log("AUTH user:", u ? u.email : null, u ? u.uid : null);
+  if (!u){ console.log("❌ Não está logado."); return; }
 
-  if (!u){
-    console.log("❌ Não está logado.");
-    return;
-  }
-
-  // força atualizar o token (se você setou claims recentemente)
   const tokenRes = await u.getIdTokenResult(true);
   console.log("CLAIMS:", tokenRes.claims);
 
-  // teste de READ
   try{
     const snap = await db.collection("supervisores").limit(1).get();
     console.log("✅ READ supervisores ok. docs:", snap.size);
   }catch(e){
-    console.error("❌ READ supervisores falhou:", e.code, e.message);
+    console.error("❌ READ supervisores falhou:", e.code, e.message, e);
   }
 
-  // teste de WRITE (cria e apaga)
   try{
     const ref = await db.collection("supervisores").add({ nome:"__teste__", updatedAt:new Date().toISOString() });
     console.log("✅ WRITE supervisores ok. id:", ref.id);
     await db.collection("supervisores").doc(ref.id).delete();
     console.log("✅ DELETE supervisores ok.");
   }catch(e){
-    console.error("❌ WRITE/DELETE supervisores falhou:", e.code, e.message);
+    console.error("❌ WRITE/DELETE supervisores falhou:", e.code, e.message, e);
   }
 }
-
-// deixe isso fácil de chamar no console do navegador
 window.debugAuthAndSupervisores = debugAuthAndSupervisores;
-</script>
 
 /* ========= HELPERS ========= */
 function norm(s){ return (s||"").toString().trim().toLowerCase(); }
@@ -865,7 +860,8 @@ function cadastrarLocal(){
       document.getElementById("locRaio").value="";
       carregarLocais();
     })
-    .catch(function(){
+    .catch(function(e){
+      console.error("cadastrarLocal ERRO:", e);
       alert("Não foi possível cadastrar o local.");
     });
 }
@@ -901,7 +897,8 @@ function carregarLocais(){
         tbody.appendChild(tr);
       });
     })
-    .catch(function(){
+    .catch(function(e){
+      console.error("carregarLocais ERRO:", e);
       alert("Não foi possível carregar locais.");
     });
 }
@@ -954,7 +951,8 @@ function editarLocal(id){
           carregarLocais();
           try{ buscar(); }catch{}
         })
-        .catch(function(){
+        .catch(function(e){
+          console.error("editarLocal update ERRO:", e);
           alert("Não foi possível salvar o local.");
         });
     }
@@ -971,7 +969,8 @@ function editarLocal(id){
           carregarLocais();
           try{ buscar(); }catch{}
         })
-        .catch(function(){
+        .catch(function(e){
+          console.error("editarLocal delete ERRO:", e);
           alert("Não foi possível excluir o local.");
         });
     };
@@ -1004,7 +1003,8 @@ function carregarSupervisores(){
         tbody.appendChild(tr);
       });
     })
-    .catch(function(){
+    .catch(function(e){
+      console.error("carregarSupervisores ERRO:", e);
       alert("Não foi possível carregar supervisores.");
     });
 }
@@ -1020,7 +1020,8 @@ function cadastrarSupervisor(){
       document.getElementById("supNome").value = "";
       carregarSupervisores();
     })
-    .catch(function(){
+    .catch(function(e){
+      console.error("cadastrarSupervisor ERRO:", e);
       alert("Não foi possível cadastrar supervisor.");
     });
 }
@@ -1053,7 +1054,8 @@ function editarSupervisor(id){
           closeModal();
           carregarSupervisores();
         })
-        .catch(function(){
+        .catch(function(e){
+          console.error("editarSupervisor update ERRO:", e);
           alert("Não foi possível salvar supervisor.");
         });
     }
@@ -1069,7 +1071,8 @@ function editarSupervisor(id){
           closeModal();
           carregarSupervisores();
         })
-        .catch(function(){
+        .catch(function(e){
+          console.error("editarSupervisor delete ERRO:", e);
           alert("Não foi possível excluir supervisor.");
         });
     };
@@ -1105,7 +1108,8 @@ function carregarColaboradores(){
       montarColaboradores();
       return cacheColabs;
     })
-    .catch(function(){
+    .catch(function(e){
+      console.error("carregarColaboradores ERRO:", e);
       alert("Não foi possível carregar colaboradores.");
       cacheColabs = [];
       montarColaboradores();
@@ -1206,12 +1210,14 @@ function cadastrarColab(){
       carregarColaboradores();
       alert("✅ Colaborador cadastrado/atualizado.");
     })
-    .catch(function(){
+    .catch(function(e){
+      console.error("cadastrarColab ERRO:", e);
       alert("Não foi possível cadastrar colaborador.");
     });
 }
 window.cadastrarColab = cadastrarColab;
 
+/* ========= MODIFICAR COLABORADOR ========= */
 function editarColab(id){
   const c = cacheColabs.find(x => x.id===id);
   if (!c){ alert("Colaborador não encontrado."); return; }
@@ -1324,7 +1330,8 @@ function editarColab(id){
         closeModal();
         carregarColaboradores();
       })
-      .catch(function(){
+      .catch(function(e){
+        console.error("editarColab ERRO:", e);
         alert("Não foi possível salvar colaborador.");
       });
     }
@@ -1364,7 +1371,8 @@ function buscar(){
       ultimaTabela = jornadas;
       montarJornadas(jornadas);
     })
-    .catch(function(){
+    .catch(function(e){
+      console.error("buscar jornadas ERRO:", e);
       alert("Não foi possível buscar jornadas.");
     });
 }
@@ -1468,7 +1476,8 @@ function editarJornada(docId){
             buscar();
             alert("✅ Jornada apagada (ENTRADA removida).");
           })
-          .catch(function(){
+          .catch(function(e){
+            console.error("delete jornada ERRO:", e);
             alert("Não foi possível apagar a jornada.");
           });
         return;
@@ -1499,7 +1508,9 @@ function editarJornada(docId){
           closeModal();
           buscar();
         })
-        .catch(function(){});
+        .catch(function(e){
+          if (e) console.warn("editarJornada cancel/erro:", e);
+        });
     }
   });
 }
