@@ -674,6 +674,27 @@ acaoSelect.addEventListener("change", () => {
   setRegisterEnabled();
 });
 
+ async function openFTForm(colaborador){
+
+  const convocado=prompt("Você quer fazer FT? (sim/nao)");
+
+  if(!convocado)return null;
+
+  const cobrindo=prompt("Quem você vai cobrir?");
+
+  if(!cobrindo)return null;
+
+  const supervisor=prompt("Supervisor que autorizou:");
+
+  return{
+    convocado,
+    cobrindo,
+    supervisor,
+    createdAt:new Date().toISOString()
+  };
+
+}
+
 // registrar
 registrarBtn.addEventListener("click", async () => {
   if (clickLock) return;
@@ -736,13 +757,42 @@ registrarBtn.addEventListener("click", async () => {
   }
 
   if (acao === ETAPAS.ENTRADA){
-    await addDoc(collection(db, "jornadas"), {
-      re,
-      nome: colaborador.nome,
-      status: "aberta",
-      entrada: { ts: now.toISOString(), foto, location },
-      updatedAt: now.toISOString()
-    });
+
+  let ftForm=null;
+
+  const hoje=todayYmd();
+
+  const snapHoje=await getDocs(query(
+    collection(db,"jornadas"),
+    where("re","==",re)
+  ));
+
+  const jaTemEntradaHoje=snapHoje.docs.some(d=>
+    String(d.data()?.entrada?.ts||"").slice(0,10)===hoje
+  );
+
+  const ehFolga=isFolgaByEscala(new Date(),colaborador.escala);
+
+  if(jaTemEntradaHoje || ehFolga){
+
+    ftForm=await openFTForm(colaborador);
+
+    if(!ftForm)return;
+
+  }
+
+  await addDoc(collection(db, "jornadas"), {
+    re,
+    nome: colaborador.nome,
+    status: "aberta",
+
+    entrada: { ts: now.toISOString(), foto, location },
+
+    ftDetected:!!ftForm,
+    ftForm:ftForm||null,
+
+    updatedAt: now.toISOString()
+  });
     alert("ENTRADA registrada com sucesso!");
     limparForm();
     return;
