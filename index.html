@@ -49,9 +49,41 @@
     white-space:pre-line;
   }
   .footer{ text-align:center; margin-top:16px; font-size:12px; color:#666; }
-
-  /* vídeo hidden para fallback/compatibilidade */
   #camPreview{ display:none; width:1px; height:1px; opacity:0; pointer-events:none; }
+
+  /* ===== Modal FT ===== */
+  .overlay{
+    position:fixed; inset:0;
+    background:rgba(0,0,0,0.45);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:9999;
+    padding:12px;
+  }
+  .modal{
+    background:#fff;
+    width:min(520px, 96vw);
+    border-radius:12px;
+    padding:14px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.22);
+    text-align:left;
+  }
+  .modal h3{ margin:0 0 10px; }
+  .modal p{ margin:0 0 10px; font-size:13px; color:#333; }
+  .modal .row{
+    display:flex; gap:8px; flex-wrap:wrap;
+  }
+  .modal .row button{
+    width:auto; flex:1;
+    border-radius:10px;
+    padding:10px 12px;
+  }
+  .btnGhost{ background:#e9ecef; color:#111; }
+  .btnGhost:hover{ background:#dfe3e8; }
+  .btnPrimary{ background:#1f6feb; }
+  .btnPrimary:hover{ background:#1a5dd6; }
+  .muted{ color:#666; font-size:12px; }
 </style>
 </head>
 
@@ -75,7 +107,6 @@
     <option value="">Selecione a marcação...</option>
   </select>
 
-  <!-- vídeo escondido (fallback captura) -->
   <video id="camPreview" autoplay playsinline muted></video>
 
   <canvas id="photo" width="240" height="320"></canvas>
@@ -90,6 +121,18 @@
 
 <div class="footer">
   Sistema desenvolvido por Gabriel Wandele, todos direitos reservados
+</div>
+
+<!-- ===== Modal FT ===== -->
+<div class="overlay" id="ftOverlay" onclick="closeFtIfBackdrop(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3 id="ftTitle">FT</h3>
+    <div id="ftBody"></div>
+    <div class="row" style="margin-top:10px;">
+      <button class="btnGhost" id="ftCancel">Cancelar</button>
+      <button class="btnPrimary" id="ftOk">Confirmar</button>
+    </div>
+  </div>
 </div>
 
 <script type="module">
@@ -125,13 +168,39 @@ const faseHintEl = document.getElementById("faseHint");
 const acaoSelect = document.getElementById("acaoSelect");
 const blockedBox = document.getElementById("blockedBox");
 
+// Modal FT
+const ftOverlay = document.getElementById("ftOverlay");
+const ftTitle = document.getElementById("ftTitle");
+const ftBody = document.getElementById("ftBody");
+const ftCancel = document.getElementById("ftCancel");
+const ftOk = document.getElementById("ftOk");
+
+function closeFt(){ ftOverlay.style.display="none"; ftBody.innerHTML=""; ftCancel.onclick=null; ftOk.onclick=null; }
+function closeFtIfBackdrop(e){ if (e.target===ftOverlay) closeFt(); }
+window.closeFtIfBackdrop = closeFtIfBackdrop;
+
 // estado
-let colaborador = null; // {re,nome,ativo,escala,horaEntrada,horaSaida,dataAdmissao}
+let colaborador = null;
 let stream = null;
 let clickLock = false;
-
-// ✅ FORÇAR FOTO (estado)
 let hasPhoto = false;
+
+// cache supervisores
+let cacheSupervisores = [];
+
+async function carregarSupervisoresSafe(){
+  try{
+    const snap = await getDocs(collection(db,"supervisores"));
+    cacheSupervisores = snap.docs
+      .map(d => ({ id:d.id, ...(d.data()||{}) }))
+      .map(x => ({ id:x.id, nome: String(x.nome||"").trim() }))
+      .filter(x => !!x.nome)
+      .sort((a,b)=>a.nome.localeCompare(b.nome));
+  }catch{
+    cacheSupervisores = [];
+  }
+}
+carregarSupervisoresSafe();
 
 function resetPhoto(){
   hasPhoto = false;
@@ -151,7 +220,6 @@ function setRegisterEnabled(){
 
 function setInputsEnabled(enabled){
   const temAcoes = acaoSelect.options.length > 1;
-
   acaoSelect.disabled = !enabled || !temAcoes;
   captureBtn.disabled = !enabled;
 
@@ -180,7 +248,6 @@ async function iniciarCamera(){
 }
 iniciarCamera();
 
-// parar câmera ao sair
 window.addEventListener("beforeunload", () => {
   try{
     if (stream){
@@ -190,15 +257,12 @@ window.addEventListener("beforeunload", () => {
   }catch{}
 });
 
-// ✅ CAPTURA SEM DISTORÇÃO (cover + crop central)
-// - tenta ImageCapture (quando disponível)
-// - fallback: desenha do <video>
+// captura
 captureBtn.addEventListener("click", async () => {
   if (!stream) return alert("Câmera não iniciada");
 
   const cw = canvas.width, ch = canvas.height;
 
-  // helper cover crop (bitmap/video frame)
   function drawCover(sourceW, sourceH, drawFn){
     const scale = Math.max(cw / sourceW, ch / sourceH);
     const sw = cw / scale;
@@ -212,7 +276,6 @@ captureBtn.addEventListener("click", async () => {
     setRegisterEnabled();
   }
 
-  // 1) ImageCapture
   try{
     const track = stream.getVideoTracks()[0];
     if (window.ImageCapture && track){
@@ -223,11 +286,8 @@ captureBtn.addEventListener("click", async () => {
       });
       return;
     }
-  }catch{
-    // cai pro fallback
-  }
+  }catch{}
 
-  // 2) Fallback via <video>
   try{
     const v = camPreview;
     if (!v || v.readyState < 2) return alert("Câmera ainda carregando, tente novamente.");
@@ -254,6 +314,26 @@ function brDateFromYmd(ymd){
   if (!y || !m || !d) return ymd;
   return `${d}/${m}/${y}`;
 }
+function addDaysYmd(ymd, days){
+  const [y,m,d] = (ymd||"").split("-").map(Number);
+  const dt = new Date(y, (m||1)-1, d||1, 12, 0, 0);
+  dt.setDate(dt.getDate() + (days||0));
+  return dt.toISOString().slice(0,10);
+}
+function setDateKeepingTime(iso, ymd){
+  // troca só a data do ISO, preservando hora/min/seg
+  const d = new Date(iso);
+  if (isNaN(d)) return iso;
+  const hh = pad2(d.getHours());
+  const mm = pad2(d.getMinutes());
+  const ss = pad2(d.getSeconds());
+  // usa horário local no ISO (mesma forma do seu sistema atual: toISOString)
+  // vamos criar uma data local e converter para ISO
+  const [Y,M,D] = ymd.split("-").map(Number);
+  const local = new Date(Y, M-1, D, d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds());
+  return local.toISOString();
+}
+
 function isFolgaByEscala(dateObj, escala){
   const dow = dateObj.getDay();
   const e = (escala || "5x2").toLowerCase();
@@ -266,7 +346,7 @@ function isDiaTrabalho(dateObj, escala){
 }
 
 // locais (cache)
-let cacheLocais = []; // [{nome,lat,lng,raio}]
+let cacheLocais = [];
 
 function haversineMeters(lat1, lon1, lat2, lon2){
   const R=6371000; const toRad=x=>x*Math.PI/180;
@@ -569,6 +649,93 @@ async function obterJornadaAtivaDoRe(re){
   return null;
 }
 
+// ====== DUPLICIDADE DE ENTRADA NO DIA ======
+async function existeEntradaNoDia(re, ymdKey){
+  try{
+    const qJ = query(collection(db, "jornadas"), where("re", "==", re));
+    const snap = await getDocs(qJ);
+    const list = snap.docs.map(d => d.data() || {});
+    return list.some(j => String(j?.entrada?.ts || "").slice(0,10) === ymdKey);
+  }catch{
+    // em caso de falha, melhor NÃO liberar 2 entradas sem checar
+    return true;
+  }
+}
+
+// ====== MODAL FT (3 passos) ======
+function askFtFlow({diaOriginalYmd}){
+  return new Promise(async (resolve) => {
+    await carregarSupervisoresSafe();
+
+    // passo 1
+    ftTitle.textContent = "Folga Trabalhada (FT)";
+    ftBody.innerHTML = `
+      <p>Já existe uma <b>ENTRADA</b> registrada em <b>${brDateFromYmd(diaOriginalYmd)}</b>.</p>
+      <p>Você quer registrar uma <b>FT</b> (Folga Trabalhada)?</p>
+      <p class="muted">Se SIM, você responderá motivo + supervisor, e o sistema vai registrar como <b>dia seguinte</b> para análise interna.</p>
+    `;
+    ftOverlay.style.display = "flex";
+
+    ftCancel.textContent = "Não";
+    ftOk.textContent = "Sim";
+
+    ftCancel.onclick = () => { closeFt(); resolve({ ok:false }); };
+    ftOk.onclick = () => {
+      // passo 2 (motivo)
+      ftTitle.textContent = "FT — Motivo";
+      ftBody.innerHTML = `
+        <p>Informe o <b>motivo</b> da FT:</p>
+        <input id="ftMotivo" placeholder="Ex: cobertura / solicitação do posto / necessidade operacional">
+        <div class="muted" style="margin-top:6px;">Isso não é autorização; é só barreira para não mentir.</div>
+      `;
+      ftCancel.textContent = "Voltar";
+      ftOk.textContent = "Continuar";
+
+      ftCancel.onclick = () => {
+        // volta ao passo 1
+        closeFt();
+        resolve(askFtFlow({diaOriginalYmd}));
+      };
+
+      ftOk.onclick = () => {
+        const motivo = (document.getElementById("ftMotivo").value || "").trim();
+        if (!motivo) return alert("Informe o motivo da FT.");
+
+        // passo 3 (supervisor)
+        ftTitle.textContent = "FT — Supervisor";
+        const opts = (cacheSupervisores||[])
+          .map(s => `<option value="${String(s.nome).replaceAll('"','&quot;')}">${s.nome}</option>`)
+          .join("");
+        ftBody.innerHTML = `
+          <p>Selecione o <b>supervisor</b> responsável por autorizar:</p>
+          <select id="ftSupervisor">
+            <option value="">Selecione...</option>
+            ${opts}
+          </select>
+          <div class="muted" style="margin-top:6px;">O admin não autoriza nada aqui; fica pendente só para visualização.</div>
+        `;
+
+        ftCancel.textContent = "Voltar";
+        ftOk.textContent = "Confirmar";
+
+        ftCancel.onclick = () => {
+          // volta para motivo
+          closeFt();
+          resolve(askFtFlow({diaOriginalYmd}));
+        };
+
+        ftOk.onclick = () => {
+          const supervisor = (document.getElementById("ftSupervisor").value || "").trim();
+          if (!supervisor) return alert("Selecione o supervisor.");
+
+          closeFt();
+          resolve({ ok:true, motivo, supervisor });
+        };
+      };
+    };
+  });
+}
+
 async function atualizarTela(){
   try{
     resetPhoto();
@@ -599,7 +766,7 @@ async function atualizarTela(){
       return;
     }
 
-    // ✅ BLOQUEIO PRÉ-ADMISSÃO
+    // bloqueio pré-admissão
     const adm = (c.dataAdmissao || "").slice(0,10);
     const hoje = todayYmd();
     if (adm && hoje < adm){
@@ -674,27 +841,6 @@ acaoSelect.addEventListener("change", () => {
   setRegisterEnabled();
 });
 
- async function openFTForm(colaborador){
-
-  const convocado=prompt("Você quer fazer FT? (sim/nao)");
-
-  if(!convocado)return null;
-
-  const cobrindo=prompt("Quem você vai cobrir?");
-
-  if(!cobrindo)return null;
-
-  const supervisor=prompt("Supervisor que autorizou:");
-
-  return{
-    convocado,
-    cobrindo,
-    supervisor,
-    createdAt:new Date().toISOString()
-  };
-
-}
-
 // registrar
 registrarBtn.addEventListener("click", async () => {
   if (clickLock) return;
@@ -712,7 +858,6 @@ registrarBtn.addEventListener("click", async () => {
     return alert("Colaborador não cadastrado, INATIVO ou bloqueado. Confira o RE.");
   }
 
-  // ✅ FORÇA FOTO
   if (!hasPhoto){
     return alert("Você precisa CAPTURAR A FOTO antes de registrar.");
   }
@@ -737,6 +882,7 @@ registrarBtn.addEventListener("click", async () => {
   const loc = await getLocationStrict();
   if (!loc.ok) return alert(loc.message);
   const location = loc.locationStr;
+  const posto = loc.posto || "";
 
   const foto = canvas.toDataURL("image/jpeg", 0.4);
 
@@ -747,57 +893,93 @@ registrarBtn.addEventListener("click", async () => {
     return alert("Ação não permitida na fase atual. Atualizei sua fase; selecione novamente.");
   }
 
+  // confirmação padrão
   const msg = etapaConfirms[acao] || "Confirmar registro?";
   if (!confirm(msg)) return;
 
   const now = new Date();
+  const nowIso = now.toISOString();
+
+  // anti-duplicidade 5 min
   const lastTs = pickLastTs(jornadaAtiva);
   if (lastTs && (now - lastTs) < TEMPO_MINIMO){
     return alert("Registro duplicado detectado. Aguarde 5 minutos para registrar novamente.");
   }
 
+  // ===== ENTRADA (com regra de 2 entradas/dia + FT) =====
   if (acao === ETAPAS.ENTRADA){
+    const jaTemEntradaHoje = await existeEntradaNoDia(re, hoje);
 
-  let ftForm=null;
+    if (jaTemEntradaHoje){
+      // abre FT flow
+      const ft = await askFtFlow({ diaOriginalYmd: hoje });
+      if (!ft.ok){
+        return alert("Operação cancelada. Não é permitido 2 ENTRADAS no mesmo dia sem FT.");
+      }
 
-  const hoje=todayYmd();
+      // cria nova ENTRADA como DIA SEGUINTE
+      const diaSeguinte = addDaysYmd(hoje, 1);
+      const entradaIsoShift = setDateKeepingTime(nowIso, diaSeguinte);
 
-  const snapHoje=await getDocs(query(
-    collection(db,"jornadas"),
-    where("re","==",re)
-  ));
+      // jornada “normal”, só que data (entrada.ts) = dia seguinte
+      await addDoc(collection(db, "jornadas"), {
+        re,
+        nome: colaborador.nome,
+        status: "aberta",
+        entrada: {
+          ts: entradaIsoShift,     // 👈 chave do dia (dia seguinte)
+          tsReal: nowIso,          // 👈 real (auditoria)
+          foto,
+          location,
+          posto
+        },
+        ftMeta: {
+          isFT: true,
+          diaOriginal: hoje,
+          diaRegistrado: diaSeguinte,
+          motivo: ft.motivo,
+          supervisor: ft.supervisor,
+          createdAt: nowIso
+        },
+        updatedAt: nowIso
+      });
 
-  const jaTemEntradaHoje=snapHoje.docs.some(d=>
-    String(d.data()?.entrada?.ts||"").slice(0,10)===hoje
-  );
+      // ocorrência pendente (só visualização)
+      try{
+        await addDoc(collection(db, "ft_pendentes"), {
+          status: "pendente",
+          re,
+          nome: colaborador.nome,
+          diaOriginal: hoje,
+          diaRegistrado: diaSeguinte,
+          motivo: ft.motivo,
+          supervisor: ft.supervisor,
+          posto,
+          location,
+          createdAt: nowIso,
+          updatedAt: nowIso
+        });
+      }catch{}
 
-  const ehFolga=isFolgaByEscala(new Date(),colaborador.escala);
+      alert("✅ FT registrada! (A entrada foi lançada como dia seguinte para análise interna.)");
+      limparForm();
+      return;
+    }
 
-  if(jaTemEntradaHoje || ehFolga){
-
-    ftForm=await openFTForm(colaborador);
-
-    if(!ftForm)return;
-
-  }
-
-  await addDoc(collection(db, "jornadas"), {
-    re,
-    nome: colaborador.nome,
-    status: "aberta",
-
-    entrada: { ts: now.toISOString(), foto, location },
-
-    ftDetected:!!ftForm,
-    ftForm:ftForm||null,
-
-    updatedAt: now.toISOString()
-  });
+    // ENTRADA normal
+    await addDoc(collection(db, "jornadas"), {
+      re,
+      nome: colaborador.nome,
+      status: "aberta",
+      entrada: { ts: nowIso, foto, location, posto },
+      updatedAt: nowIso
+    });
     alert("ENTRADA registrada com sucesso!");
     limparForm();
     return;
   }
 
+  // demais marcações exigem jornada ativa
   if (!jornadaAtiva || !jornadaAtiva.id){
     await atualizarTela();
     return alert("Não foi encontrada jornada ativa. Tente novamente.");
@@ -806,8 +988,8 @@ registrarBtn.addEventListener("click", async () => {
   const ref = doc(db, "jornadas", jornadaAtiva.id);
   const payload = {};
 
-  payload[acao] = { ts: now.toISOString(), foto, location };
-  payload.updatedAt = now.toISOString();
+  payload[acao] = { ts: nowIso, foto, location, posto };
+  payload.updatedAt = nowIso;
 
   const temEntrada = !!jornadaAtiva?.entrada?.ts;
   const temSaiInt = !!jornadaAtiva?.saida_intervalo?.ts;
@@ -815,7 +997,7 @@ registrarBtn.addEventListener("click", async () => {
   if (acao === ETAPAS.SAIDA && temEntrada && !temSaiInt && !temRetInt){
     payload.flags = { ...(jornadaAtiva.flags || {}) };
     payload.flags.intrajornada_nao_realizada = true;
-    payload.flags.intrajornada_registrado_em = now.toISOString();
+    payload.flags.intrajornada_registrado_em = nowIso;
   }
 
   if (acao === ETAPAS.SAIDA) payload.status = "fechada";
