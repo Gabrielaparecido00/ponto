@@ -49,6 +49,9 @@
     white-space:pre-line;
   }
   .footer{ text-align:center; margin-top:16px; font-size:12px; color:#666; }
+
+  /* vídeo hidden para fallback/compatibilidade */
+  #camPreview{ display:none; width:1px; height:1px; opacity:0; pointer-events:none; }
 </style>
 </head>
 
@@ -71,6 +74,9 @@
   <select id="acaoSelect" disabled>
     <option value="">Selecione a marcação...</option>
   </select>
+
+  <!-- vídeo escondido (fallback captura) -->
+  <video id="camPreview" autoplay playsinline muted></video>
 
   <canvas id="photo" width="240" height="320"></canvas>
   <button type="button" id="captureBtn">Capturar Foto</button>
@@ -112,6 +118,7 @@ const registrarBtn = document.getElementById("registrarBtn");
 const captureBtn = document.getElementById("captureBtn");
 const canvas = document.getElementById("photo");
 const ctx = canvas.getContext("2d");
+const camPreview = document.getElementById("camPreview");
 
 const faseAtualEl = document.getElementById("faseAtual");
 const faseHintEl = document.getElementById("faseHint");
@@ -161,40 +168,76 @@ setInterval(() => {
 }, 1000);
 
 // câmera
-navigator.mediaDevices.getUserMedia({
-  video: {
-    facingMode: "user" // ajuda no celular (frontal); no PC tanto faz
+async function iniciarCamera(){
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user" }
+    });
+    camPreview.srcObject = stream;
+  }catch{
+    alert("Erro ao acessar câmera");
   }
-})
-  .then(s => stream = s)
-  .catch(() => alert("Erro ao acessar câmera"));
+}
+iniciarCamera();
+
+// parar câmera ao sair
+window.addEventListener("beforeunload", () => {
+  try{
+    if (stream){
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+    }
+  }catch{}
+});
 
 // ✅ CAPTURA SEM DISTORÇÃO (cover + crop central)
+// - tenta ImageCapture (quando disponível)
+// - fallback: desenha do <video>
 captureBtn.addEventListener("click", async () => {
   if (!stream) return alert("Câmera não iniciada");
 
-  const track = stream.getVideoTracks()[0];
-  const imageCapture = new ImageCapture(track);
+  const cw = canvas.width, ch = canvas.height;
 
-  try {
-    const bitmap = await imageCapture.grabFrame();
-
-    const cw = canvas.width, ch = canvas.height;
-    const bw = bitmap.width, bh = bitmap.height;
-
-    // cover: preenche canvas sem deformar, cortando excesso no centro
-    const scale = Math.max(cw / bw, ch / bh);
+  // helper cover crop (bitmap/video frame)
+  function drawCover(sourceW, sourceH, drawFn){
+    const scale = Math.max(cw / sourceW, ch / sourceH);
     const sw = cw / scale;
     const sh = ch / scale;
-    const sx = (bw - sw) / 2;
-    const sy = (bh - sh) / 2;
+    const sx = (sourceW - sw) / 2;
+    const sy = (sourceH - sh) / 2;
 
     ctx.clearRect(0, 0, cw, ch);
-    ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, cw, ch);
-
+    drawFn(sx, sy, sw, sh);
     hasPhoto = true;
     setRegisterEnabled();
-  } catch {
+  }
+
+  // 1) ImageCapture
+  try{
+    const track = stream.getVideoTracks()[0];
+    if (window.ImageCapture && track){
+      const imageCapture = new ImageCapture(track);
+      const bitmap = await imageCapture.grabFrame();
+      drawCover(bitmap.width, bitmap.height, (sx,sy,sw,sh) => {
+        ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, cw, ch);
+      });
+      return;
+    }
+  }catch{
+    // cai pro fallback
+  }
+
+  // 2) Fallback via <video>
+  try{
+    const v = camPreview;
+    if (!v || v.readyState < 2) return alert("Câmera ainda carregando, tente novamente.");
+    const vw = v.videoWidth, vh = v.videoHeight;
+    if (!vw || !vh) return alert("Não foi possível capturar o frame da câmera.");
+
+    drawCover(vw, vh, (sx,sy,sw,sh) => {
+      ctx.drawImage(v, sx, sy, sw, sh, 0, 0, cw, ch);
+    });
+  }catch{
     alert("Erro ao capturar foto");
   }
 });
@@ -499,8 +542,6 @@ function montarSelectAcoes(acoes){
   }
 
   acaoSelect.disabled = acoes.length === 0;
-
-  // se mudou as opções, exige nova foto e revalida o botão registrar
   setRegisterEnabled();
 }
 
@@ -530,7 +571,6 @@ async function obterJornadaAtivaDoRe(re){
 
 async function atualizarTela(){
   try{
-    // ✅ ao atualizar RE/tela, exige nova foto
     resetPhoto();
     setRegisterEnabled();
 
@@ -604,7 +644,6 @@ async function atualizarTela(){
     montarSelectAcoes(st.acoes);
 
     acaoSelect.disabled = (st.acoes.length === 0);
-    // capture habilitado, registrar só libera com ação + foto
     captureBtn.disabled = false;
     setRegisterEnabled();
 
