@@ -1509,6 +1509,102 @@ function cadastrarColab(){
 window.cadastrarColab = cadastrarColab;
 
 /* ========= MODIFICAR COLABORADOR ========= */
+<script>
+/* ========= HORÁRIOS SEMANA (UI) ========= */
+const WEEK = [
+  { k:"0", label:"Domingo (0)" },
+  { k:"1", label:"Segunda (1)" },
+  { k:"2", label:"Terça (2)" },
+  { k:"3", label:"Quarta (3)" },
+  { k:"4", label:"Quinta (4)" },
+  { k:"5", label:"Sexta (5)" },
+  { k:"6", label:"Sábado (6)" },
+];
+
+function toHHMM(v){
+  const s = String(v || "").trim();
+  if (!s) return "";
+  const m = s.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+  return m ? `${m[1]}:${m[2]}` : "";
+}
+
+function normalizeHorariosSemanaFromUI(){
+  // monta no formato: {"1":{"in":"08:00","out":"17:48"}...}
+  const out = {};
+  WEEK.forEach(w => {
+    const i = toHHMM(document.getElementById(`hs_in_${w.k}`)?.value);
+    const o = toHHMM(document.getElementById(`hs_out_${w.k}`)?.value);
+
+    // se nenhum preenchido: ignora o dia
+    if (!i && !o) return;
+
+    // se um só preenchido: bloqueia (pra não quebrar planejado)
+    if (!i || !o){
+      throw new Error(`Preencha ENTRADA e SAÍDA em ${w.label} (ou deixe ambos vazios).`);
+    }
+
+    out[w.k] = { in: i, out: o };
+  });
+  return out;
+}
+
+function fillHorariosSemanaFromJsonToUI(hs){
+  const obj = (hs && typeof hs === "object") ? hs : {};
+  WEEK.forEach(w => {
+    const slot = obj[w.k];
+    const i = slot && typeof slot === "object" ? toHHMM(slot.in) : "";
+    const o = slot && typeof slot === "object" ? toHHMM(slot.out) : "";
+    const inEl  = document.getElementById(`hs_in_${w.k}`);
+    const outEl = document.getElementById(`hs_out_${w.k}`);
+    if (inEl) inEl.value = i;
+    if (outEl) outEl.value = o;
+  });
+}
+
+function gerarUIHorariosSemanaHTML(){
+  const rows = WEEK.map(w => `
+    <div style="display:grid;grid-template-columns: 140px 1fr 1fr; gap:8px; align-items:end;">
+      <div class="small" style="text-align:left;"><b>${w.label}</b></div>
+      <div>
+        <label>Entrada</label>
+        <input id="hs_in_${w.k}" type="time">
+      </div>
+      <div>
+        <label>Saída</label>
+        <input id="hs_out_${w.k}" type="time">
+      </div>
+    </div>
+  `).join("");
+
+  return `
+    <div class="small" style="text-align:left;margin-bottom:8px;">
+      <b>Horários semana (opcional)</b> — se preencher, o RH usa isso como “Planejado”.<br>
+      Regra: preencha <b>Entrada e Saída</b> no dia, ou deixe ambos vazios.
+    </div>
+
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+      <button class="minBtn" type="button" id="btnCopiarPadraoSemana">
+        Copiar horário padrão (Entrada/Saída) para Seg–Sex
+      </button>
+      <button class="minBtn" type="button" id="btnLimparSemana">
+        Limpar semana
+      </button>
+      <button class="minBtn" type="button" id="btnVerJsonSemana">
+        Ver JSON gerado
+      </button>
+    </div>
+
+    <div style="display:grid; gap:10px;">
+      ${rows}
+    </div>
+
+    <div class="small" style="text-align:left;margin-top:10px;color:#666;">
+      Dica: turno noturno pode ser cadastrado (ex: 19:00 → 07:00).
+    </div>
+  `;
+}
+
+/* ========= MODIFICAR COLABORADOR (FIX HORÁRIOS) ========= */
 function editarColab(id){
   const c = cacheColabs.find(x => x.id===id);
   if (!c){ alert("Colaborador não encontrado."); return; }
@@ -1529,6 +1625,7 @@ function editarColab(id){
           <label>RE</label>
           <input value="${c.re}" disabled>
         </div>
+
         <div>
           <label>Status</label>
           <select id="mcAtivo">
@@ -1555,12 +1652,12 @@ function editarColab(id){
 
         <div>
           <label>Hora Entrada (informativo)</label>
-          <input id="mcHE" type="time" value="${String(c.horaEntrada||"")}">
+          <input id="mcHE" type="time" value="${toHHMM(c.horaEntrada)}">
         </div>
 
         <div>
           <label>Hora Saída (informativo)</label>
-          <input id="mcHS" type="time" value="${String(c.horaSaida||"")}">
+          <input id="mcHS" type="time" value="${toHHMM(c.horaSaida)}">
         </div>
 
         <div style="grid-column:1 / -1">
@@ -1568,15 +1665,8 @@ function editarColab(id){
           <input id="mcAdm" type="date" value="${String(c.dataAdmissao||"").slice(0,10)}">
         </div>
 
-        <div class="small" style="grid-column:1 / -1">
-          <div><b>Horários semana (opcional)</b>: se preencher, o RH usa isso para “Planejado”.</div>
-          <div>Formato: Domingo=0 ... Sábado=6 (ex: 1: 08:00–17:48)</div>
-        </div>
-
         <div style="grid-column:1 / -1">
-          <label>Horários semana (JSON)</label>
-          <input id="mcHSem" placeholder='Ex: {"1":{"in":"08:00","out":"17:48"},"2":{"in":"08:00","out":"17:48"}}'
-                 value="${String(JSON.stringify(c.horariosSemana||{})).replaceAll('"','&quot;')}">
+          ${gerarUIHorariosSemanaHTML()}
         </div>
       </div>
     `,
@@ -1584,24 +1674,20 @@ function editarColab(id){
       const nome = (document.getElementById("mcNome").value || "").trim();
       const cpf = sanitizeCpf((document.getElementById("mcCpf").value || "").trim());
       const escala = (document.getElementById("mcEscala").value || "5x2").trim();
-      const horaEntrada = (document.getElementById("mcHE").value || "").trim();
-      const horaSaida = (document.getElementById("mcHS").value || "").trim();
+      const horaEntrada = toHHMM((document.getElementById("mcHE").value || "").trim());
+      const horaSaida = toHHMM((document.getElementById("mcHS").value || "").trim());
       const dataAdmissao = (document.getElementById("mcAdm").value || "").trim();
       const ativo = (document.getElementById("mcAtivo").value === "true");
-      const hsemTxt = (document.getElementById("mcHSem").value || "").trim();
 
       if (!nome){ alert("Nome não pode ficar vazio."); return; }
       if (!cpf || cpf.length < 11){ alert("CPF inválido (11 dígitos)."); return; }
 
       let horariosSemana = {};
-      if (hsemTxt){
-        try{
-          horariosSemana = JSON.parse(hsemTxt);
-          if (horariosSemana && typeof horariosSemana !== "object") throw new Error("inválido");
-        }catch{
-          alert("Horários semana (JSON) inválido.");
-          return;
-        }
+      try{
+        horariosSemana = normalizeHorariosSemanaFromUI();
+      }catch(e){
+        alert("❌ " + (e?.message || "Horários semana inválidos."));
+        return;
       }
 
       if (!confirm("Salvar alterações do colaborador?")) return;
@@ -1614,7 +1700,7 @@ function editarColab(id){
         horaSaida,
         dataAdmissao: dataAdmissao || "",
         ativo,
-        horariosSemana,
+        horariosSemana, // ✅ sempre no formato correto
         updatedAt: new Date().toISOString()
       }, { merge:true })
       .then(function(){
@@ -1627,6 +1713,53 @@ function editarColab(id){
       });
     }
   });
+
+  // depois que o modal abre, popula e liga botões
+  setTimeout(function(){
+    fillHorariosSemanaFromJsonToUI(c.horariosSemana || {});
+
+    const btnCopiar = document.getElementById("btnCopiarPadraoSemana");
+    const btnLimpar = document.getElementById("btnLimparSemana");
+    const btnVer    = document.getElementById("btnVerJsonSemana");
+
+    if (btnCopiar){
+      btnCopiar.onclick = function(){
+        const he = toHHMM(document.getElementById("mcHE")?.value);
+        const hs = toHHMM(document.getElementById("mcHS")?.value);
+        if (!he || !hs){ alert("Preencha Hora Entrada e Hora Saída (informativo) primeiro."); return; }
+
+        // Seg–Sex = 1..5
+        ["1","2","3","4","5"].forEach(k=>{
+          const inEl  = document.getElementById(`hs_in_${k}`);
+          const outEl = document.getElementById(`hs_out_${k}`);
+          if (inEl) inEl.value = he;
+          if (outEl) outEl.value = hs;
+        });
+      };
+    }
+
+    if (btnLimpar){
+      btnLimpar.onclick = function(){
+        WEEK.forEach(w=>{
+          const inEl  = document.getElementById(`hs_in_${w.k}`);
+          const outEl = document.getElementById(`hs_out_${w.k}`);
+          if (inEl) inEl.value = "";
+          if (outEl) outEl.value = "";
+        });
+      };
+    }
+
+    if (btnVer){
+      btnVer.onclick = function(){
+        try{
+          const hs = normalizeHorariosSemanaFromUI();
+          alert("JSON gerado:\n\n" + JSON.stringify(hs, null, 2));
+        }catch(e){
+          alert("❌ " + (e?.message || "Horários semana inválidos."));
+        }
+      };
+    }
+  }, 0);
 }
 window.editarColab = editarColab;
 
