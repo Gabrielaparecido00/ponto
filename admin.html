@@ -154,6 +154,16 @@
     color:#a10000;
   }
 
+  .pill{
+    display:inline-block;
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:12px;
+    background:#f3f4f6;
+    border:1px solid #e5e7eb;
+    color:#111;
+  }
+
   @media (max-width: 820px){
     table{ font-size:12px; }
     th, td{ padding:6px; }
@@ -227,6 +237,11 @@
       </thead>
       <tbody id="tbodyJornadas"></tbody>
     </table>
+
+    <div class="small" style="margin-top:10px;">
+      <span class="pill">FT = Folga Trabalhada</span>
+      <span class="pill">HE = Hora Extra</span>
+    </div>
   </div>
 
   <!-- EXPORTAÇÃO RH -->
@@ -234,8 +249,8 @@
     <h3>Exportação RH</h3>
     <div class="small">
       Gera um único XLSX com 3 abas: <b>Resumo</b>, <b>Diário</b> e <b>Escala</b>.<br>
-      <b>HE</b> é só excedente do planejado em dia de trabalho + campo HE.<br>
-      <b>FT</b> é trabalho em folga e NÃO conta como HE.<br>
+      <b>HE</b> = excedente do planejado em dia de trabalho + campo HE.<br>
+      <b>FT</b> = trabalho em folga (NÃO conta como HE).<br>
       <b>Exporta apenas colaboradores ATIVOS.</b>
     </div>
 
@@ -524,6 +539,9 @@ let cacheOcorr = [];
 let cachePlantoes = [];
 let cacheSupervisores = [];
 
+let colabFiltroRe = "";
+let colabFiltroNome = "";
+
 /* ========= RH SELECTS ========= */
 function pad2(n){ return String(n).padStart(2,"0"); }
 function initRhSelectors(){
@@ -620,6 +638,8 @@ auth.onAuthStateChanged(function(user){
 
 /* ========= HELPERS ========= */
 function norm(s){ return (s||"").toString().trim().toLowerCase(); }
+function safeStr(v){ return (v==null) ? "" : String(v); }
+
 function toDateAny(ts){
   if (!ts) return null;
   if (ts.toDate) return ts.toDate();
@@ -667,6 +687,68 @@ function horarioTxt(c){
 function ymd(d){
   if (!d || isNaN(d)) return "";
   return d.toISOString().slice(0,10);
+}
+function weekdayPtShort(d){ return d.toLocaleDateString("pt-BR", { weekday:"short" }); }
+
+/* ========= 12x36 helpers (ADMIN) ========= */
+function normEscala(s){ return (s||"").toString().trim().toLowerCase(); }
+function is12x36Escala(escalaTxt){
+  const e = normEscala(escalaTxt||"");
+  return e.includes("12") && e.includes("36");
+}
+function getPlantaoReferencia(dateObj, historico){
+  if (!Array.isArray(historico) || !historico.length) return null;
+  const key = ymd(dateObj);
+
+  let best = null;
+  for (const p of historico){
+    const ini = String(p?.inicio || p?.vigencia || "").slice(0,10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ini)) continue;
+
+    if (ini <= key){
+      if (!best){ best = { ...p, inicio: ini }; continue; }
+
+      const bestIni = String(best.inicio || "").slice(0,10);
+      if (ini > bestIni){ best = { ...p, inicio: ini }; continue; }
+
+      if (ini === bestIni){
+        const bestUp = String(best.updatedAt || "");
+        const curUp  = String(p.updatedAt || "");
+        if (curUp > bestUp) best = { ...p, inicio: ini };
+      }
+    }
+  }
+  return best;
+}
+function isFolgaByEscala(dateObj, escala, plantaoHistorico){
+  const e = normEscala(escala || "5x2");
+  const dow = dateObj.getDay();
+
+  if (e === "5x2") return (dow === 0 || dow === 6);
+  if (e === "6x1") return (dow === 0);
+
+  if (is12x36Escala(e)){
+    const hist = Array.isArray(plantaoHistorico) ? plantaoHistorico : [];
+    const plantao = getPlantaoReferencia(dateObj, hist);
+    if (!plantao) return true;
+
+    const inicio = String(plantao.inicio || "").slice(0,10);
+    const baseTxt = String(plantao.base || "trabalha").toLowerCase(); // trabalha|folga
+
+    const baseDate = new Date(inicio + "T00:00:00");
+    const atual = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 12, 0, 0);
+    const diffDias = Math.floor((atual - baseDate) / 86400000);
+
+    const baseEhTrabalho = (baseTxt === "trabalha");
+    const ehTrabalhoHoje = (diffDias % 2 === 0) ? baseEhTrabalho : !baseEhTrabalho;
+
+    return !ehTrabalhoHoje;
+  }
+
+  return true;
+}
+function isDiaTrabalho(dateObj, escala, plantaoHistorico){
+  return !isFolgaByEscala(dateObj, escala, plantaoHistorico);
 }
 
 /* ========= MODAL ========= */
@@ -833,7 +915,7 @@ function editarLocal(id){
         .then(function(){
           closeModal();
           carregarLocais();
-          buscar();
+          try{ buscar(); }catch{}
         })
         .catch(function(){
           alert("Não foi possível salvar o local.");
@@ -850,7 +932,7 @@ function editarLocal(id){
         .then(function(){
           closeModal();
           carregarLocais();
-          buscar();
+          try{ buscar(); }catch{}
         })
         .catch(function(){
           alert("Não foi possível excluir o local.");
@@ -959,10 +1041,261 @@ function editarSupervisor(id){
 window.editarSupervisor = editarSupervisor;
 
 /* ========= COLABORADORES ========= */
-/* (mantive seu código original daqui pra frente — sem alterações estruturais) */
-/* ... */
-/* ========= JORNADAS ========= */
+function carregarColaboradores(){
+  return db.collection("colaboradores").get()
+    .then(function(snap){
+      cacheColabs = snap.docs.map(function(d){
+        const data = d.data() || {};
+        const re = String(data.re || d.id || "").trim() || String(d.id||"").trim();
+        return {
+          id: d.id,
+          re,
+          nome: String(data.nome||"").trim(),
+          cpf: String(data.cpf||"").trim(),
+          ativo: (data.ativo !== false),
+          escala: String(data.escala||"5x2"),
+          horaEntrada: String(data.horaEntrada||"").trim(),
+          horaSaida: String(data.horaSaida||"").trim(),
+          dataAdmissao: String(data.dataAdmissao||data.admissao||"").slice(0,10),
+          horariosSemana: (data.horariosSemana && typeof data.horariosSemana === "object") ? data.horariosSemana : {},
+          plantaoHistorico: Array.isArray(data.plantaoHistorico) ? data.plantaoHistorico : [],
+          updatedAt: String(data.updatedAt||"")
+        };
+      })
+      .filter(c => !!c.re)
+      .sort((a,b) => (a.re||"").localeCompare(b.re||""));
 
+      montarColaboradores();
+      return cacheColabs;
+    })
+    .catch(function(){
+      alert("Não foi possível carregar colaboradores.");
+      cacheColabs = [];
+      montarColaboradores();
+    });
+}
+window.carregarColaboradores = carregarColaboradores;
+
+function montarColaboradores(){
+  const tbody = document.getElementById("tbodyColab");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  const fr = norm(colabFiltroRe);
+  const fn = norm(colabFiltroNome);
+
+  let list = cacheColabs.slice();
+  if (fr) list = list.filter(c => norm(c.re) === fr);
+  if (fn) list = list.filter(c => norm(c.nome).includes(fn));
+
+  list.sort((a,b) => String(a.nome||"").localeCompare(String(b.nome||"")));
+
+  list.forEach(function(c){
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${c.re}</td>
+      <td>${c.nome || ""}</td>
+      <td>${c.cpf || ""}</td>
+      <td>${c.escala || ""}</td>
+      <td>${horarioTxt(c)}</td>
+      <td>${c.dataAdmissao ? brDateFromYmd(c.dataAdmissao) : ""}</td>
+      <td>${c.ativo ? "ATIVO" : "INATIVO"}</td>
+      <td><button class="minBtn" onclick="editarColab('${c.id}')">Modificar</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function aplicarFiltroColab(){
+  colabFiltroRe = (document.getElementById("colabBuscaRe").value || "").trim();
+  colabFiltroNome = (document.getElementById("colabBuscaNome").value || "").trim();
+  montarColaboradores();
+}
+window.aplicarFiltroColab = aplicarFiltroColab;
+
+function limparFiltroColab(){
+  colabFiltroRe = "";
+  colabFiltroNome = "";
+  document.getElementById("colabBuscaRe").value = "";
+  document.getElementById("colabBuscaNome").value = "";
+  montarColaboradores();
+}
+window.limparFiltroColab = limparFiltroColab;
+
+function sanitizeCpf(v){
+  return (v||"").toString().replace(/\D/g,"");
+}
+function cadastrarColab(){
+  const re = (document.getElementById("cadRe").value || "").trim();
+  const nome = (document.getElementById("cadNome").value || "").trim();
+  const cpfRaw = (document.getElementById("cadCpf").value || "").trim();
+  const cpf = sanitizeCpf(cpfRaw);
+  const escala = (document.getElementById("cadEscala").value || "5x2");
+  const horaEntrada = (document.getElementById("cadHoraEntrada").value || "").trim();
+  const horaSaida = (document.getElementById("cadHoraSaida").value || "").trim();
+  const dataAdmissao = (document.getElementById("cadAdmissao").value || "").trim();
+
+  if (!re || !nome || !cpf){
+    alert("Preencha RE, Nome e CPF (obrigatório).");
+    return;
+  }
+  if (cpf.length < 11){
+    alert("CPF inválido (precisa ter 11 dígitos).");
+    return;
+  }
+
+  const payload = {
+    re,
+    nome,
+    cpf,
+    escala,
+    horaEntrada,
+    horaSaida,
+    dataAdmissao: dataAdmissao || "",
+    ativo: true,
+    updatedAt: new Date().toISOString()
+  };
+
+  if (!confirm(`Cadastrar colaborador?\nRE: ${re}\nNome: ${nome}\nCPF: ${cpf}`)) return;
+
+  db.collection("colaboradores").doc(re).set(payload, { merge:true })
+    .then(function(){
+      document.getElementById("cadRe").value="";
+      document.getElementById("cadNome").value="";
+      document.getElementById("cadCpf").value="";
+      document.getElementById("cadHoraEntrada").value="";
+      document.getElementById("cadHoraSaida").value="";
+      document.getElementById("cadAdmissao").value="";
+      carregarColaboradores();
+      alert("✅ Colaborador cadastrado/atualizado.");
+    })
+    .catch(function(){
+      alert("Não foi possível cadastrar colaborador.");
+    });
+}
+window.cadastrarColab = cadastrarColab;
+
+function editarColab(id){
+  const c = cacheColabs.find(x => x.id===id);
+  if (!c){ alert("Colaborador não encontrado."); return; }
+
+  const escalaSel = `
+    <select id="mcEscala">
+      <option value="5x2" ${String(c.escala)==="5x2"?"selected":""}>5x2 (Seg-Sex)</option>
+      <option value="6x1" ${String(c.escala)==="6x1"?"selected":""}>6x1 (Folga Dom)</option>
+      <option value="12x36" ${normEscala(c.escala).includes("12")?"selected":""}>12x36 (1 trabalha / 1 folga)</option>
+    </select>
+  `;
+
+  openModal({
+    title: `Modificar Colaborador — RE ${c.re}`,
+    bodyHtml: `
+      <div class="grid">
+        <div>
+          <label>RE</label>
+          <input value="${c.re}" disabled>
+        </div>
+        <div>
+          <label>Status</label>
+          <select id="mcAtivo">
+            <option value="true" ${c.ativo ? "selected":""}>ATIVO</option>
+            <option value="false" ${!c.ativo ? "selected":""}>INATIVO</option>
+          </select>
+        </div>
+
+        <div style="grid-column:1 / -1">
+          <label>Nome</label>
+          <input id="mcNome" value="${String(c.nome||"").replaceAll('"','&quot;')}">
+        </div>
+
+        <div>
+          <label>CPF</label>
+          <input id="mcCpf" value="${String(c.cpf||"").replaceAll('"','&quot;')}">
+          <div class="small" style="text-align:left;">(A senha do colaborador é os 4 primeiros dígitos do CPF)</div>
+        </div>
+
+        <div>
+          <label>Escala</label>
+          ${escalaSel}
+        </div>
+
+        <div>
+          <label>Hora Entrada (informativo)</label>
+          <input id="mcHE" type="time" value="${String(c.horaEntrada||"")}">
+        </div>
+
+        <div>
+          <label>Hora Saída (informativo)</label>
+          <input id="mcHS" type="time" value="${String(c.horaSaida||"")}">
+        </div>
+
+        <div style="grid-column:1 / -1">
+          <label>Admissão</label>
+          <input id="mcAdm" type="date" value="${String(c.dataAdmissao||"").slice(0,10)}">
+        </div>
+
+        <div class="small" style="grid-column:1 / -1">
+          <div><b>Horários semana (opcional)</b>: se preencher, o RH usa isso para “Planejado”.</div>
+          <div>Formato: Domingo=0 ... Sábado=6 (ex: 1: 08:00–17:48)</div>
+        </div>
+
+        <div style="grid-column:1 / -1">
+          <label>Horários semana (JSON)</label>
+          <input id="mcHSem" placeholder='Ex: {"1":{"in":"08:00","out":"17:48"},"2":{"in":"08:00","out":"17:48"}}'
+                 value="${String(JSON.stringify(c.horariosSemana||{})).replaceAll('"','&quot;')}">
+        </div>
+      </div>
+    `,
+    onSave: function(){
+      const nome = (document.getElementById("mcNome").value || "").trim();
+      const cpf = sanitizeCpf((document.getElementById("mcCpf").value || "").trim());
+      const escala = (document.getElementById("mcEscala").value || "5x2").trim();
+      const horaEntrada = (document.getElementById("mcHE").value || "").trim();
+      const horaSaida = (document.getElementById("mcHS").value || "").trim();
+      const dataAdmissao = (document.getElementById("mcAdm").value || "").trim();
+      const ativo = (document.getElementById("mcAtivo").value === "true");
+      const hsemTxt = (document.getElementById("mcHSem").value || "").trim();
+
+      if (!nome){ alert("Nome não pode ficar vazio."); return; }
+      if (!cpf || cpf.length < 11){ alert("CPF inválido (11 dígitos)."); return; }
+
+      let horariosSemana = {};
+      if (hsemTxt){
+        try{
+          horariosSemana = JSON.parse(hsemTxt);
+          if (horariosSemana && typeof horariosSemana !== "object") throw new Error("inválido");
+        }catch{
+          alert("Horários semana (JSON) inválido.");
+          return;
+        }
+      }
+
+      if (!confirm("Salvar alterações do colaborador?")) return;
+
+      db.collection("colaboradores").doc(c.re).set({
+        nome,
+        cpf,
+        escala,
+        horaEntrada,
+        horaSaida,
+        dataAdmissao: dataAdmissao || "",
+        ativo,
+        horariosSemana,
+        updatedAt: new Date().toISOString()
+      }, { merge:true })
+      .then(function(){
+        closeModal();
+        carregarColaboradores();
+      })
+      .catch(function(){
+        alert("Não foi possível salvar colaborador.");
+      });
+    }
+  });
+}
+window.editarColab = editarColab;
+
+/* ========= JORNADAS ========= */
 function buscar(){
   const iniStr = document.getElementById("inicio").value || "2000-01-01";
   const fimStr = document.getElementById("fim").value || "2999-12-31";
@@ -1062,7 +1395,6 @@ function editarJornada(docId){
       ];
 
       const payload = { updatedAt: new Date().toISOString() };
-
       let newEntradaIso = null;
 
       for (let i=0;i<campos.length;i++){
@@ -1084,9 +1416,6 @@ function editarJornada(docId){
         if (path === "entrada.ts") newEntradaIso = iso;
       }
 
-      // ✅ AGORA É PERMITIDO remover ENTRADA
-      // Para não quebrar o sistema (que usa entrada.ts como chave do dia),
-      // se ENTRADA ficar vazia, apagamos o documento da jornada.
       if (!newEntradaIso){
         const ok = confirm(
           "⚠️ Você removeu a ENTRADA.\n\n" +
@@ -1108,7 +1437,6 @@ function editarJornada(docId){
         return;
       }
 
-      // ✅ continua com sua regra de não duplicar ENTRADA no mesmo dia
       const newDay = String(newEntradaIso).slice(0,10);
       const re = String(j.re || "").trim();
 
@@ -1140,7 +1468,38 @@ function editarJornada(docId){
 }
 window.editarJornada = editarJornada;
 
-/* ========= OCORRÊNCIAS / FÉRIAS / PLANTÕES ========= */
+/* ========= EXPORT CSV (JORNADAS) ========= */
+function exportar(){
+  let csv = "DataEntrada,Nome,RE,Entrada,InicioIntervalo,FimIntervalo,Saida,EntradaHE,SaidaHE,Coords,Local\n";
+  (ultimaTabela||[]).forEach(function(j){
+    const loc = getBestLocationFromJornada(j);
+    const rec = reconhecerLocal(loc);
+    const linha = [
+      formatBRDate(j && j.entrada ? j.entrada.ts : null),
+      j.nome || "",
+      j.re || "",
+      formatHHMM(j && j.entrada ? j.entrada.ts : null),
+      formatHHMM(j && j.saida_intervalo ? j.saida_intervalo.ts : null),
+      formatHHMM(j && j.retorno_intervalo ? j.retorno_intervalo.ts : null),
+      formatHHMM(j && j.saida ? j.saida.ts : null),
+      formatHHMM(j && j.entrada_he ? j.entrada_he.ts : null),
+      formatHHMM(j && j.saida_he ? j.saida_he.ts : null),
+      loc || "",
+      rec || ""
+    ].map(function(v){ return `"${String(v).replaceAll('"','""')}"`; }).join(",");
+    csv += linha + "\n";
+  });
+
+  const blob = new Blob([csv], { type:"text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "jornadas.csv";
+  a.click();
+}
+window.exportar = exportar;
+
+/* ========= OCORRÊNCIAS ========= */
 function ocDocId(re, ymdKey){ return re + "_" + ymdKey; }
 function nomePorRe(re){
   const c = cacheColabs.find(function(x){ return (x.re || x.id) === re; });
@@ -1177,6 +1536,7 @@ function salvarOcorrencia(){
 
   db.collection("ocorrencias").doc(ocDocId(re, data)).set({
     re, data, tipo, motivo,
+    status: "pendente",
     updatedAt: new Date().toISOString()
   }, { merge:true })
   .then(function(){
@@ -1210,6 +1570,7 @@ function carregarOcorrencias(){
           data: String(o.data||"").slice(0,10),
           tipo: String(o.tipo||""),
           motivo: String(o.motivo||""),
+          status: String(o.status||""),
           updatedAt: String(o.updatedAt||"")
         };
       });
@@ -1268,6 +1629,13 @@ function editarOcorrencia(id){
           </select>
         </div>
         <div><label>Motivo</label><input id="moMotivo" value="${(o.motivo||"").replaceAll('"','&quot;')}"></div>
+        <div>
+          <label>Status</label>
+          <select id="moStatus">
+            <option value="pendente" ${(o.status||"pendente")==="pendente"?"selected":""}>PENDENTE</option>
+            <option value="analisado" ${(o.status||"")==="analisado"?"selected":""}>ANALISADO</option>
+          </select>
+        </div>
         <div class="small" style="grid-column:1 / -1">
           <button class="btnDangerInline" id="btnExcluirOcorr">Excluir ocorrência</button>
         </div>
@@ -1276,9 +1644,10 @@ function editarOcorrencia(id){
     onSave: function(){
       const tipo = document.getElementById("moTipo").value;
       const motivo = (document.getElementById("moMotivo").value || "").trim();
+      const status = (document.getElementById("moStatus").value || "pendente").trim();
       if (!confirm("Salvar alteração desta ocorrência?")) return;
 
-      db.collection("ocorrencias").doc(id).update({ tipo, motivo, updatedAt: new Date().toISOString() })
+      db.collection("ocorrencias").doc(id).update({ tipo, motivo, status, updatedAt: new Date().toISOString() })
         .then(function(){
           closeModal();
           carregarOcorrencias();
@@ -1688,40 +2057,9 @@ function editarPlantao(id){
 }
 window.editarPlantao = editarPlantao;
 
-/* ========= EXPORT CSV (JORNADAS) ========= */
-function exportar(){
-  let csv = "DataEntrada,Nome,RE,Entrada,InicioIntervalo,FimIntervalo,Saida,EntradaHE,SaidaHE,Coords,Local\n";
-  (ultimaTabela||[]).forEach(function(j){
-    const loc = getBestLocationFromJornada(j);
-    const rec = reconhecerLocal(loc);
-    const linha = [
-      formatBRDate(j && j.entrada ? j.entrada.ts : null),
-      j.nome || "",
-      j.re || "",
-      formatHHMM(j && j.entrada ? j.entrada.ts : null),
-      formatHHMM(j && j.saida_intervalo ? j.saida_intervalo.ts : null),
-      formatHHMM(j && j.retorno_intervalo ? j.retorno_intervalo.ts : null),
-      formatHHMM(j && j.saida ? j.saida.ts : null),
-      formatHHMM(j && j.entrada_he ? j.entrada_he.ts : null),
-      formatHHMM(j && j.saida_he ? j.saida_he.ts : null),
-      loc || "",
-      rec || ""
-    ].map(function(v){ return `"${String(v).replaceAll('"','""')}"`; }).join(",");
-    csv += linha + "\n";
-  });
-
-  const blob = new Blob([csv], { type:"text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "jornadas.csv";
-  a.click();
-}
-window.exportar = exportar;
-
 /* ============================================
-   ✅ EXPORTAÇÃO RH (XLSX) - ATIVOS
-   ✅ FT separado de HE
+   EXPORTAÇÃO RH (XLSX) - ATIVOS
+   FT separado de HE
 ============================================ */
 function setRhStatus(msg){
   const el = document.getElementById("rhStatus");
@@ -1826,8 +2164,6 @@ function getJornadaOfDay(re, ymdKey, jornadasList){
     return j.re===re && String(j && j.entrada && j.entrada.ts ? j.entrada.ts : "").slice(0,10)===ymdKey;
   }) || null;
 }
-function weekdayPtShort(d){ return d.toLocaleDateString("pt-BR", { weekday:"short" }); }
-function safeStr(v){ return (v==null) ? "" : String(v); }
 function formatDayBR(ymdKey){ return brDateFromYmd(ymdKey); }
 
 function exportarRHXLSX(){
@@ -1848,7 +2184,7 @@ function exportarRHXLSX(){
 
     const colaboradores = snapCol.docs
       .map(function(d){ return Object.assign({ id:d.id }, d.data()||{}); })
-      .filter(function(c){ return c.ativo !== false; }) /* ✅ ATIVOS */
+      .filter(function(c){ return c.ativo !== false; })
       .sort(function(a,b){ return String(a.nome||"").localeCompare(String(b.nome||"")); });
 
     const jornadasAll = snapJor.docs.map(function(d){ return Object.assign({ id:d.id }, d.data()||{}); });
@@ -1872,7 +2208,6 @@ function exportarRHXLSX(){
     const sheetDiario = [];
     const sheetEscala = [];
 
-    /* ✅ título centralizado (mescla) */
     sheetResumo.push([`RELATÓRIO RH — ${mes2}/${ano}`]);
     sheetResumo.push([
       "RE","Nome","CPF","Escala","Admissão",
@@ -1984,7 +2319,6 @@ function exportarRHXLSX(){
         let normalMin = 0, heMin = 0, ftMin = 0;
 
         if (!isTrabalha){
-          /* ✅ TRABALHO EM FOLGA = FT (NÃO é HE) */
           qtdFolga++;
           ftMin += worked;
         } else {
@@ -1996,13 +2330,12 @@ function exportarRHXLSX(){
           }
         }
 
-        /* ✅ campo HE sempre conta como HE */
         heMin += heFieldMin;
 
         sumNormal += normalMin;
         sumHE     += heMin;
         sumFT     += ftMin;
-        sumTotal  += (worked + heFieldMin); /* total real trabalhado + HE campo */
+        sumTotal  += (worked + heFieldMin);
 
         if ((worked + heFieldMin) > 0) diasTrabalhados++;
 
@@ -2055,7 +2388,6 @@ function exportarRHXLSX(){
     const wsDiario = XLSX.utils.aoa_to_sheet(sheetDiario);
     const wsEscala = XLSX.utils.aoa_to_sheet(sheetEscala);
 
-    /* ✅ mescla título (linha 1) para “centralizar” */
     wsResumo["!merges"] = [{ s:{r:0,c:0}, e:{r:0,c:19} }];
     wsDiario["!merges"] = [{ s:{r:0,c:0}, e:{r:0,c:18} }];
     wsEscala["!merges"] = [{ s:{r:0,c:0}, e:{r:0,c:6} }];
@@ -2075,5 +2407,6 @@ function exportarRHXLSX(){
 }
 window.exportarRHXLSX = exportarRHXLSX;
 </script>
+
 </body>
 </html>
