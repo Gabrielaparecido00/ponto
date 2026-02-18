@@ -216,6 +216,7 @@
       <input id="filtroNome" placeholder="Filtrar por Nome (opcional)">
       <button onclick="buscar()">Buscar</button>
       <button onclick="exportar()">Exportar CSV</button>
+      <button class="secondary" onclick="abrirCriarJornada()">+ Criar Jornada</button>
     </div>
 
     <table>
@@ -765,7 +766,7 @@ function isFolgaByEscala(dateObj, escala, plantaoHistorico){
     if (!plantao) return true;
 
     const inicio = String(plantao.inicio || "").slice(0,10);
-    const baseTxt = String(plantao.base || "trabalha").toLowerCase(); // trabalha|folga
+    const baseTxt = String(plantao.base || "trabalha").toLowerCase();
 
     const baseDate = new Date(inicio + "T00:00:00");
     const atual = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 12, 0, 0);
@@ -801,6 +802,161 @@ function openModal(obj){
   overlay.style.display="flex";
   saveBtn.onclick = obj.onSave || null;
 }
+
+/* ========= CRIAR JORNADA (NOVO) ========= */
+function existeEntradaNoDia(re, ymdKey, ignoreId){
+  return db.collection("jornadas").where("re","==",re).get()
+    .then(function(snap){
+      const all = snap.docs.map(function(d){ return Object.assign({ id:d.id }, d.data()||{}); });
+      return all.some(function(j){
+        if (ignoreId && j.id === ignoreId) return false;
+        const k = String(j && j.entrada && j.entrada.ts ? j.entrada.ts : "").slice(0,10);
+        return k === ymdKey;
+      });
+    });
+}
+function abrirCriarJornada(){
+  openModal({
+    title: "Criar Jornada (Admin)",
+    bodyHtml: `
+      <div class="grid">
+        <div>
+          <label>RE</label>
+          <input id="cjRe" placeholder="RE" inputmode="numeric">
+        </div>
+        <div>
+          <label>Data</label>
+          <input id="cjData" type="date">
+        </div>
+        <div>
+          <label>Hora ENTRADA</label>
+          <input id="cjEntrada" type="time" value="08:00">
+        </div>
+        <div>
+          <label>Hora SAÍDA</label>
+          <input id="cjSaida" type="time" value="17:48">
+        </div>
+        <div>
+          <label>Início intervalo (opcional)</label>
+          <input id="cjSaiInt" type="time" placeholder="12:00">
+        </div>
+        <div>
+          <label>Fim intervalo (opcional)</label>
+          <input id="cjRetInt" type="time" placeholder="13:00">
+        </div>
+        <div>
+          <label>Entrada HE (opcional)</label>
+          <input id="cjEntHe" type="time">
+        </div>
+        <div>
+          <label>Saída HE (opcional)</label>
+          <input id="cjSaiHe" type="time">
+        </div>
+        <div style="grid-column:1 / -1">
+          <label>Posto (opcional)</label>
+          <input id="cjPosto" placeholder="Ex: Posto A">
+        </div>
+        <div style="grid-column:1 / -1">
+          <label>Coords (opcional) — formato: lat,lng</label>
+          <input id="cjLocation" placeholder="-23.5505,-46.6333">
+        </div>
+        <div style="grid-column:1 / -1" class="small" style="text-align:left">
+          Dica: deixe intervalos/HE em branco se não existirem. O sistema cria a jornada com status "fechada" se tiver SAÍDA.
+        </div>
+      </div>
+    `,
+    onSave: function(){
+      const re = (document.getElementById("cjRe").value || "").trim();
+      const data = (document.getElementById("cjData").value || "").trim();
+      const hEnt = (document.getElementById("cjEntrada").value || "").trim();
+      const hSai = (document.getElementById("cjSaida").value || "").trim();
+
+      const hSaiInt = (document.getElementById("cjSaiInt").value || "").trim();
+      const hRetInt = (document.getElementById("cjRetInt").value || "").trim();
+      const hEntHe  = (document.getElementById("cjEntHe").value || "").trim();
+      const hSaiHe  = (document.getElementById("cjSaiHe").value || "").trim();
+
+      const posto = (document.getElementById("cjPosto").value || "").trim();
+      const location = (document.getElementById("cjLocation").value || "").trim();
+
+      if (!re){ alert("Informe o RE."); return; }
+      if (!data){ alert("Informe a data."); return; }
+      if (!hEnt){ alert("Informe a hora de ENTRADA."); return; }
+      if (!hSai){ alert("Informe a hora de SAÍDA."); return; }
+
+      function isoFromDateAndTime(ymdKey, hhmm){
+        const m = (hhmm||"").match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+        if (!m) return null;
+        const dt = new Date(`${ymdKey}T${m[1]}:${m[2]}:00`);
+        if (isNaN(dt)) return null;
+        return dt.toISOString();
+      }
+
+      const entIso = isoFromDateAndTime(data, hEnt);
+      const saiIso = isoFromDateAndTime(data, hSai);
+      if (!entIso || !saiIso){ alert("Horários inválidos."); return; }
+
+      const siIso = hSaiInt ? isoFromDateAndTime(data, hSaiInt) : null;
+      const riIso = hRetInt ? isoFromDateAndTime(data, hRetInt) : null;
+      const ehIso = hEntHe ? isoFromDateAndTime(data, hEntHe) : null;
+      const shIso = hSaiHe ? isoFromDateAndTime(data, hSaiHe) : null;
+
+      if ((hSaiInt && !siIso) || (hRetInt && !riIso) || (hEntHe && !ehIso) || (hSaiHe && !shIso)){
+        alert("Algum horário (intervalo/HE) está inválido.");
+        return;
+      }
+
+      db.collection("colaboradores").doc(re).get()
+        .then(function(snap){
+          if (!snap.exists){ alert("Colaborador não encontrado."); return Promise.reject(); }
+          const col = snap.data() || {};
+          const nome = String(col.nome||"").trim();
+          if (!nome){ alert("Colaborador sem nome cadastrado."); return Promise.reject(); }
+
+          return existeEntradaNoDia(re, data, null).then(function(dup){
+            if (dup){
+              alert("❌ Já existe uma jornada com ENTRADA nesse dia para este RE.");
+              return Promise.reject();
+            }
+
+            const payload = {
+              re,
+              nome,
+              status: "fechada",
+              entrada: { ts: entIso, foto:"", location: location||"", posto: posto||"" },
+              saida: { ts: saiIso, foto:"", location: location||"", posto: posto||"" },
+              updatedAt: new Date().toISOString(),
+              adminCriada: true
+            };
+
+            if (siIso) payload.saida_intervalo = { ts: siIso, foto:"", location: location||"", posto: posto||"" };
+            if (riIso) payload.retorno_intervalo = { ts: riIso, foto:"", location: location||"", posto: posto||"" };
+            if (ehIso) payload.entrada_he = { ts: ehIso, foto:"", location: location||"", posto: posto||"" };
+            if (shIso) payload.saida_he = { ts: shIso, foto:"", location: location||"", posto: posto||"" };
+
+            if (!confirm(
+              `Criar jornada?\nRE: ${re}\nData: ${brDateFromYmd(data)}\nEntrada: ${hEnt}\nSaída: ${hSai}` +
+              (hSaiInt?`\nInício intervalo: ${hSaiInt}`:"") +
+              (hRetInt?`\nFim intervalo: ${hRetInt}`:"") +
+              (hEntHe?`\nEntrada HE: ${hEntHe}`:"") +
+              (hSaiHe?`\nSaída HE: ${hSaiHe}`:"")
+            )) return Promise.reject();
+
+            return db.collection("jornadas").add(payload);
+          });
+        })
+        .then(function(){
+          closeModal();
+          buscar();
+          alert("✅ Jornada criada.");
+        })
+        .catch(function(e){
+          if (e) console.warn("criar jornada cancel/erro:", e);
+        });
+    }
+  });
+}
+window.abrirCriarJornada = abrirCriarJornada;
 
 /* ========= LOCAIS ========= */
 function haversineMeters(lat1, lon1, lat2, lon2){
