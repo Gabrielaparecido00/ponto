@@ -723,6 +723,52 @@ function ymd(d){
 }
 function weekdayPtShort(d){ return d.toLocaleDateString("pt-BR", { weekday:"short" }); }
 
+/* ========= NOVO: DATETIME PARA TURNOS NOTURNOS =========
+   - Permite "virar o dia" (ex: 19:00 -> 07:00 do dia seguinte)
+   - E garante que SAÍDA não fique anterior à ENTRADA
+======================================================== */
+function parseHHMM(hhmm){
+  const m = (hhmm||"").trim().match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+  if (!m) return null;
+  return { hh:Number(m[1]), mm:Number(m[2]) };
+}
+function dateFromYmdAndTime(ymdKey, hhmm){
+  const t = parseHHMM(hhmm);
+  if (!t) return null;
+  const dt = new Date(`${ymdKey}T${String(t.hh).padStart(2,"0")}:${String(t.mm).padStart(2,"0")}:00`);
+  if (isNaN(dt)) return null;
+  return dt;
+}
+function addDays(dt, days){
+  const d = new Date(dt);
+  d.setDate(d.getDate()+days);
+  return d;
+}
+/**
+ * Cria um Date relativo ao "baseDate" (mesmo dia por padrão).
+ * Se o horário "cair antes" do baseDate, adiciona 1 dia (vira o dia).
+ */
+function dateRelativeToBase(baseDate, hhmm){
+  const t = parseHHMM(hhmm);
+  if (!t) return null;
+  const cand = new Date(baseDate);
+  cand.setHours(t.hh, t.mm, 0, 0);
+  if (cand < baseDate) return addDays(cand, 1);
+  return cand;
+}
+function ensureNotBefore(label, aIso, bIso){
+  // garante b >= a
+  if (!aIso || !bIso) return true;
+  const a = toDateAny(aIso);
+  const b = toDateAny(bIso);
+  if (!a || !b || isNaN(a) || isNaN(b)) return true;
+  if (b < a){
+    alert(`❌ ${label} não pode ser anterior ao horário anterior.`);
+    return false;
+  }
+  return true;
+}
+
 /* ========= 12x36 helpers (ADMIN) ========= */
 function normEscala(s){ return (s||"").toString().trim().toLowerCase(); }
 function is12x36Escala(escalaTxt){
@@ -815,6 +861,7 @@ function existeEntradaNoDia(re, ymdKey, ignoreId){
       });
     });
 }
+
 function abrirCriarJornada(){
   openModal({
     title: "Criar Jornada (Admin)",
@@ -825,7 +872,7 @@ function abrirCriarJornada(){
           <input id="cjRe" placeholder="RE" inputmode="numeric">
         </div>
         <div>
-          <label>Data</label>
+          <label>Data (da ENTRADA)</label>
           <input id="cjData" type="date">
         </div>
         <div>
@@ -835,6 +882,7 @@ function abrirCriarJornada(){
         <div>
           <label>Hora SAÍDA</label>
           <input id="cjSaida" type="time" value="17:48">
+          <div class="small" style="text-align:left;">✅ Se a saída for menor que a entrada, o sistema assume <b>dia seguinte</b> (turno noturno).</div>
         </div>
         <div>
           <label>Início intervalo (opcional)</label>
@@ -867,7 +915,7 @@ function abrirCriarJornada(){
     `,
     onSave: function(){
       const re = (document.getElementById("cjRe").value || "").trim();
-      const data = (document.getElementById("cjData").value || "").trim();
+      const data = (document.getElementById("cjData").value || "").trim(); // data da ENTRADA
       const hEnt = (document.getElementById("cjEntrada").value || "").trim();
       const hSai = (document.getElementById("cjSaida").value || "").trim();
 
@@ -884,27 +932,63 @@ function abrirCriarJornada(){
       if (!hEnt){ alert("Informe a hora de ENTRADA."); return; }
       if (!hSai){ alert("Informe a hora de SAÍDA."); return; }
 
-      function isoFromDateAndTime(ymdKey, hhmm){
-        const m = (hhmm||"").match(/^([01]\d|2[0-3]):([0-5]\d)$/);
-        if (!m) return null;
-        const dt = new Date(`${ymdKey}T${m[1]}:${m[2]}:00`);
-        if (isNaN(dt)) return null;
-        return dt.toISOString();
-      }
+      // ENTRADA fixa no dia selecionado
+      const entDt = dateFromYmdAndTime(data, hEnt);
+      if (!entDt){ alert("Horário de ENTRADA inválido."); return; }
 
-      const entIso = isoFromDateAndTime(data, hEnt);
-      const saiIso = isoFromDateAndTime(data, hSai);
-      if (!entIso || !saiIso){ alert("Horários inválidos."); return; }
+      // SAÍDA pode virar o dia: se horário < entrada, joga para o dia seguinte
+      const saiDt = dateRelativeToBase(entDt, hSai);
+      if (!saiDt){ alert("Horário de SAÍDA inválido."); return; }
 
-      const siIso = hSaiInt ? isoFromDateAndTime(data, hSaiInt) : null;
-      const riIso = hRetInt ? isoFromDateAndTime(data, hRetInt) : null;
-      const ehIso = hEntHe ? isoFromDateAndTime(data, hEntHe) : null;
-      const shIso = hSaiHe ? isoFromDateAndTime(data, hSaiHe) : null;
-
-      if ((hSaiInt && !siIso) || (hRetInt && !riIso) || (hEntHe && !ehIso) || (hSaiHe && !shIso)){
-        alert("Algum horário (intervalo/HE) está inválido.");
+      if (saiDt < entDt){
+        alert("❌ Saída não pode ser anterior à entrada.");
         return;
       }
+
+      // Intervalo/HE: também seguem a lógica relativa (podem virar o dia conforme base)
+      let siDt = null, riDt = null, ehDt = null, shDt = null;
+
+      if (hSaiInt){
+        siDt = dateRelativeToBase(entDt, hSaiInt);
+        if (!siDt){ alert("Horário de início do intervalo inválido."); return; }
+        if (siDt < entDt){ alert("❌ Início do intervalo não pode ser antes da entrada."); return; }
+      }
+      if (hRetInt){
+        const base = siDt || entDt;
+        riDt = dateRelativeToBase(base, hRetInt);
+        if (!riDt){ alert("Horário de fim do intervalo inválido."); return; }
+      }
+      if (siDt && riDt && riDt < siDt){
+        alert("❌ Fim do intervalo não pode ser anterior ao início do intervalo.");
+        return;
+      }
+
+      // Se quiser, garante que intervalo esteja dentro do período entrada->saída
+      if (siDt && siDt > saiDt){ alert("❌ Início do intervalo não pode ser após a saída."); return; }
+      if (riDt && riDt > saiDt){ alert("❌ Fim do intervalo não pode ser após a saída."); return; }
+
+      if (hEntHe){
+        // HE normalmente vem depois, mas só exigimos que não seja antes da entrada
+        ehDt = dateRelativeToBase(entDt, hEntHe);
+        if (!ehDt){ alert("Horário de entrada HE inválido."); return; }
+        if (ehDt < entDt){ alert("❌ Entrada HE não pode ser antes da entrada."); return; }
+      }
+      if (hSaiHe){
+        const base = ehDt || entDt;
+        shDt = dateRelativeToBase(base, hSaiHe);
+        if (!shDt){ alert("Horário de saída HE inválido."); return; }
+      }
+      if (ehDt && shDt && shDt < ehDt){
+        alert("❌ Saída HE não pode ser anterior à entrada HE.");
+        return;
+      }
+
+      const entIso = entDt.toISOString();
+      const saiIso = saiDt.toISOString();
+      const siIso  = siDt ? siDt.toISOString() : null;
+      const riIso  = riDt ? riDt.toISOString() : null;
+      const ehIso  = ehDt ? ehDt.toISOString() : null;
+      const shIso  = shDt ? shDt.toISOString() : null;
 
       db.collection("colaboradores").doc(re).get()
         .then(function(snap){
@@ -934,8 +1018,10 @@ function abrirCriarJornada(){
             if (ehIso) payload.entrada_he = { ts: ehIso, foto:"", location: location||"", posto: posto||"" };
             if (shIso) payload.saida_he = { ts: shIso, foto:"", location: location||"", posto: posto||"" };
 
+            const virouTxt = (ymd(entDt) !== ymd(saiDt)) ? "\n⚠️ Saída no dia seguinte (turno noturno)" : "";
             if (!confirm(
-              `Criar jornada?\nRE: ${re}\nData: ${brDateFromYmd(data)}\nEntrada: ${hEnt}\nSaída: ${hSai}` +
+              `Criar jornada?\nRE: ${re}\nData (Entrada): ${brDateFromYmd(data)}\nEntrada: ${hEnt}\nSaída: ${hSai}` +
+              virouTxt +
               (hSaiInt?`\nInício intervalo: ${hSaiInt}`:"") +
               (hRetInt?`\nFim intervalo: ${hRetInt}`:"") +
               (hEntHe?`\nEntrada HE: ${hEntHe}`:"") +
@@ -1584,6 +1670,9 @@ function editarJornada(docId){
       <div class="small" style="margin-top:6px;color:#a10000;">
         ✅ Permitido remover ENTRADA (isso apagará a jornada inteira para não quebrar relatórios).
       </div>
+      <div class="small" style="margin-top:6px;">
+        ✅ Turno noturno permitido (saída pode ser no dia seguinte), mas <b>SAÍDA nunca pode ser anterior à ENTRADA</b>.
+      </div>
     `,
     onSave: function(){
       const campos = [
@@ -1597,6 +1686,16 @@ function editarJornada(docId){
 
       const payload = { updatedAt: new Date().toISOString() };
       let newEntradaIso = null;
+
+      // Guardar novos valores para validação antes do update
+      let tmp = {
+        entrada: null,
+        saida_intervalo: null,
+        retorno_intervalo: null,
+        saida: null,
+        entrada_he: null,
+        saida_he: null
+      };
 
       for (let i=0;i<campos.length;i++){
         const path = campos[i][0];
@@ -1614,7 +1713,15 @@ function editarJornada(docId){
         }
 
         payload[path] = iso;
+
         if (path === "entrada.ts") newEntradaIso = iso;
+
+        if (path === "entrada.ts") tmp.entrada = iso;
+        if (path === "saida_intervalo.ts") tmp.saida_intervalo = iso;
+        if (path === "retorno_intervalo.ts") tmp.retorno_intervalo = iso;
+        if (path === "saida.ts") tmp.saida = iso;
+        if (path === "entrada_he.ts") tmp.entrada_he = iso;
+        if (path === "saida_he.ts") tmp.saida_he = iso;
       }
 
       if (!newEntradaIso){
@@ -1638,6 +1745,53 @@ function editarJornada(docId){
           });
         return;
       }
+
+      // ===== VALIDAÇÕES IMPORTANTES =====
+      // 1) Saída não pode ser anterior à entrada (mesmo permitindo virar o dia)
+      const entIso = tmp.entrada;
+      const saiIso = tmp.saida;
+      if (entIso && saiIso){
+        const entD = toDateAny(entIso);
+        const saiD = toDateAny(saiIso);
+        if (entD && saiD && !isNaN(entD) && !isNaN(saiD) && (saiD < entD)){
+          alert("❌ SAÍDA não pode ser anterior à ENTRADA.");
+          return;
+        }
+      }
+
+      // 2) Ordem do intervalo (se existir)
+      if (tmp.saida_intervalo && tmp.retorno_intervalo){
+        const a = toDateAny(tmp.saida_intervalo);
+        const b = toDateAny(tmp.retorno_intervalo);
+        if (a && b && !isNaN(a) && !isNaN(b) && (b < a)){
+          alert("❌ Fim do intervalo não pode ser anterior ao início do intervalo.");
+          return;
+        }
+      }
+
+      // 3) (Opcional, mas ajuda) Intervalo dentro de entrada->saída
+      if (entIso && tmp.saida_intervalo){
+        if (!ensureNotBefore("Início do intervalo", entIso, tmp.saida_intervalo)) return;
+      }
+      if (tmp.saida_intervalo && tmp.retorno_intervalo){
+        if (!ensureNotBefore("Fim do intervalo", tmp.saida_intervalo, tmp.retorno_intervalo)) return;
+      }
+      if (tmp.retorno_intervalo && saiIso){
+        if (!ensureNotBefore("Saída", tmp.retorno_intervalo, saiIso)) return;
+      } else if (tmp.saida_intervalo && saiIso){
+        if (!ensureNotBefore("Saída", tmp.saida_intervalo, saiIso)) return;
+      }
+
+      // 4) HE: saída HE não pode ser anterior à entrada HE
+      if (tmp.entrada_he && tmp.saida_he){
+        const a = toDateAny(tmp.entrada_he);
+        const b = toDateAny(tmp.saida_he);
+        if (a && b && !isNaN(a) && !isNaN(b) && (b < a)){
+          alert("❌ Saída HE não pode ser anterior à entrada HE.");
+          return;
+        }
+      }
+      // ================================
 
       const newDay = String(newEntradaIso).slice(0,10);
       const re = String(j.re || "").trim();
