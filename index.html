@@ -188,9 +188,6 @@ let hasPhoto = false;
 // cache supervisores
 let cacheSupervisores = [];
 
-// 🔥 IMPORTANTE:
-// Para isso funcionar SEM login, suas RULES precisam ter:
-// match /supervisores/{id} { allow read: if true; allow write: if isSupervisorOrAdmin(); }
 async function carregarSupervisoresSafe(){
   try{
     const snap = await getDocs(collection(db,"supervisores"));
@@ -305,7 +302,7 @@ captureBtn.addEventListener("click", async () => {
   }
 });
 
-// helpers
+// helpers base
 function pad2(n){ return String(n).padStart(2,"0"); }
 function todayYmd(){
   const d = new Date();
@@ -323,6 +320,10 @@ function addDaysYmd(ymd, days){
   dt.setDate(dt.getDate() + (days||0));
   return dt.toISOString().slice(0,10);
 }
+function dateFromYmdNoon(ymd){
+  const [Y,M,D] = (ymd||"").split("-").map(Number);
+  return new Date(Y, (M||1)-1, D||1, 12, 0, 0);
+}
 function setDateKeepingTime(iso, ymd){
   const d = new Date(iso);
   if (isNaN(d)) return iso;
@@ -330,28 +331,87 @@ function setDateKeepingTime(iso, ymd){
   const local = new Date(Y, M-1, D, d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds());
   return local.toISOString();
 }
+function toDateAny(ts){
+  if (!ts) return null;
+  if (ts.toDate) return ts.toDate();
+  if (ts instanceof Date) return ts;
+  return new Date(ts);
+}
+function ymd(d){
+  if (!d || isNaN(d)) return "";
+  return d.toISOString().slice(0,10);
+}
 
-function isFolgaByEscala(dateObj, escala){
+// ====== 12x36 helpers (IGUAL ADMIN) ======
+function normEscala(s){ return (s||"").toString().trim().toLowerCase(); }
+function is12x36Escala(escalaTxt){
+  const e = normEscala(escalaTxt||"");
+  return e.includes("12") && e.includes("36");
+}
+function getPlantaoReferencia(dateObj, historico){
+  if (!Array.isArray(historico) || !historico.length) return null;
+  const key = ymd(dateObj);
+
+  let best = null;
+  for (const p of historico){
+    const ini = String(p?.inicio || p?.vigencia || "").slice(0,10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ini)) continue;
+
+    if (ini <= key){
+      if (!best){ best = { ...p, inicio: ini }; continue; }
+
+      const bestIni = String(best.inicio || "").slice(0,10);
+      if (ini > bestIni){ best = { ...p, inicio: ini }; continue; }
+
+      if (ini === bestIni){
+        const bestUp = String(best.updatedAt || "");
+        const curUp  = String(p.updatedAt || "");
+        if (curUp > bestUp) best = { ...p, inicio: ini };
+      }
+    }
+  }
+  return best;
+}
+function isFolgaByEscala(dateObj, escala, plantaoHistorico){
+  const e = normEscala(escala || "5x2");
   const dow = dateObj.getDay();
-  const e = (escala || "5x2").toLowerCase();
+
   if (e === "5x2") return (dow === 0 || dow === 6);
   if (e === "6x1") return (dow === 0);
+
+  if (is12x36Escala(e)){
+    const hist = Array.isArray(plantaoHistorico) ? plantaoHistorico : [];
+    const plantao = getPlantaoReferencia(dateObj, hist);
+    if (!plantao) return true; // se não tem regra, considera folga (mais seguro)
+
+    const inicio = String(plantao.inicio || "").slice(0,10);
+    const baseTxt = String(plantao.base || "trabalha").toLowerCase(); // trabalha|folga
+
+    const baseDate = new Date(inicio + "T00:00:00");
+    const atual = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 12, 0, 0);
+    const diffDias = Math.floor((atual - baseDate) / 86400000);
+
+    const baseEhTrabalho = (baseTxt === "trabalha");
+    const ehTrabalhoHoje = (diffDias % 2 === 0) ? baseEhTrabalho : !baseEhTrabalho;
+
+    return !ehTrabalhoHoje;
+  }
+
+  // default: se escala desconhecida, não libera FT
   return false;
 }
-function isDiaTrabalho(dateObj, escala){
-  return !isFolgaByEscala(dateObj, escala);
+function isDiaTrabalho(dateObj, escala, plantaoHistorico){
+  return !isFolgaByEscala(dateObj, escala, plantaoHistorico);
 }
 
 // locais (cache)
 let cacheLocais = [];
-
 function haversineMeters(lat1, lon1, lat2, lon2){
   const R=6371000; const toRad=x=>x*Math.PI/180;
   const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
   const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
   return 2*R*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
-
 async function carregarLocaisSafe(){
   try{
     const snap = await getDocs(collection(db,"locais"));
@@ -419,15 +479,15 @@ async function carregarAfastamentosDoRe(re){
   const snap = await getDocs(qA);
   return snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }));
 }
-function isWithinRange(ymd, ini, fim){
-  return !!(ymd && ini && fim && ymd >= ini && ymd <= fim);
+function isWithinRange(ymdKey, ini, fim){
+  return !!(ymdKey && ini && fim && ymdKey >= ini && ymdKey <= fim);
 }
-function aplicaNoDia(afast, dateObj, escala){
+function aplicaNoDia(afast, dateObj, escala, plantaoHistorico){
   const onlyWork = (afast?.aplicarSomenteDiasTrabalho === true);
-  if (onlyWork && !isDiaTrabalho(dateObj, escala)) return false;
+  if (onlyWork && !isDiaTrabalho(dateObj, escala, plantaoHistorico)) return false;
   return true;
 }
-async function checarBloqueioFerias(re, escala){
+async function checarBloqueioFerias(re, escala, plantaoHistorico){
   const hoje = todayYmd();
   const dateObj = new Date();
   const afast = await carregarAfastamentosDoRe(re);
@@ -435,7 +495,7 @@ async function checarBloqueioFerias(re, escala){
   for (const f of ferias){
     const ini = String(f.inicio||"").slice(0,10);
     const fim = String(f.fim||"").slice(0,10);
-    if (isWithinRange(hoje, ini, fim) && aplicaNoDia(f, dateObj, escala)){
+    if (isWithinRange(hoje, ini, fim) && aplicaNoDia(f, dateObj, escala, plantaoHistorico)){
       return { bloqueado:true, ferias:f };
     }
   }
@@ -472,13 +532,6 @@ const etapaConfirms = {
   [ETAPAS.SAIDA_HE]: "Você está encerrando hora extra?"
 };
 
-function toDateAny(ts){
-  if (!ts) return null;
-  if (ts.toDate) return ts.toDate();
-  if (ts instanceof Date) return ts;
-  return new Date(ts);
-}
-
 function limparForm(){
   reInput.value = "";
   colaborador = null;
@@ -514,7 +567,8 @@ async function buscarColaborador(re){
     escala: (data.escala || "5x2"),
     horaEntrada: (data.horaEntrada || "").toString().trim(),
     horaSaida: (data.horaSaida || "").toString().trim(),
-    dataAdmissao: String(data.dataAdmissao || "").slice(0,10)
+    dataAdmissao: String(data.dataAdmissao || "").slice(0,10),
+    plantaoHistorico: Array.isArray(data.plantaoHistorico) ? data.plantaoHistorico : []
   };
 }
 
@@ -659,17 +713,17 @@ async function existeEntradaNoDia(re, ymdKey){
   }
 }
 
-// ====== MODAL FT (3 passos) ======
-function askFtFlow({diaOriginalYmd}){
+// ====== MODAL FT (3 passos) — texto neutro ======
+function askFtFlow({diaOriginalYmd, diaRegistradoYmd, nomeColab}){
   return new Promise(async (resolve) => {
     await carregarSupervisoresSafe();
 
-    // passo 1
     ftTitle.textContent = "Folga Trabalhada (FT)";
     ftBody.innerHTML = `
       <p>Já existe uma <b>ENTRADA</b> registrada em <b>${brDateFromYmd(diaOriginalYmd)}</b>.</p>
-      <p>Deseja registrar como <b>Folga Trabalhada (FT)</b>?</p>
-      <p class="muted">Se confirmar, informe o motivo e selecione o supervisor para registro interno.</p>
+      <p>Para registrar uma <b>FT</b>, o lançamento será feito para <b>${brDateFromYmd(diaRegistradoYmd)}</b> e ficará como <b>pendente</b> para conferência.</p>
+      <p class="muted">Colaborador: <b>${(nomeColab||"")}</b></p>
+      <p>Deseja continuar?</p>
     `;
     ftOverlay.style.display = "flex";
 
@@ -678,37 +732,34 @@ function askFtFlow({diaOriginalYmd}){
 
     ftCancel.onclick = () => { closeFt(); resolve({ ok:false }); };
     ftOk.onclick = () => {
-      // passo 2 (motivo)
       ftTitle.textContent = "FT — Motivo";
       ftBody.innerHTML = `
-        <p>Informe o <b>motivo</b> da Folga Trabalhada:</p>
-        <input id="ftMotivo" placeholder="Ex: cobertura de posto / demanda operacional">
-        <div class="muted" style="margin-top:6px;">Essa informação será registrada junto ao apontamento.</div>
+        <p>Informe o <b>motivo</b> da FT:</p>
+        <input id="ftMotivo" placeholder="Ex: cobertura / solicitação do posto / necessidade operacional">
       `;
       ftCancel.textContent = "Voltar";
       ftOk.textContent = "Continuar";
 
       ftCancel.onclick = () => {
         closeFt();
-        resolve(askFtFlow({diaOriginalYmd}));
+        resolve(askFtFlow({diaOriginalYmd, diaRegistradoYmd, nomeColab}));
       };
 
       ftOk.onclick = () => {
         const motivo = (document.getElementById("ftMotivo").value || "").trim();
         if (!motivo) return alert("Informe o motivo da FT.");
 
-        // passo 3 (supervisor)
         ftTitle.textContent = "FT — Supervisor";
         const opts = (cacheSupervisores||[])
           .map(s => `<option value="${String(s.nome).replaceAll('"','&quot;')}">${s.nome}</option>`)
           .join("");
+
         ftBody.innerHTML = `
           <p>Selecione o <b>supervisor</b> responsável:</p>
           <select id="ftSupervisor">
             <option value="">Selecione...</option>
             ${opts}
           </select>
-          <div class="muted" style="margin-top:6px;">O registro ficará associado ao supervisor selecionado.</div>
         `;
 
         ftCancel.textContent = "Voltar";
@@ -716,7 +767,7 @@ function askFtFlow({diaOriginalYmd}){
 
         ftCancel.onclick = () => {
           closeFt();
-          resolve(askFtFlow({diaOriginalYmd}));
+          resolve(askFtFlow({diaOriginalYmd, diaRegistradoYmd, nomeColab}));
         };
 
         ftOk.onclick = () => {
@@ -783,7 +834,7 @@ async function atualizarTela(){
     horarioMostrado.innerText = "Horário previsto: " + horarioTxt(c);
 
     // férias
-    const chk = await checarBloqueioFerias(re, c.escala);
+    const chk = await checarBloqueioFerias(re, c.escala, c.plantaoHistorico);
     if (chk.bloqueado){
       const f = chk.ferias;
       const ini = String(f.inicio||"").slice(0,10);
@@ -865,7 +916,7 @@ registrarBtn.addEventListener("click", async () => {
     return;
   }
 
-  const chk = await checarBloqueioFerias(re, colaborador.escala);
+  const chk = await checarBloqueioFerias(re, colaborador.escala, colaborador.plantaoHistorico);
   if (chk.bloqueado){
     await atualizarTela();
     return;
@@ -906,24 +957,40 @@ registrarBtn.addEventListener("click", async () => {
     const jaTemEntradaHoje = await existeEntradaNoDia(re, hoje);
 
     if (jaTemEntradaHoje){
-      // abre FT flow
-      const ft = await askFtFlow({ diaOriginalYmd: hoje });
-      if (!ft.ok){
-        return alert("Operação cancelada. Não é permitido 2 ENTRADAS no mesmo dia sem FT.");
+      // ✅ FT só pode existir se o DIA REGISTRADO (dia seguinte) for FOLGA
+      const diaSeguinte = addDaysYmd(hoje, 1);
+
+      const dtDiaSeguinte = dateFromYmdNoon(diaSeguinte);
+      const ehFolgaNoDiaSeguinte = isFolgaByEscala(dtDiaSeguinte, colaborador.escala, colaborador.plantaoHistorico);
+
+      if (!ehFolgaNoDiaSeguinte){
+        return alert(
+          "❌ Não é permitido registrar FT neste momento.\n\n" +
+          "FT só é permitida quando o lançamento cair em um dia de FOLGA do colaborador."
+        );
       }
 
-      // cria nova ENTRADA como DIA SEGUINTE
-      const diaSeguinte = addDaysYmd(hoje, 1);
+      // abre FT flow
+      const ft = await askFtFlow({
+        diaOriginalYmd: hoje,
+        diaRegistradoYmd: diaSeguinte,
+        nomeColab: colaborador.nome
+      });
+
+      if (!ft.ok){
+        return alert("Operação cancelada.");
+      }
+
+      // cria nova ENTRADA como DIA SEGUINTE (que já validamos que é folga)
       const entradaIsoShift = setDateKeepingTime(nowIso, diaSeguinte);
 
-      // jornada “normal”, só que data (entrada.ts) = dia seguinte
       await addDoc(collection(db, "jornadas"), {
         re,
         nome: colaborador.nome,
         status: "aberta",
         entrada: {
-          ts: entradaIsoShift,     // dia seguinte (chave)
-          tsReal: nowIso,          // real (auditoria)
+          ts: entradaIsoShift,     // 👈 dia seguinte (folga)
+          tsReal: nowIso,          // 👈 auditoria
           foto,
           location,
           posto
@@ -939,7 +1006,7 @@ registrarBtn.addEventListener("click", async () => {
         updatedAt: nowIso
       });
 
-      // registro auxiliar (opcional)
+      // ocorrência pendente (visualização/admin)
       try{
         await addDoc(collection(db, "ft_pendentes"), {
           status: "pendente",
@@ -956,7 +1023,7 @@ registrarBtn.addEventListener("click", async () => {
         });
       }catch{}
 
-      alert("✅ FT registrada! (Entrada lançada como dia seguinte para registro interno.)");
+      alert("✅ FT registrada com sucesso!");
       limparForm();
       return;
     }
