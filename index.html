@@ -50,37 +50,8 @@
   }
   .footer{ text-align:center; margin-top:16px; font-size:12px; color:#666; }
 
+  /* vídeo hidden para fallback/compatibilidade */
   #camPreview{ display:none; width:1px; height:1px; opacity:0; pointer-events:none; }
-
-  /* ===== Modal FT ===== */
-  .modalOverlay{
-    position:fixed; inset:0; background:rgba(0,0,0,.45);
-    display:none; align-items:center; justify-content:center;
-    z-index:9999; padding:12px;
-  }
-  .modal{
-    background:#fff; width:min(520px, 96vw);
-    border-radius:12px; padding:14px; text-align:left;
-    box-shadow:0 10px 30px rgba(0,0,0,0.22);
-  }
-  .modal h3{ margin:0 0 10px; font-size:15px; }
-  .modal .small{ font-size:12px; color:#666; margin-bottom:10px; white-space:pre-line; }
-  .modal label{ font-size:12px; color:#444; font-weight:700; display:block; margin-top:8px; }
-  .modal input, .modal select, .modal textarea{
-    width:100%; padding:10px; border-radius:10px; border:1px solid #ccc; margin-top:6px;
-    font-family:inherit;
-  }
-  .modal textarea{ min-height:86px; resize:vertical; }
-  .modal .actions{
-    display:flex; gap:8px; justify-content:flex-end; margin-top:12px;
-  }
-  .btnGhost{ background:#e9ecef; color:#111; border:none; border-radius:10px; padding:10px 12px; cursor:pointer; font-weight:700; }
-  .btnPrimary{ background:#1f6feb; color:#fff; border:none; border-radius:10px; padding:10px 12px; cursor:pointer; font-weight:700; }
-  .pillWarn{
-    display:inline-block; padding:6px 10px; border-radius:999px;
-    background:#fff6e5; border:1px solid #ffd59e; color:#7a4b00;
-    font-size:12px; font-weight:700; margin-bottom:10px;
-  }
 </style>
 </head>
 
@@ -104,6 +75,7 @@
     <option value="">Selecione a marcação...</option>
   </select>
 
+  <!-- vídeo escondido (fallback captura) -->
   <video id="camPreview" autoplay playsinline muted></video>
 
   <canvas id="photo" width="240" height="320"></canvas>
@@ -118,44 +90,6 @@
 
 <div class="footer">
   Sistema desenvolvido por Gabriel Wandele, todos direitos reservados
-</div>
-
-<!-- MODAL FT -->
-<div id="ftOverlay" class="modalOverlay">
-  <div class="modal" onclick="event.stopPropagation()">
-    <div class="pillWarn">FT (Folga Trabalhada) — Formulário obrigatório</div>
-    <h3>Antes de registrar a ENTRADA, responda:</h3>
-    <div class="small" id="ftInfo"></div>
-
-    <label>Você foi convocado?</label>
-    <select id="ftConvocado">
-      <option value="">Selecione...</option>
-      <option value="sim">SIM</option>
-      <option value="nao">NÃO</option>
-    </select>
-
-    <label>Supervisor responsável (informativo)</label>
-    <select id="ftSupervisor">
-      <option value="">Selecione (opcional)...</option>
-    </select>
-
-    <label>Motivo / Observações</label>
-    <textarea id="ftObs" placeholder="Descreva rapidamente (ex: cobertura, troca, urgência...)"></textarea>
-
-    <label>
-      Confirma que está ciente que este registro será analisado internamente?
-    </label>
-    <select id="ftCiente">
-      <option value="">Selecione...</option>
-      <option value="sim">SIM</option>
-      <option value="nao">NÃO</option>
-    </select>
-
-    <div class="actions">
-      <button class="btnGhost" id="ftCancelar" type="button">Cancelar</button>
-      <button class="btnPrimary" id="ftOk" type="button">Continuar</button>
-    </div>
-  </div>
 </div>
 
 <script type="module">
@@ -191,18 +125,8 @@ const faseHintEl = document.getElementById("faseHint");
 const acaoSelect = document.getElementById("acaoSelect");
 const blockedBox = document.getElementById("blockedBox");
 
-// Modal FT
-const ftOverlay = document.getElementById("ftOverlay");
-const ftInfo = document.getElementById("ftInfo");
-const ftConvocado = document.getElementById("ftConvocado");
-const ftSupervisor = document.getElementById("ftSupervisor");
-const ftObs = document.getElementById("ftObs");
-const ftCiente = document.getElementById("ftCiente");
-const ftCancelar = document.getElementById("ftCancelar");
-const ftOk = document.getElementById("ftOk");
-
 // estado
-let colaborador = null; // {re,nome,ativo,escala,horaEntrada,horaSaida,dataAdmissao,plantaoHistorico}
+let colaborador = null; // {re,nome,ativo,escala,horaEntrada,horaSaida,dataAdmissao}
 let stream = null;
 let clickLock = false;
 
@@ -227,6 +151,7 @@ function setRegisterEnabled(){
 
 function setInputsEnabled(enabled){
   const temAcoes = acaoSelect.options.length > 1;
+
   acaoSelect.disabled = !enabled || !temAcoes;
   captureBtn.disabled = !enabled;
 
@@ -245,7 +170,9 @@ setInterval(() => {
 // câmera
 async function iniciarCamera(){
   try{
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user" }
+    });
     camPreview.srcObject = stream;
   }catch{
     alert("Erro ao acessar câmera");
@@ -253,6 +180,7 @@ async function iniciarCamera(){
 }
 iniciarCamera();
 
+// parar câmera ao sair
 window.addEventListener("beforeunload", () => {
   try{
     if (stream){
@@ -263,10 +191,14 @@ window.addEventListener("beforeunload", () => {
 });
 
 // ✅ CAPTURA SEM DISTORÇÃO (cover + crop central)
+// - tenta ImageCapture (quando disponível)
+// - fallback: desenha do <video>
 captureBtn.addEventListener("click", async () => {
   if (!stream) return alert("Câmera não iniciada");
+
   const cw = canvas.width, ch = canvas.height;
 
+  // helper cover crop (bitmap/video frame)
   function drawCover(sourceW, sourceH, drawFn){
     const scale = Math.max(cw / sourceW, ch / sourceH);
     const sw = cw / scale;
@@ -280,6 +212,7 @@ captureBtn.addEventListener("click", async () => {
     setRegisterEnabled();
   }
 
+  // 1) ImageCapture
   try{
     const track = stream.getVideoTracks()[0];
     if (window.ImageCapture && track){
@@ -290,13 +223,17 @@ captureBtn.addEventListener("click", async () => {
       });
       return;
     }
-  }catch{}
+  }catch{
+    // cai pro fallback
+  }
 
+  // 2) Fallback via <video>
   try{
     const v = camPreview;
     if (!v || v.readyState < 2) return alert("Câmera ainda carregando, tente novamente.");
     const vw = v.videoWidth, vh = v.videoHeight;
     if (!vw || !vh) return alert("Não foi possível capturar o frame da câmera.");
+
     drawCover(vw, vh, (sx,sy,sw,sh) => {
       ctx.drawImage(v, sx, sy, sw, sh, 0, 0, cw, ch);
     });
@@ -317,85 +254,27 @@ function brDateFromYmd(ymd){
   if (!y || !m || !d) return ymd;
   return `${d}/${m}/${y}`;
 }
-function toDateAny(ts){
-  if (!ts) return null;
-  if (ts.toDate) return ts.toDate();
-  if (ts instanceof Date) return ts;
-  return new Date(ts);
-}
-function ymd(d){
-  if (!d || isNaN(d)) return "";
-  return d.toISOString().slice(0,10);
-}
-
-// ===== 12x36 helpers (para FT correto) =====
-function normEscala(s){ return (s||"").toString().trim().toLowerCase(); }
-function is12x36(col){
-  const e = normEscala(col?.escala || "");
-  return e.includes("12") && e.includes("36");
-}
-function getPlantaoReferencia(dateObj, historico){
-  if (!historico || !historico.length) return null;
-  const key = ymd(dateObj);
-
-  let best = null;
-  for (const p of historico){
-    const ini = String(p?.inicio || p?.vigencia || "").slice(0,10);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(ini)) continue;
-
-    if (ini <= key){
-      if (!best){ best = { ...p, inicio: ini }; continue; }
-      const bestIni = String(best.inicio||"").slice(0,10);
-      if (ini > bestIni){ best = { ...p, inicio: ini }; continue; }
-      if (ini === bestIni){
-        const bestUp = String(best.updatedAt||"");
-        const curUp  = String(p.updatedAt||"");
-        if (curUp > bestUp) best = { ...p, inicio: ini };
-      }
-    }
-  }
-  return best;
-}
-// true = FOLGA
-function isFolgaByEscala(dateObj, col){
-  const escala = normEscala(col?.escala || "5x2");
+function isFolgaByEscala(dateObj, escala){
   const dow = dateObj.getDay();
-
-  if (escala === "5x2") return (dow === 0 || dow === 6);
-  if (escala === "6x1") return (dow === 0);
-
-  if (is12x36(col)){
-    const hist = Array.isArray(col?.plantaoHistorico) ? col.plantaoHistorico : [];
-    const plantao = getPlantaoReferencia(dateObj, hist);
-    if (!plantao) return true; // sem regra, trata como folga
-
-    const inicio = String(plantao.inicio || "").slice(0,10);
-    const baseTxt = String(plantao.base || "trabalha").toLowerCase(); // trabalha|folga
-
-    const baseDate = new Date(inicio + "T00:00:00");
-    const atual = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 12, 0, 0);
-    const diffDias = Math.floor((atual - baseDate) / 86400000);
-
-    const baseEhTrabalho = (baseTxt === "trabalha");
-    const ehTrabalhoHoje = (diffDias % 2 === 0) ? baseEhTrabalho : !baseEhTrabalho;
-
-    return !ehTrabalhoHoje;
-  }
-
-  return false; // padrão
+  const e = (escala || "5x2").toLowerCase();
+  if (e === "5x2") return (dow === 0 || dow === 6);
+  if (e === "6x1") return (dow === 0);
+  return false;
 }
-function isDiaTrabalho(dateObj, col){
-  return !isFolgaByEscala(dateObj, col);
+function isDiaTrabalho(dateObj, escala){
+  return !isFolgaByEscala(dateObj, escala);
 }
 
 // locais (cache)
 let cacheLocais = []; // [{nome,lat,lng,raio}]
+
 function haversineMeters(lat1, lon1, lat2, lon2){
   const R=6371000; const toRad=x=>x*Math.PI/180;
   const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
   const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
   return 2*R*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
+
 async function carregarLocaisSafe(){
   try{
     const snap = await getDocs(collection(db,"locais"));
@@ -463,15 +342,15 @@ async function carregarAfastamentosDoRe(re){
   const snap = await getDocs(qA);
   return snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }));
 }
-function isWithinRange(ymdKey, ini, fim){
-  return !!(ymdKey && ini && fim && ymdKey >= ini && ymdKey <= fim);
+function isWithinRange(ymd, ini, fim){
+  return !!(ymd && ini && fim && ymd >= ini && ymd <= fim);
 }
-function aplicaNoDia(afast, dateObj, col){
+function aplicaNoDia(afast, dateObj, escala){
   const onlyWork = (afast?.aplicarSomenteDiasTrabalho === true);
-  if (onlyWork && !isDiaTrabalho(dateObj, col)) return false;
+  if (onlyWork && !isDiaTrabalho(dateObj, escala)) return false;
   return true;
 }
-async function checarBloqueioFerias(re, col){
+async function checarBloqueioFerias(re, escala){
   const hoje = todayYmd();
   const dateObj = new Date();
   const afast = await carregarAfastamentosDoRe(re);
@@ -479,7 +358,7 @@ async function checarBloqueioFerias(re, col){
   for (const f of ferias){
     const ini = String(f.inicio||"").slice(0,10);
     const fim = String(f.fim||"").slice(0,10);
-    if (isWithinRange(hoje, ini, fim) && aplicaNoDia(f, dateObj, col)){
+    if (isWithinRange(hoje, ini, fim) && aplicaNoDia(f, dateObj, escala)){
       return { bloqueado:true, ferias:f };
     }
   }
@@ -516,6 +395,13 @@ const etapaConfirms = {
   [ETAPAS.SAIDA_HE]: "Você está encerrando hora extra?"
 };
 
+function toDateAny(ts){
+  if (!ts) return null;
+  if (ts.toDate) return ts.toDate();
+  if (ts instanceof Date) return ts;
+  return new Date(ts);
+}
+
 function limparForm(){
   reInput.value = "";
   colaborador = null;
@@ -551,8 +437,7 @@ async function buscarColaborador(re){
     escala: (data.escala || "5x2"),
     horaEntrada: (data.horaEntrada || "").toString().trim(),
     horaSaida: (data.horaSaida || "").toString().trim(),
-    dataAdmissao: String(data.dataAdmissao || "").slice(0,10),
-    plantaoHistorico: Array.isArray(data.plantaoHistorico) ? data.plantaoHistorico : []
+    dataAdmissao: String(data.dataAdmissao || "").slice(0,10)
   };
 }
 
@@ -569,7 +454,11 @@ function pickLastTs(j){
 
 function getEstadoEAcaoPermitida(j){
   if (!j) {
-    return { fase: "Sem jornada aberta", hint: "Você pode registrar: ENTRADA", acoes: [ETAPAS.ENTRADA] };
+    return {
+      fase: "Sem jornada aberta",
+      hint: "Você pode registrar: ENTRADA",
+      acoes: [ETAPAS.ENTRADA]
+    };
   }
 
   const temEntrada = !!j?.entrada?.ts;
@@ -585,27 +474,51 @@ function getEstadoEAcaoPermitida(j){
 
   if (!temSaida){
     if (!temSaiInt && !temRetInt){
-      return { fase: "Após ENTRADA", hint: "Escolha: iniciar INTERVALO ou encerrar (SAÍDA).", acoes: [ETAPAS.SAIDA_INTERVALO, ETAPAS.SAIDA] };
+      return {
+        fase: "Após ENTRADA",
+        hint: "Escolha: iniciar INTERVALO ou encerrar (SAÍDA).",
+        acoes: [ETAPAS.SAIDA_INTERVALO, ETAPAS.SAIDA]
+      };
     }
     if (temSaiInt && !temRetInt){
-      return { fase: "Intervalo em andamento", hint: "Você só pode registrar: FIM INTERVALO.", acoes: [ETAPAS.RETORNO_INTERVALO] };
+      return {
+        fase: "Intervalo em andamento",
+        hint: "Você só pode registrar: FIM INTERVALO.",
+        acoes: [ETAPAS.RETORNO_INTERVALO]
+      };
     }
     if (temRetInt){
-      return { fase: "Após intervalo", hint: "Você pode registrar: SAÍDA.", acoes: [ETAPAS.SAIDA] };
+      return {
+        fase: "Após intervalo",
+        hint: "Você pode registrar: SAÍDA.",
+        acoes: [ETAPAS.SAIDA]
+      };
     }
     return { fase:"Estado incomum", hint:"Procure o admin.", acoes:[] };
   }
 
   if (temSaida && !temEntHe && !temSaiHe){
-    return { fase: "Expediente encerrado", hint: "Opcional: iniciar HORA EXTRA (ENTRADA HE).", acoes: [ETAPAS.ENTRADA_HE] };
+    return {
+      fase: "Expediente encerrado",
+      hint: "Opcional: iniciar HORA EXTRA (ENTRADA HE) ou iniciar nova ENTRADA.",
+      acoes: [ETAPAS.ENTRADA_HE, ETAPAS.ENTRADA]
+    };
   }
 
   if (temEntHe && !temSaiHe){
-    return { fase: "Hora extra em andamento", hint: "Você só pode registrar: SAÍDA HE.", acoes: [ETAPAS.SAIDA_HE] };
+    return {
+      fase: "Hora extra em andamento",
+      hint: "Você só pode registrar: SAÍDA HE.",
+      acoes: [ETAPAS.SAIDA_HE]
+    };
   }
 
   if (temSaiHe){
-    return { fase: "Jornada finalizada", hint: "Jornada finalizada hoje. Se precisar de ajuste, procure o admin.", acoes: [] };
+    return {
+      fase: "Jornada finalizada",
+      hint: "Você pode iniciar uma nova ENTRADA.",
+      acoes: [ETAPAS.ENTRADA]
+    };
   }
 
   return { fase:"Estado incomum", hint:"Procure o admin.", acoes:[] };
@@ -656,85 +569,6 @@ async function obterJornadaAtivaDoRe(re){
   return null;
 }
 
-// ✅ pega qualquer jornada do dia (para impedir 2 ENTRADAS/dia)
-async function obterJornadaDoDia(re, ymdKey){
-  const q = query(collection(db, "jornadas"), where("re", "==", re));
-  const snap = await getDocs(q);
-  const list = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-  const doDia = list.find(j => String(j?.entrada?.ts || "").slice(0,10) === ymdKey) || null;
-  return doDia;
-}
-
-// ===== supervisores (para FT form) =====
-let cacheSupervisores = [];
-async function carregarSupervisoresSafe(){
-  try{
-    const snap = await getDocs(collection(db, "supervisores"));
-    cacheSupervisores = snap.docs.map(d => (d.data()||{}))
-      .map(s => String(s.nome||"").trim())
-      .filter(Boolean)
-      .sort((a,b) => a.localeCompare(b));
-  }catch{
-    cacheSupervisores = [];
-  }
-
-  ftSupervisor.innerHTML = `<option value="">Selecione (opcional)...</option>`;
-  cacheSupervisores.forEach(n => {
-    const opt = document.createElement("option");
-    opt.value = n;
-    opt.textContent = n;
-    ftSupervisor.appendChild(opt);
-  });
-}
-carregarSupervisoresSafe();
-
-function openFTForm({ nome, re, dataYmd, escalaLabel }){
-  return new Promise((resolve) => {
-    ftInfo.textContent =
-      `Colaborador: ${nome} — RE ${re}\n` +
-      `Data: ${brDateFromYmd(dataYmd)}\n` +
-      `Escala: ${escalaLabel}\n\n` +
-      `⚠️ Este formulário NÃO bloqueia FT, mas registra sua declaração para análise interna.`;
-
-    ftConvocado.value = "";
-    ftSupervisor.value = "";
-    ftObs.value = "";
-    ftCiente.value = "";
-
-    ftOverlay.style.display = "flex";
-
-    const close = (val) => {
-      ftOverlay.style.display = "none";
-      ftCancelar.onclick = null;
-      ftOk.onclick = null;
-      resolve(val);
-    };
-
-    ftCancelar.onclick = () => close(null);
-
-    ftOk.onclick = () => {
-      // ✅ barreira: exige respostas mínimas (mas não valida verdade)
-      if (!ftConvocado.value || !ftCiente.value){
-        alert("Responda pelo menos: 'Você foi convocado?' e 'Ciente da análise interna?'.");
-        return;
-      }
-      close({
-        convocado: ftConvocado.value,
-        supervisor: ftSupervisor.value || "",
-        obs: (ftObs.value || "").trim(),
-        ciente: ftCiente.value,
-        filledAt: new Date().toISOString()
-      });
-    };
-  });
-}
-
-ftOverlay.addEventListener("click", () => {
-  // clique fora = não deixa fechar (barreira)
-  alert("Finalize o formulário (Cancelar ou Continuar).");
-});
-
-// atualizar tela
 async function atualizarTela(){
   try{
     resetPhoto();
@@ -787,7 +621,7 @@ async function atualizarTela(){
     horarioMostrado.innerText = "Horário previsto: " + horarioTxt(c);
 
     // férias
-    const chk = await checarBloqueioFerias(re, c);
+    const chk = await checarBloqueioFerias(re, c.escala);
     if (chk.bloqueado){
       const f = chk.ferias;
       const ini = String(f.inicio||"").slice(0,10);
@@ -802,23 +636,8 @@ async function atualizarTela(){
       return;
     }
 
-    // ✅ Se já tem jornada HOJE, não permitir ENTRADA de novo (mesmo que tenha fechado)
-    const hojeYmd = todayYmd();
-    const jHoje = await obterJornadaDoDia(re, hojeYmd);
-
-    // Jornada ativa (para fases)
-    const jornadaAtiva = await obterJornadaAtivaDoRe(re);
-
-    let st = getEstadoEAcaoPermitida(jornadaAtiva);
-
-    // Se NÃO existe jornada ativa, mas já existe entrada hoje => trava ENTRADA
-    if (!jornadaAtiva && jHoje){
-      st = {
-        fase: "Dia já iniciado",
-        hint: "Já existe ENTRADA registrada hoje. Se precisar de ajuste, procure o admin.",
-        acoes: [] // sem ações novas (evita 2ª entrada)
-      };
-    }
+    const jornada = await obterJornadaAtivaDoRe(re);
+    const st = getEstadoEAcaoPermitida(jornada);
 
     faseAtualEl.innerText = "Fase atual: " + st.fase;
     faseHintEl.innerText = st.hint;
@@ -851,7 +670,9 @@ reInput.addEventListener("input", () => {
   tRe = setTimeout(() => atualizarTela(), 350);
 });
 
-acaoSelect.addEventListener("change", () => setRegisterEnabled());
+acaoSelect.addEventListener("change", () => {
+  setRegisterEnabled();
+});
 
 // registrar
 registrarBtn.addEventListener("click", async () => {
@@ -870,11 +691,12 @@ registrarBtn.addEventListener("click", async () => {
     return alert("Colaborador não cadastrado, INATIVO ou bloqueado. Confira o RE.");
   }
 
+  // ✅ FORÇA FOTO
   if (!hasPhoto){
     return alert("Você precisa CAPTURAR A FOTO antes de registrar.");
   }
 
-  // bloqueio pré-admissão
+  // bloqueio pré-admissão (dupla checagem)
   const adm = (colaborador.dataAdmissao || "").slice(0,10);
   const hoje = todayYmd();
   if (adm && hoje < adm){
@@ -882,7 +704,7 @@ registrarBtn.addEventListener("click", async () => {
     return;
   }
 
-  const chk = await checarBloqueioFerias(re, colaborador);
+  const chk = await checarBloqueioFerias(re, colaborador.escala);
   if (chk.bloqueado){
     await atualizarTela();
     return;
@@ -891,46 +713,17 @@ registrarBtn.addEventListener("click", async () => {
   const acao = acaoSelect.value;
   if (!acao) return alert("Selecione qual marcação deseja registrar.");
 
-  // ✅ 1 ENTRADA/DIA: se tentar ENTRADA e já existir hoje, bloqueia.
-  if (acao === ETAPAS.ENTRADA){
-    const jHoje = await obterJornadaDoDia(re, hoje);
-    if (jHoje){
-      await atualizarTela();
-      return alert("❌ Já existe uma ENTRADA registrada hoje para este RE.\nSe precisar corrigir, procure o administrador.");
-    }
-  }
-
   const loc = await getLocationStrict();
   if (!loc.ok) return alert(loc.message);
   const location = loc.locationStr;
 
   const foto = canvas.toDataURL("image/jpeg", 0.4);
 
-  // Jornada ativa para validar fase
   const jornadaAtiva = await obterJornadaAtivaDoRe(re);
   const st = getEstadoEAcaoPermitida(jornadaAtiva);
-
   if (!st.acoes.includes(acao)){
     await atualizarTela();
     return alert("Ação não permitida na fase atual. Atualizei sua fase; selecione novamente.");
-  }
-
-  // ✅ FT FORM obrigatório quando ENTRADA for em dia de FOLGA (FT)
-  let ftForm = null;
-  if (acao === ETAPAS.ENTRADA){
-    const dateObj = new Date();
-    const ehFolga = isFolgaByEscala(dateObj, colaborador);
-    if (ehFolga){
-      ftForm = await openFTForm({
-        nome: colaborador.nome,
-        re,
-        dataYmd: todayYmd(),
-        escalaLabel: String(colaborador.escala||"").toUpperCase()
-      });
-      if (!ftForm){
-        return; // cancelou
-      }
-    }
   }
 
   const msg = etapaConfirms[acao] || "Confirmar registro?";
@@ -948,8 +741,6 @@ registrarBtn.addEventListener("click", async () => {
       nome: colaborador.nome,
       status: "aberta",
       entrada: { ts: now.toISOString(), foto, location },
-      ftForm: ftForm || null,             // ✅ salva o form (se for FT)
-      ftDetected: !!ftForm,               // ✅ flag simples
       updatedAt: now.toISOString()
     });
     alert("ENTRADA registrada com sucesso!");
