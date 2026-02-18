@@ -636,6 +636,43 @@ auth.onAuthStateChanged(function(user){
   }
 });
 
+ <script>
+async function debugAuthAndSupervisores(){
+  const u = auth.currentUser;
+  console.log("AUTH user:", u ? u.email : null, u ? u.uid : null);
+
+  if (!u){
+    console.log("❌ Não está logado.");
+    return;
+  }
+
+  // força atualizar o token (se você setou claims recentemente)
+  const tokenRes = await u.getIdTokenResult(true);
+  console.log("CLAIMS:", tokenRes.claims);
+
+  // teste de READ
+  try{
+    const snap = await db.collection("supervisores").limit(1).get();
+    console.log("✅ READ supervisores ok. docs:", snap.size);
+  }catch(e){
+    console.error("❌ READ supervisores falhou:", e.code, e.message);
+  }
+
+  // teste de WRITE (cria e apaga)
+  try{
+    const ref = await db.collection("supervisores").add({ nome:"__teste__", updatedAt:new Date().toISOString() });
+    console.log("✅ WRITE supervisores ok. id:", ref.id);
+    await db.collection("supervisores").doc(ref.id).delete();
+    console.log("✅ DELETE supervisores ok.");
+  }catch(e){
+    console.error("❌ WRITE/DELETE supervisores falhou:", e.code, e.message);
+  }
+}
+
+// deixe isso fácil de chamar no console do navegador
+window.debugAuthAndSupervisores = debugAuthAndSupervisores;
+</script>
+
 /* ========= HELPERS ========= */
 function norm(s){ return (s||"").toString().trim().toLowerCase(); }
 function safeStr(v){ return (v==null) ? "" : String(v); }
