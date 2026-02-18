@@ -1048,7 +1048,7 @@ function editarJornada(docId){
       </div>
       <div class="small" style="margin-top:8px">Deixe em branco para remover o campo.</div>
       <div class="small" style="margin-top:6px;color:#a10000;">
-        Regra: não é permitido salvar 2 ENTRADAS no mesmo dia para o mesmo RE.
+        ✅ Permitido remover ENTRADA (isso apagará a jornada inteira para não quebrar relatórios).
       </div>
     `,
     onSave: function(){
@@ -1068,24 +1068,47 @@ function editarJornada(docId){
       for (let i=0;i<campos.length;i++){
         const path = campos[i][0];
         const txt = String(campos[i][1]||"").trim();
+
         if (!txt){
           payload[path] = firebase.firestore.FieldValue.delete();
           continue;
         }
+
         const iso = isoFromBrDateTime(txt);
         if (!iso){
           alert("Formato inválido. Use DD/MM/AAAA HH:MM");
           return;
         }
+
         payload[path] = iso;
         if (path === "entrada.ts") newEntradaIso = iso;
       }
 
+      // ✅ AGORA É PERMITIDO remover ENTRADA
+      // Para não quebrar o sistema (que usa entrada.ts como chave do dia),
+      // se ENTRADA ficar vazia, apagamos o documento da jornada.
       if (!newEntradaIso){
-        alert("Não é permitido remover a ENTRADA.");
+        const ok = confirm(
+          "⚠️ Você removeu a ENTRADA.\n\n" +
+          "Para não quebrar relatórios e buscas (que dependem da ENTRADA), " +
+          "esta ação vai APAGAR a jornada inteira.\n\n" +
+          "Confirmar exclusão?"
+        );
+        if (!ok) return;
+
+        db.collection("jornadas").doc(docId).delete()
+          .then(function(){
+            closeModal();
+            buscar();
+            alert("✅ Jornada apagada (ENTRADA removida).");
+          })
+          .catch(function(){
+            alert("Não foi possível apagar a jornada.");
+          });
         return;
       }
 
+      // ✅ continua com sua regra de não duplicar ENTRADA no mesmo dia
       const newDay = String(newEntradaIso).slice(0,10);
       const re = String(j.re || "").trim();
 
