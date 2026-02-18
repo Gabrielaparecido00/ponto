@@ -2916,6 +2916,7 @@ window.exportarRHXLSX = exportarRHXLSX;
   const snapCol = await db.collection("colaboradores").get();
   const colaboradores = snapCol.docs
     .map(d => ({ id:d.id, ...d.data() }))
+    .filter(c => c.ativo !== false)
     .sort((a,b)=>String(a.nome||"").localeCompare(String(b.nome||"")));
 
   const snapJ = await db.collection("jornadas").get();
@@ -2928,11 +2929,17 @@ window.exportarRHXLSX = exportarRHXLSX;
     const re = col.re || col.id;
     if (!re) continue;
 
-    const jornadasMes = jornadas.filter(j=>{
-      if (j.re !== re) return false;
-      const d = toDateAny(j?.entrada?.ts);
-      return d && d.getFullYear()===ano && (d.getMonth()+1)===mes;
-    });
+    const jornadasMes = jornadas
+      .filter(j=>{
+        if (j.re !== re) return false;
+        const d = toDateAny(j?.entrada?.ts);
+        return d && d.getFullYear()===ano && (d.getMonth()+1)===mes;
+      })
+      .sort((a,b)=>{
+        const da = toDateAny(a?.entrada?.ts);
+        const dbb = toDateAny(b?.entrada?.ts);
+        return da - dbb;
+      });
 
     if (!first) doc.addPage();
     first = false;
@@ -2966,36 +2973,6 @@ window.exportarRHXLSX = exportarRHXLSX;
   doc.save(`Espelhos_${pad2(mes)}-${ano}.pdf`);
 }
 
-    if (!first) doc.addPage();
-    first = false;
-
-    doc.setFontSize(14);
-    doc.text("Espelho de Ponto", 40, 40);
-    doc.setFontSize(10);
-    doc.text(`Nome: ${col.nome||""}`, 40, 60);
-    doc.text(`RE: ${col.re||""}`, 40, 75);
-    doc.text(`Competência: ${pad2(mes)}/${ano}`, 40, 90);
-
-    const body = jornadasMes.map(j=>[
-      formatBRDate(j?.entrada?.ts),
-      formatHHMM(j?.entrada?.ts),
-      formatHHMM(j?.saida_intervalo?.ts),
-      formatHHMM(j?.retorno_intervalo?.ts),
-      formatHHMM(j?.saida?.ts),
-      formatHHMM(j?.entrada_he?.ts),
-      formatHHMM(j?.saida_he?.ts)
-    ]);
-
-    doc.autoTable({
-      startY:110,
-      head:[["Data","Ent","Ini Int","Fim Int","Sai","HE Ent","HE Sai"]],
-      body:body,
-      styles:{ fontSize:8 }
-    });
-  }
-
-  doc.save(`Espelhos_${pad2(mes)}-${ano}.pdf`);
-}
 window.exportarFolhasPDF = exportarFolhasPDF;
 
 </script>
