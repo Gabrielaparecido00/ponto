@@ -188,6 +188,9 @@ let hasPhoto = false;
 // cache supervisores
 let cacheSupervisores = [];
 
+// 🔥 IMPORTANTE:
+// Para isso funcionar SEM login, suas RULES precisam ter:
+// match /supervisores/{id} { allow read: if true; allow write: if isSupervisorOrAdmin(); }
 async function carregarSupervisoresSafe(){
   try{
     const snap = await getDocs(collection(db,"supervisores"));
@@ -321,14 +324,8 @@ function addDaysYmd(ymd, days){
   return dt.toISOString().slice(0,10);
 }
 function setDateKeepingTime(iso, ymd){
-  // troca só a data do ISO, preservando hora/min/seg
   const d = new Date(iso);
   if (isNaN(d)) return iso;
-  const hh = pad2(d.getHours());
-  const mm = pad2(d.getMinutes());
-  const ss = pad2(d.getSeconds());
-  // usa horário local no ISO (mesma forma do seu sistema atual: toISOString)
-  // vamos criar uma data local e converter para ISO
   const [Y,M,D] = ymd.split("-").map(Number);
   const local = new Date(Y, M-1, D, d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds());
   return local.toISOString();
@@ -671,8 +668,8 @@ function askFtFlow({diaOriginalYmd}){
     ftTitle.textContent = "Folga Trabalhada (FT)";
     ftBody.innerHTML = `
       <p>Já existe uma <b>ENTRADA</b> registrada em <b>${brDateFromYmd(diaOriginalYmd)}</b>.</p>
-      <p>Você quer registrar uma <b>FT</b> (Folga Trabalhada)?</p>
-      <p class="muted">Se SIM, você responderá motivo + supervisor, e o sistema vai registrar como <b>dia seguinte</b> para análise interna.</p>
+      <p>Deseja registrar como <b>Folga Trabalhada (FT)</b>?</p>
+      <p class="muted">Se confirmar, informe o motivo e selecione o supervisor para registro interno.</p>
     `;
     ftOverlay.style.display = "flex";
 
@@ -684,15 +681,14 @@ function askFtFlow({diaOriginalYmd}){
       // passo 2 (motivo)
       ftTitle.textContent = "FT — Motivo";
       ftBody.innerHTML = `
-        <p>Informe o <b>motivo</b> da FT:</p>
-        <input id="ftMotivo" placeholder="Ex: cobertura / solicitação do posto / necessidade operacional">
-        <div class="muted" style="margin-top:6px;">Isso não é autorização; é só barreira para não mentir.</div>
+        <p>Informe o <b>motivo</b> da Folga Trabalhada:</p>
+        <input id="ftMotivo" placeholder="Ex: cobertura de posto / demanda operacional">
+        <div class="muted" style="margin-top:6px;">Essa informação será registrada junto ao apontamento.</div>
       `;
       ftCancel.textContent = "Voltar";
       ftOk.textContent = "Continuar";
 
       ftCancel.onclick = () => {
-        // volta ao passo 1
         closeFt();
         resolve(askFtFlow({diaOriginalYmd}));
       };
@@ -707,19 +703,18 @@ function askFtFlow({diaOriginalYmd}){
           .map(s => `<option value="${String(s.nome).replaceAll('"','&quot;')}">${s.nome}</option>`)
           .join("");
         ftBody.innerHTML = `
-          <p>Selecione o <b>supervisor</b> responsável por autorizar:</p>
+          <p>Selecione o <b>supervisor</b> responsável:</p>
           <select id="ftSupervisor">
             <option value="">Selecione...</option>
             ${opts}
           </select>
-          <div class="muted" style="margin-top:6px;">O admin não autoriza nada aqui; fica pendente só para visualização.</div>
+          <div class="muted" style="margin-top:6px;">O registro ficará associado ao supervisor selecionado.</div>
         `;
 
         ftCancel.textContent = "Voltar";
         ftOk.textContent = "Confirmar";
 
         ftCancel.onclick = () => {
-          // volta para motivo
           closeFt();
           resolve(askFtFlow({diaOriginalYmd}));
         };
@@ -927,8 +922,8 @@ registrarBtn.addEventListener("click", async () => {
         nome: colaborador.nome,
         status: "aberta",
         entrada: {
-          ts: entradaIsoShift,     // 👈 chave do dia (dia seguinte)
-          tsReal: nowIso,          // 👈 real (auditoria)
+          ts: entradaIsoShift,     // dia seguinte (chave)
+          tsReal: nowIso,          // real (auditoria)
           foto,
           location,
           posto
@@ -944,7 +939,7 @@ registrarBtn.addEventListener("click", async () => {
         updatedAt: nowIso
       });
 
-      // ocorrência pendente (só visualização)
+      // registro auxiliar (opcional)
       try{
         await addDoc(collection(db, "ft_pendentes"), {
           status: "pendente",
@@ -961,7 +956,7 @@ registrarBtn.addEventListener("click", async () => {
         });
       }catch{}
 
-      alert("✅ FT registrada! (A entrada foi lançada como dia seguinte para análise interna.)");
+      alert("✅ FT registrada! (Entrada lançada como dia seguinte para registro interno.)");
       limparForm();
       return;
     }
