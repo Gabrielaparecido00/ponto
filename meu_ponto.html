@@ -297,13 +297,6 @@ function weekday(d){
 function daysInMonth(year, month1to12){
   return new Date(year, month1to12, 0).getDate();
 }
-function horarioTxt(c){
-  const he = (c?.horaEntrada||"").trim();
-  const hs = (c?.horaSaida||"").trim();
-  if (he && hs) return `${he}–${hs}`;
-  if (he || hs) return `${he||"—"}–${hs||"—"}`;
-  return "—";
-}
 function normEscala(s){
   return (s || "").toString().trim().toLowerCase();
 }
@@ -330,16 +323,14 @@ function humanAdmissao(){
   return `${d}/${m}/${y}`;
 }
 
-// ===== 12x36 (histórico por vigência + base trabalha/folga) =====
+// ===== 12x36 =====
 function is12x36(col){
   const e = normEscala(col?.escala || "");
   return e.includes("12") && e.includes("36");
 }
-
-// escolhe o registro vigente (ini <= dia), desempata por updatedAt
 function getPlantaoReferencia(dateObj, historico){
   if (!historico || !historico.length) return null;
-  const key = ymd(dateObj); // YYYY-MM-DD
+  const key = ymd(dateObj);
 
   let best = null;
 
@@ -360,7 +351,6 @@ function getPlantaoReferencia(dateObj, historico){
         continue;
       }
 
-      // desempate: mesma vigência -> pega o mais novo
       if (ini === bestIni){
         const bestUp = String(best.updatedAt || "");
         const curUp  = String(p.updatedAt || "");
@@ -385,8 +375,6 @@ function isFolgaByEscala(dateObj, col){
   if (is12x36(col)){
     const hist = Array.isArray(col?.plantaoHistorico) ? col.plantaoHistorico : [];
     const plantao = getPlantaoReferencia(dateObj, hist);
-
-    // sem plantão cadastrado -> NÃO marca falta (retorna folga, e o render mostra aviso)
     if (!plantao) return true;
 
     const inicio = String(plantao.inicio || "").slice(0,10);
@@ -396,18 +384,14 @@ function isFolgaByEscala(dateObj, col){
     const atual = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 12, 0, 0);
     const diffDias = Math.floor((atual - baseDate) / 86400000);
 
-    // alternância 1 sim 1 não:
-    // diff 0 = "dia base"
     const baseEhTrabalho = (baseTxt === "trabalha");
     const ehTrabalhoHoje = (diffDias % 2 === 0) ? baseEhTrabalho : !baseEhTrabalho;
 
     return !ehTrabalhoHoje;
   }
 
-  // escala desconhecida -> trata como folga pra não acusar falta errada
   return true;
 }
-
 function isDiaTrabalho(dateObj, col){
   return !isFolgaByEscala(dateObj, col);
 }
@@ -467,9 +451,7 @@ async function carregarOcorrenciasMesPorDocId(re, ano, mes, last){
       if (snap.exists()){
         map[dataKey] = { id:snap.id, ...(snap.data()||{}) };
       }
-    }catch{
-      // silêncio (produção)
-    }
+    }catch{}
   }
   return map;
 }
@@ -612,13 +594,8 @@ async function entrar(){
 
   await carregarLocais();
 
-  const eh12 = is12x36(user);
-  const temPlantao = Array.isArray(user?.plantaoHistorico) && user.plantaoHistorico.length > 0;
-
-  infoUser.textContent =
-    `${user.nome} — RE ${user.re} — Escala ${user.escala} — Horário ${horarioTxt(user)}`
-    + (user.dataAdmissao ? ` — Admissão ${humanAdmissao()}` : "")
-    + (eh12 && !temPlantao ? " — ⚠️ Plantão 12x36 não cadastrado" : "");
+  /* ✅ TOPO SIMPLIFICADO: só Nome e RE */
+  infoUser.textContent = `${user.nome} — RE ${user.re}`;
 
   loginBox.style.display = "none";
   conteudo.style.display = "block";
@@ -712,7 +689,6 @@ function renderTabela(){
 
     let entrada="", saiInt="", retInt="", saida="", entHe="", saiHe="", posto="-", obs="";
 
-    // ✅ antes da admissão: mostrar "NÃO ADMITIDO"
     const ad = (user?.dataAdmissao || "").slice(0,10);
     const diaAntesAdmissao = (ad && dataKey < ad);
 
@@ -738,7 +714,6 @@ function renderTabela(){
 
       obs = obsJornada(j1);
 
-      // ✅ FT: trabalhou em folga
       if (ehFolga){
         obs = (obs ? ("FT | " + obs) : "FT");
       }
@@ -747,7 +722,6 @@ function renderTabela(){
         obs = (obs ? (obs + " | ") : "") + `2+ jornadas no dia (${linha.jornadas.length})`;
       }
     } else if (eh12x36 && !temPlantao){
-      // ✅ evita marcar falta/folga errada quando 12x36 não tem histórico
       obs = "ESCALA 12x36 SEM PLANTÃO CADASTRADO";
     } else if (ehFolga){
       obs = "FOLGA (escala)";
@@ -936,7 +910,7 @@ async function exportarPdf(){
     logoH = Math.round(logoW * (logoNat.h / logoNat.w));
   }
 
-  const headerH = (logoDataUrl ? (logoH + 10) : 0) + 14 + 12 + 12 + 12 + 12 + 12 + 12 + 6;
+  const headerH = (logoDataUrl ? (logoH + 10) : 0) + 14 + 12 + 12 + 12 + 6;
 
   function drawHeader(){
     let y = headerTop;
@@ -950,9 +924,6 @@ async function exportarPdf(){
     docPdf.setFontSize(9);
     docPdf.text(`Nome: ${user.nome}`, marginX, y); y += 12;
     docPdf.text(`RE: ${user.re}`, marginX, y); y += 12;
-    docPdf.text(`Escala: ${user.escala}`, marginX, y); y += 12;
-    docPdf.text(`Horário: ${horarioTxt(user)}`, marginX, y); y += 12;
-    if (user.dataAdmissao) { docPdf.text(`Admissão: ${humanAdmissao()}`, marginX, y); y += 12; }
     docPdf.text(`Competência: ${mesTxt}/${ano}`, marginX, y); y += 12;
   }
   function drawFooter(){
