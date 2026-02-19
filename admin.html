@@ -12,210 +12,97 @@
 
   <style>
     *{ box-sizing:border-box; }
-
     :root{
-      --bg:#0b1020;
-      --panel:#0f172a;
-      --card:#0b1220;
-      --line:rgba(255,255,255,0.08);
-      --text:#e5e7eb;
-      --muted:#94a3b8;
-      --primary:#3b82f6;
-      --primary2:#2563eb;
-      --danger:#ef4444;
-      --ok:#22c55e;
-      --shadow: 0 10px 30px rgba(0,0,0,0.25);
+      --bg:#0b1020; --panel:#0f172a; --line:rgba(255,255,255,0.08);
+      --text:#e5e7eb; --muted:#94a3b8; --primary:#3b82f6; --primary2:#2563eb;
+      --danger:#ef4444; --ok:#22c55e; --shadow: 0 10px 30px rgba(0,0,0,0.25);
       --radius:14px;
     }
-
     body{
       font-family:'Montserrat', Arial, sans-serif;
       background: radial-gradient(1200px 600px at 20% 0%, rgba(59,130,246,0.18), transparent 55%),
                   radial-gradient(900px 600px at 90% 10%, rgba(34,197,94,0.10), transparent 60%),
                   var(--bg);
-      margin:0;
-      padding:0; /* ✅ ocupa tela toda */
-      color:var(--text);
+      margin:0; padding:0; color:var(--text);
     }
 
-    /* ===== Login ===== */
-    .loginWrap{
-      min-height:100vh;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:18px;
-    }
+    /* login */
+    .loginWrap{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:18px; }
     .loginCard{
-      width:min(520px, 96vw);
-      background: rgba(15,23,42,0.82);
-      border:1px solid var(--line);
-      backdrop-filter: blur(10px);
-      padding:18px;
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      text-align:center;
+      width:min(520px, 96vw); background: rgba(15,23,42,0.82);
+      border:1px solid var(--line); backdrop-filter: blur(10px);
+      padding:18px; border-radius: var(--radius); box-shadow: var(--shadow); text-align:center;
     }
     .logo{ width:220px; display:block; margin:0 auto 10px; max-width:90vw; height:auto; }
-
     h2{ margin:8px 0 10px; font-weight:800; letter-spacing:0.2px; }
     h3{ margin:10px 0 8px; font-weight:800; }
 
     input, select, button{
-      font-family:inherit;
-      padding:10px 12px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,0.10);
-      outline:none;
-      background: rgba(2,6,23,0.55);
-      color: var(--text);
+      font-family:inherit; padding:10px 12px; border-radius:12px;
+      border:1px solid rgba(255,255,255,0.10); outline:none;
+      background: rgba(2,6,23,0.55); color: var(--text);
     }
     input::placeholder{ color: rgba(148,163,184,0.85); }
     button{ cursor:pointer; border:none; }
     button:hover{ filter:brightness(1.03); }
     button:disabled{ opacity:0.55; cursor:not-allowed; }
-
     .btnPrimary{ background: linear-gradient(180deg, var(--primary), var(--primary2)); color:#fff; }
     .btnGhost{ background: rgba(148,163,184,0.12); color: var(--text); border:1px solid rgba(255,255,255,0.10); }
     .btnDanger{ background: rgba(239,68,68,0.15); color:#fecaca; border:1px solid rgba(239,68,68,0.25); }
 
-    .row{
-      display:flex;
-      flex-wrap:wrap;
-      gap:10px;
-      justify-content:flex-start;
-      align-items:end;
-      margin-top:10px;
-    }
-
+    .row{ display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-start; align-items:end; margin-top:10px; }
     .hr{ height:1px; background:var(--line); margin:16px 0; border:0; }
+    .muted{ color:var(--muted); font-size:12px; }
 
     table{
-      width:100%;
-      border-collapse:collapse;
-      margin-top:14px;
-      font-size:13px;
-      overflow:hidden;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,0.08);
+      width:100%; border-collapse:collapse; margin-top:14px; font-size:13px;
+      overflow:hidden; border-radius:12px; border:1px solid rgba(255,255,255,0.08);
     }
-    th, td{
-      border-bottom:1px solid rgba(255,255,255,0.06);
-      padding:10px;
-      vertical-align:top;
-    }
-    th{
-      background: rgba(2,6,23,0.45);
-      text-align:center;
-      color:#cbd5e1;
-      font-weight:800;
-    }
+    th, td{ border-bottom:1px solid rgba(255,255,255,0.06); padding:10px; vertical-align:top; }
+    th{ background: rgba(2,6,23,0.45); text-align:center; color:#cbd5e1; font-weight:800; }
     td{ text-align:left; color:#e5e7eb; }
     tr:hover td{ background: rgba(59,130,246,0.06); }
 
     .pill{
-      display:inline-block;
-      padding:6px 10px;
-      border-radius:999px;
-      font-size:12px;
-      background: rgba(148,163,184,0.10);
-      border:1px solid rgba(255,255,255,0.10);
-      color:#e5e7eb;
+      display:inline-block; padding:6px 10px; border-radius:999px; font-size:12px;
+      background: rgba(148,163,184,0.10); border:1px solid rgba(255,255,255,0.10); color:#e5e7eb;
       margin-right:6px;
     }
 
-    /* ===== Painel: ocupa a tela toda ===== */
+    /* painel full */
     .adminShell{
-      width:100%;
-      max-width:none; /* ✅ sem “apertar” */
-      margin:0;
-      display:grid;
-      grid-template-columns: 280px 1fr;
-      gap:12px;
-      padding:12px;
-      min-height:100vh;
+      width:100%; max-width:none; margin:0;
+      display:grid; grid-template-columns: 280px 1fr; gap:12px;
+      padding:12px; min-height:100vh;
     }
-
     .side{
-      background: rgba(15,23,42,0.78);
-      border:1px solid var(--line);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding:14px;
-      position:sticky;
-      top:12px;
-      height: calc(100vh - 24px);
-      overflow:auto;
+      background: rgba(15,23,42,0.78); border:1px solid var(--line);
+      border-radius: var(--radius); box-shadow: var(--shadow);
+      padding:14px; position:sticky; top:12px; height: calc(100vh - 24px); overflow:auto;
     }
-
-    .side .brand{
-      display:flex;
-      gap:10px;
-      align-items:center;
-      margin-bottom:10px;
-    }
-    .side .brand img{
-      width:44px; height:44px;
-      border-radius:12px;
-      object-fit:cover;
-      border:1px solid rgba(255,255,255,0.10);
-    }
+    .side .brand{ display:flex; gap:10px; align-items:center; margin-bottom:10px; }
+    .side .brand img{ width:44px; height:44px; border-radius:12px; object-fit:cover; border:1px solid rgba(255,255,255,0.10); }
     .side .brand .t{ font-weight:900; line-height:1.1; }
     .side .brand .s{ font-size:12px; color:var(--muted); margin-top:2px; }
 
-    .nav{
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-      margin-top:12px;
-    }
+    .nav{ display:flex; flex-direction:column; gap:8px; margin-top:12px; }
     .nav button{
-      width:100%;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      padding:10px 12px;
-      border-radius:12px;
-      background: rgba(2,6,23,0.35);
-      border:1px solid rgba(255,255,255,0.08);
-      color:#e5e7eb;
-      text-align:left;
+      width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding:10px 12px; border-radius:12px; background: rgba(2,6,23,0.35);
+      border:1px solid rgba(255,255,255,0.08); color:#e5e7eb; text-align:left;
     }
     .nav button small{ color:var(--muted); font-weight:600; }
-    .nav button.activeBtn{
-      background: rgba(59,130,246,0.18);
-      border:1px solid rgba(59,130,246,0.35);
-    }
+    .nav button.activeBtn{ background: rgba(59,130,246,0.18); border:1px solid rgba(59,130,246,0.35); }
 
     .content{
-      background: rgba(15,23,42,0.66);
-      border:1px solid var(--line);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding:14px;
-      min-height: calc(100vh - 24px);
-      overflow:auto;
+      background: rgba(15,23,42,0.66); border:1px solid var(--line); border-radius: var(--radius);
+      box-shadow: var(--shadow); padding:14px; min-height: calc(100vh - 24px); overflow:auto;
     }
 
-    .topBar{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-    .topBar .hint{ color:var(--muted); font-size:12px; }
-
+    .topBar{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
     .statusBar{
-      margin-top:10px;
-      padding:10px 12px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,0.10);
-      background: rgba(2,6,23,0.35);
-      color:#cbd5e1;
-      font-size:12px;
-      display:none;
+      margin-top:10px; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.10);
+      background: rgba(2,6,23,0.35); color:#cbd5e1; font-size:12px; display:none;
     }
     .statusBar.ok{ border-color:rgba(34,197,94,0.25); background:rgba(34,197,94,0.12); }
     .statusBar.err{ border-color:rgba(239,68,68,0.25); background:rgba(239,68,68,0.12); }
@@ -224,49 +111,27 @@
     .section.active{ display:block; }
 
     .minBtn{
-      border:1px solid rgba(255,255,255,0.10);
-      background: rgba(2,6,23,0.25);
-      border-radius:12px;
-      padding:7px 10px;
-      font-size:12px;
-      color:var(--text);
+      border:1px solid rgba(255,255,255,0.10); background: rgba(2,6,23,0.25);
+      border-radius:12px; padding:7px 10px; font-size:12px; color:var(--text);
     }
 
-    /* Modal */
+    /* modal */
     .modalOverlay{
-      position:fixed;
-      inset:0;
-      background:rgba(0,0,0,0.55);
-      display:none;
-      align-items:center;
-      justify-content:center;
-      z-index:9999;
-      padding:10px;
+      position:fixed; inset:0; background:rgba(0,0,0,0.55);
+      display:none; align-items:center; justify-content:center; z-index:9999; padding:10px;
     }
     .modal{
-      background: rgba(15,23,42,0.96);
-      border:1px solid rgba(255,255,255,0.10);
-      width:min(980px, 96vw);
-      max-height:92vh;
-      overflow:auto;
-      border-radius: var(--radius);
-      padding:14px;
-      box-shadow: var(--shadow);
-      color:var(--text);
+      background: rgba(15,23,42,0.96); border:1px solid rgba(255,255,255,0.10);
+      width:min(980px, 96vw); max-height:92vh; overflow:auto; border-radius: var(--radius);
+      padding:14px; box-shadow: var(--shadow); color:var(--text);
     }
     .modal h3{ margin:0 0 10px; }
     .modal .grid{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
     .modal label{ font-size:12px; color:var(--muted); }
     .modal input, .modal select{ width:100%; margin-top:4px; }
     .modal .actions{
-      position:sticky;
-      bottom:0;
-      background: rgba(15,23,42,0.96);
-      padding-top:10px;
-      margin-top:10px;
-      display:flex;
-      justify-content:flex-end;
-      gap:8px;
+      position:sticky; bottom:0; background: rgba(15,23,42,0.96);
+      padding-top:10px; margin-top:10px; display:flex; justify-content:flex-end; gap:8px;
       border-top:1px solid rgba(255,255,255,0.08);
     }
 
@@ -298,7 +163,6 @@
   <!-- PAINEL -->
   <div id="painelDiv" style="display:none;">
     <div class="adminShell">
-
       <!-- SIDEBAR -->
       <aside class="side">
         <div class="brand">
@@ -365,7 +229,7 @@
         <div class="topBar">
           <div>
             <h2 style="margin:0;">Painel Admin</h2>
-            <div class="hint"> </div>
+            <div class="muted"></div>
           </div>
           <img src="GW.png" class="logo" style="width:160px;margin:0;opacity:0.95;" />
         </div>
@@ -378,12 +242,12 @@
         <div id="secJornadas" class="section active">
           <h3>Jornadas</h3>
           <div class="row">
-            <label style="font-size:12px;color:var(--muted);">De:</label><input type="date" id="inicio">
-            <label style="font-size:12px;color:var(--muted);">Até:</label><input type="date" id="fim">
+            <label class="muted">De:</label><input type="date" id="inicio">
+            <label class="muted">Até:</label><input type="date" id="fim">
             <input id="filtroRe" placeholder="RE" inputmode="numeric">
             <input id="filtroNome" placeholder="Nome">
             <button class="btnPrimary" onclick="buscar()">Buscar</button>
-            <button class="btnGhost" onclick="exportar()">Exportar CSV</button>
+            <button class="btnGhost" onclick="exportarCSV()">Exportar CSV</button>
             <button class="btnGhost" onclick="abrirCriarJornada()">+ Criar Jornada</button>
           </div>
 
@@ -394,11 +258,11 @@
                 <th>Nome</th>
                 <th>RE</th>
                 <th>Entrada</th>
-                <th>Início Intervalo</th>
-                <th>Fim Intervalo</th>
+                <th>Ini Int</th>
+                <th>Fim Int</th>
                 <th>Saída</th>
-                <th>Entrada HE</th>
-                <th>Saída HE</th>
+                <th>HE Ent</th>
+                <th>HE Sai</th>
                 <th>Coords</th>
                 <th>Local</th>
                 <th>Ações</th>
@@ -417,32 +281,30 @@
         <div id="secExportRH" class="section">
           <h3>Exportação RH</h3>
           <div class="row">
-            <label style="font-size:12px;color:var(--muted);">Competência:</label>
+            <label class="muted">Competência:</label>
             <select id="rhMes"></select>
 
-            <label style="font-size:12px;color:var(--muted);">Ano:</label>
+            <label class="muted">Ano:</label>
             <select id="rhAno"></select>
 
             <button class="btnPrimary" onclick="exportarRHXLSX()">Exportar RH (XLSX)</button>
           </div>
-          <div id="rhStatus" style="margin-top:10px;color:var(--muted);font-size:12px;"></div>
+          <div id="rhStatus" class="muted" style="margin-top:10px;"></div>
         </div>
 
-        <!-- EXPORTAÇÃO EM MASSA (PDF) -->
+        <!-- EXPORTAÇÃO MASSA -->
         <div id="secExportMassa" class="section">
           <h3>Exportação em massa (PDF)</h3>
           <div class="row">
-            <label style="font-size:12px;color:var(--muted);">Competência:</label>
+            <label class="muted">Competência:</label>
             <select id="pdfMes"></select>
-
-            <label style="font-size:12px;color:var(--muted);">Ano:</label>
+            <label class="muted">Ano:</label>
             <select id="pdfAno"></select>
 
             <button class="btnPrimary" onclick="exportarFolhasPDF_MASSA()">Gerar PDF</button>
             <button class="btnGhost" onclick="previewResumoMassa()">Prévia</button>
           </div>
-
-          <div id="pdfStatus" style="margin-top:10px;color:var(--muted);font-size:12px;"></div>
+          <div id="pdfStatus" class="muted" style="margin-top:10px;"></div>
         </div>
 
         <!-- COLABORADORES -->
@@ -468,9 +330,9 @@
               <option value="12x36">12x36</option>
             </select>
 
-            <input id="cadHoraEntrada" type="time" title="Hora prevista de entrada">
-            <input id="cadHoraSaida" type="time" title="Hora prevista de saída">
-            <input id="cadAdmissao" type="date" title="Data de admissão">
+            <input id="cadHoraEntrada" type="time">
+            <input id="cadHoraSaida" type="time">
+            <input id="cadAdmissao" type="date">
 
             <button class="btnPrimary" onclick="cadastrarColab()">Cadastrar</button>
             <button class="btnGhost" onclick="carregarColaboradores()">Atualizar</button>
@@ -500,14 +362,9 @@
 
           <div class="row">
             <input id="cgNome" placeholder="Nome do cargo">
-
-            <!-- ✅ database agora é MÊS (select) -->
             <select id="cgMes"></select>
-
-            <!-- ✅ VR/VA em R$ -->
             <input id="cgVR" placeholder="VR (R$)" inputmode="decimal">
             <input id="cgVA" placeholder="VA (R$)" inputmode="decimal">
-
             <button class="btnPrimary" onclick="cadastrarCargo()">Cadastrar</button>
             <button class="btnGhost" onclick="carregarCargos()">Atualizar</button>
           </div>
@@ -602,7 +459,7 @@
             <input id="afRe" placeholder="RE" inputmode="numeric">
             <input id="afInicio" type="date">
             <input id="afFim" type="date">
-            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);">
+            <label class="muted" style="display:flex;align-items:center;gap:6px;">
               <input type="checkbox" id="afDiasUteis" checked> Somente dias de trabalho
             </label>
             <input id="afMotivo" placeholder="Motivo (opcional)">
@@ -737,7 +594,7 @@
   <!-- XLSX -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-  <!-- Firebase COMPAT (global) -->
+  <!-- Firebase COMPAT -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -768,6 +625,7 @@
     let cachePlantoes = [];
     let cacheSupervisores = [];
     let cacheCargos = [];
+    let ultimaTabela = []; // jornadas atuais na tela (para export)
 
     let colabFiltroRe = "";
     let colabFiltroNome = "";
@@ -788,6 +646,14 @@
       if (kind==="ok") el.classList.add("ok");
       if (kind==="err") el.classList.add("err");
     }
+    function setPdfStatus(msg){
+      const el = document.getElementById("pdfStatus");
+      if (el) el.textContent = msg || "";
+    }
+    function setRhStatus(msg){
+      const el = document.getElementById("rhStatus");
+      if (el) el.textContent = msg || "";
+    }
 
     /* ========= MENU ========= */
     function showSection(id, btnEl){
@@ -803,6 +669,7 @@
       if (id === "secLocal") carregarLocais();
       if (id === "secColab") carregarColaboradores();
       if (id === "secCargos") carregarCargos();
+
       if (id === "secAfast") { carregarColaboradores().then(carregarFerias); }
       if (id === "secOcorr") { carregarColaboradores().then(carregarOcorrencias); }
       if (id === "secPlantoes") { carregarColaboradores().then(carregarPlantoes12x36); }
@@ -811,7 +678,7 @@
 
       if (id === "secExportMassa"){
         initPdfSelectors();
-        carregarColaboradores();
+        carregarColaboradores().then(()=>setPdfStatus(""));
       }
     }
     window.showSection = showSection;
@@ -857,11 +724,20 @@
         const b = document.getElementById("btnJornadas");
         if (b) b.classList.add("activeBtn");
 
-        // carrega o mínimo para o painel não “parecer vazio”
-        carregarCargos().catch(()=>{});
-        carregarLocais().catch(()=>{});
-        carregarColaboradores().catch(()=>{});
-        carregarSupervisores().catch(()=>{});
+        // carrega caches principais
+        await carregarCargos().catch(()=>{});
+        await carregarLocais().catch(()=>{});
+        await carregarColaboradores().catch(()=>{});
+        await carregarSupervisores().catch(()=>{});
+
+        // default: hoje
+        const now = new Date();
+        const ymdNow = now.toISOString().slice(0,10);
+        document.getElementById("inicio").value = ymdNow;
+        document.getElementById("fim").value = ymdNow;
+
+        // puxa jornadas do dia
+        buscar();
       }else{
         loginDiv.style.display = "flex";
         painelDiv.style.display = "none";
@@ -905,12 +781,12 @@
       if (he || hs) return `${he||"—"}–${hs||"—"}`;
       return "—";
     }
+    function norm(s){ return (s||"").toString().trim().toLowerCase(); }
 
     /* ========= Dinheiro (R$) ========= */
     function moneyToNumberBR(str){
       const s = String(str||"").replace(/[^\d,.-]/g,"").trim();
       if (!s) return 0;
-      // aceita "1.234,56" ou "1234,56"
       const norm = s.replace(/\./g,"").replace(",",".");
       const n = Number(norm);
       return Number.isFinite(n) ? n : 0;
@@ -920,7 +796,6 @@
       return v.toLocaleString("pt-BR", { style:"currency", currency:"BRL" });
     }
     function maskCurrencyBR(inputEl){
-      // mantém só dígitos
       const digits = String(inputEl.value||"").replace(/\D/g,"");
       if (!digits){
         inputEl.value = "";
@@ -950,23 +825,65 @@
       const sel = document.getElementById("cgMes");
       if (!sel) return;
       sel.innerHTML = MESES.map(m => `<option value="${m.v}">${m.t}</option>`).join("");
-      // default no mês atual
       const now = new Date();
       sel.value = MESES[now.getMonth()].v;
     }
     initMesCargoSelect();
 
-    // aplica máscara no input de VR/VA
     const cgVR = document.getElementById("cgVR");
     const cgVA = document.getElementById("cgVA");
     if (cgVR) cgVR.addEventListener("input", ()=>maskCurrencyBR(cgVR));
     if (cgVA) cgVA.addEventListener("input", ()=>maskCurrencyBR(cgVA));
 
+    /* ========= MODAL ========= */
+    const overlay=document.getElementById("modalOverlay");
+    const titleEl=document.getElementById("modalTitle");
+    const bodyEl=document.getElementById("modalBody");
+    const saveBtn=document.getElementById("modalSaveBtn");
+
+    function closeModal(){ overlay.style.display="none"; bodyEl.innerHTML=""; saveBtn.onclick=null; }
+    function closeModalIfBackdrop(e){ if (e.target===overlay) closeModal(); }
+    window.closeModal = closeModal;
+    window.closeModalIfBackdrop = closeModalIfBackdrop;
+
+    function openModal(obj){
+      titleEl.innerText = obj.title || "Editar";
+      bodyEl.innerHTML = obj.bodyHtml || "";
+      overlay.style.display="flex";
+      saveBtn.onclick = obj.onSave || null;
+    }
+
+    /* ========= TURNOS / VALIDADORES (noturno) ========= */
+    function parseHHMM(hhmm){
+      const m = (hhmm||"").trim().match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+      if (!m) return null;
+      return { hh:Number(m[1]), mm:Number(m[2]) };
+    }
+    function dateFromYmdAndTime(ymdKey, hhmm){
+      const t = parseHHMM(hhmm);
+      if (!t) return null;
+      const dt = new Date(`${ymdKey}T${String(t.hh).padStart(2,"0")}:${String(t.mm).padStart(2,"0")}:00`);
+      if (isNaN(dt)) return null;
+      return dt;
+    }
+    function addDays(dt, days){
+      const d = new Date(dt);
+      d.setDate(d.getDate()+days);
+      return d;
+    }
+    function dateRelativeToBase(baseDate, hhmm){
+      const t = parseHHMM(hhmm);
+      if (!t) return null;
+      const cand = new Date(baseDate);
+      cand.setHours(t.hh, t.mm, 0, 0);
+      if (cand < baseDate) return addDays(cand, 1);
+      return cand;
+    }
+
     /* ========= CARGOS ========= */
     function fillCargoSelects(){
       const sel1 = document.getElementById("cadCargo");
       if (!sel1) return;
-
       const cur = sel1.value;
       sel1.innerHTML = `<option value="">(Sem cargo)</option>` + cacheCargos.map(c =>
         `<option value="${c.id}">${c.nome}</option>`
@@ -987,7 +904,7 @@
             return {
               id: d.id,
               nome: String(data.nome||"").trim(),
-              mes: String(data.mes||data.database||"").trim(), // compat: se tinha database antes
+              mes: String(data.mes||data.database||"").trim(),
               vr: Number(data.vr||0),
               va: Number(data.va||0),
               updatedAt: String(data.updatedAt||"")
@@ -1019,8 +936,7 @@
         })
         .catch(function(e){
           console.error("carregarCargos ERRO:", e);
-          setUiStatus("❌ Falha ao carregar cargos (ver console).", "err");
-          alert("Não foi possível carregar cargos.");
+          setUiStatus("❌ Falha ao carregar cargos.", "err");
         });
     }
     window.carregarCargos = carregarCargos;
@@ -1035,9 +951,7 @@
       if (!mes){ alert("Selecione o mês."); return; }
 
       db.collection("cargos").add({
-        nome,
-        mes,         // ✅ substitui database
-        vr, va,      // ✅ números
+        nome, mes, vr, va,
         updatedAt: new Date().toISOString()
       })
       .then(function(){
@@ -1054,25 +968,6 @@
     }
     window.cadastrarCargo = cadastrarCargo;
 
-    /* ========= MODAL ========= */
-    const overlay=document.getElementById("modalOverlay");
-    const titleEl=document.getElementById("modalTitle");
-    const bodyEl=document.getElementById("modalBody");
-    const saveBtn=document.getElementById("modalSaveBtn");
-
-    function closeModal(){ overlay.style.display="none"; bodyEl.innerHTML=""; saveBtn.onclick=null; }
-    function closeModalIfBackdrop(e){ if (e.target===overlay) closeModal(); }
-
-    window.closeModal = closeModal;
-    window.closeModalIfBackdrop = closeModalIfBackdrop;
-
-    function openModal(obj){
-      titleEl.innerText = obj.title || "Editar";
-      bodyEl.innerHTML = obj.bodyHtml || "";
-      overlay.style.display="flex";
-      saveBtn.onclick = obj.onSave || null;
-    }
-
     function editarCargo(id){
       const c = cacheCargos.find(x=>x.id===id);
       if (!c){ alert("Cargo não encontrado."); return; }
@@ -1087,12 +982,10 @@
               <label>Nome</label>
               <input id="mcgNome" value="${String(c.nome||"").replaceAll('"','&quot;')}">
             </div>
-
             <div style="grid-column:1 / -1">
               <label>Mês</label>
               <select id="mcgMes">${mesOptions}</select>
             </div>
-
             <div>
               <label>VR</label>
               <input id="mcgVr" value="${formatMoneyBR(c.vr)}">
@@ -1101,7 +994,6 @@
               <label>VA</label>
               <input id="mcgVa" value="${formatMoneyBR(c.va)}">
             </div>
-
             <div style="grid-column:1 / -1; display:flex; justify-content:flex-start;">
               <button class="btnDanger" id="btnExcluirCargo" type="button">Excluir</button>
             </div>
@@ -1116,18 +1008,9 @@
           if (!nome){ alert("Nome não pode ficar vazio."); return; }
           if (!mes){ alert("Selecione o mês."); return; }
 
-          db.collection("cargos").doc(id).update({
-            nome, mes, vr, va, updatedAt:new Date().toISOString()
-          })
-          .then(function(){
-            closeModal();
-            carregarCargos();
-            carregarColaboradores();
-          })
-          .catch(function(e){
-            console.error("editarCargo ERRO:", e);
-            alert("Não foi possível salvar cargo.");
-          });
+          db.collection("cargos").doc(id).update({ nome, mes, vr, va, updatedAt:new Date().toISOString() })
+            .then(function(){ closeModal(); carregarCargos(); carregarColaboradores(); })
+            .catch(function(e){ console.error("editarCargo ERRO:", e); alert("Não foi possível salvar cargo."); });
         }
       });
 
@@ -1182,7 +1065,8 @@
               horaSaida: String(c.horaSaida||"").trim(),
               admissao: String(c.admissao||"").slice(0,10),
               ativo: (c.ativo !== false),
-              updatedAt: String(c.updatedAt||"")
+              updatedAt: String(c.updatedAt||""),
+              plantaoHistorico: Array.isArray(c.plantaoHistorico) ? c.plantaoHistorico : []
             }))
             .filter(c => !!c.re)
             .sort((a,b)=>String(a.nome||"").localeCompare(String(b.nome||"")));
@@ -1193,8 +1077,7 @@
         })
         .catch(function(e){
           console.error("carregarColaboradores ERRO:", e);
-          setUiStatus("❌ Falha ao carregar colaboradores (ver console).", "err");
-          alert("Não foi possível carregar colaboradores.");
+          setUiStatus("❌ Falha ao carregar colaboradores.", "err");
         });
     }
     window.carregarColaboradores = carregarColaboradores;
@@ -1246,8 +1129,7 @@
 
       db.collection("colaboradores").doc(re).set({
         re, nome, cpf,
-        cargoId,
-        escala,
+        cargoId, escala,
         horaEntrada, horaSaida,
         admissao: admissao || null,
         ativo: true,
@@ -1354,14 +1236,8 @@
             ativo,
             updatedAt: new Date().toISOString()
           })
-          .then(function(){
-            closeModal();
-            carregarColaboradores();
-          })
-          .catch(function(e){
-            console.error("editarColab ERRO:", e);
-            alert("Não foi possível salvar.");
-          });
+          .then(function(){ closeModal(); carregarColaboradores(); })
+          .catch(function(e){ console.error("editarColab ERRO:", e); alert("Não foi possível salvar."); });
         }
       });
     }
@@ -1411,7 +1287,6 @@
       const lat=(document.getElementById("locLat").value||"").trim();
       const lng=(document.getElementById("locLng").value||"").trim();
       const raio=Number((document.getElementById("locRaio").value||"").trim()||0);
-
       if(!nome||!lat||!lng||!raio){ alert("Preencha nome, latitude, longitude e raio."); return; }
 
       db.collection("locais").add({ nome, lat, lng, raio, updatedAt:new Date().toISOString() })
@@ -1496,24 +1371,17 @@
       const data=(document.getElementById("ocData").value||"").trim();
       const tipo=(document.getElementById("ocTipo").value||"falta").trim();
       const motivo=(document.getElementById("ocMotivo").value||"").trim();
-
       if(!re||!data){ alert("Informe RE e data."); return; }
+
       const col = cacheColabs.find(c=>c.re===re);
       const nome = col ? col.nome : "";
 
       db.collection("ocorrencias").add({
-        re, nome, data,
-        tipo, motivo,
+        re, nome, data, tipo, motivo,
         updatedAt:new Date().toISOString()
       })
-      .then(()=>{
-        document.getElementById("ocMotivo").value="";
-        carregarOcorrencias();
-      })
-      .catch(e=>{
-        console.error("salvarOcorrencia ERRO:", e);
-        alert("Não foi possível salvar.");
-      });
+      .then(()=>{ document.getElementById("ocMotivo").value=""; carregarOcorrencias(); })
+      .catch(e=>{ console.error("salvarOcorrencia ERRO:", e); alert("Não foi possível salvar."); });
     }
     window.salvarOcorrencia = salvarOcorrencia;
 
@@ -1566,7 +1434,7 @@
       if(!confirm("Excluir?")) return;
       db.collection("ocorrencias").doc(id).delete()
         .then(()=>carregarOcorrencias())
-        .catch(e=>alert("Não foi possível excluir."));
+        .catch(()=>alert("Não foi possível excluir."));
     }
     window.excluirOcorrencia = excluirOcorrencia;
 
@@ -1577,27 +1445,20 @@
       const fim=(document.getElementById("afFim").value||"").trim();
       const aplicarSomenteDiasTrabalho = !!document.getElementById("afDiasUteis").checked;
       const motivo=(document.getElementById("afMotivo").value||"").trim();
-
       if(!re||!inicio||!fim){ alert("Informe RE, início e fim."); return; }
+
       const col = cacheColabs.find(c=>c.re===re);
       const nome = col ? col.nome : "";
 
       db.collection("afastamentos").add({
         tipo:"ferias",
-        re, nome,
-        inicio, fim,
+        re, nome, inicio, fim,
         aplicarSomenteDiasTrabalho,
         motivo,
         updatedAt:new Date().toISOString()
       })
-      .then(()=>{
-        document.getElementById("afMotivo").value="";
-        carregarFerias();
-      })
-      .catch(e=>{
-        console.error("salvarFerias ERRO:", e);
-        alert("Não foi possível salvar férias.");
-      });
+      .then(()=>{ document.getElementById("afMotivo").value=""; carregarFerias(); })
+      .catch(e=>{ console.error("salvarFerias ERRO:", e); alert("Não foi possível salvar férias."); });
     }
     window.salvarFerias = salvarFerias;
 
@@ -1642,7 +1503,7 @@
       if(!confirm("Excluir?")) return;
       db.collection("afastamentos").doc(id).delete()
         .then(()=>carregarFerias())
-        .catch(e=>alert("Não foi possível excluir."));
+        .catch(()=>alert("Não foi possível excluir."));
     }
     window.excluirFerias = excluirFerias;
 
@@ -1652,20 +1513,18 @@
       const inicio=(document.getElementById("afpInicio").value||"").trim();
       const fim=(document.getElementById("afpFim").value||"").trim();
       const motivo=(document.getElementById("afpMotivo").value||"doenca").trim();
-
       if(!re||!inicio||!fim){ alert("Informe RE, início e fim."); return; }
+
       const col = cacheColabs.find(c=>c.re===re);
       const nome = col ? col.nome : "";
 
       db.collection("afastamentos").add({
         tipo:"afastamento_periodo",
-        re, nome,
-        inicio, fim,
-        motivo,
+        re, nome, inicio, fim, motivo,
         updatedAt:new Date().toISOString()
       })
       .then(()=>carregarAfastamentosPeriodo())
-      .catch(e=>alert("Não foi possível salvar."));
+      .catch(()=>alert("Não foi possível salvar."));
     }
     window.salvarAfastamentoPeriodo = salvarAfastamentoPeriodo;
 
@@ -1708,7 +1567,7 @@
       if(!confirm("Excluir?")) return;
       db.collection("afastamentos").doc(id).delete()
         .then(()=>carregarAfastamentosPeriodo())
-        .catch(e=>alert("Não foi possível excluir."));
+        .catch(()=>alert("Não foi possível excluir."));
     }
     window.excluirAfastPeriodo = excluirAfastPeriodo;
 
@@ -1724,13 +1583,11 @@
       const nome = col ? col.nome : "";
 
       db.collection("plantoes12x36").add({
-        re, nome,
-        inicio: vigencia,
-        base, obs,
+        re, nome, inicio: vigencia, base, obs,
         updatedAt:new Date().toISOString()
       })
       .then(()=>carregarPlantoes12x36())
-      .catch(e=>alert("Não foi possível salvar."));
+      .catch(()=>alert("Não foi possível salvar."));
     }
     window.salvarPlantao12x36 = salvarPlantao12x36;
 
@@ -1780,11 +1637,11 @@
       if(!confirm("Excluir?")) return;
       db.collection("plantoes12x36").doc(id).delete()
         .then(()=>carregarPlantoes12x36())
-        .catch(e=>alert("Não foi possível excluir."));
+        .catch(()=>alert("Não foi possível excluir."));
     }
     window.excluirPlantao = excluirPlantao;
 
-    /* ========= RH SELECTS ========= */
+    /* ========= SELECTS RH/PDF ========= */
     function initRhSelectors(){
       const mesSel = document.getElementById("rhMes");
       const anoSel = document.getElementById("rhAno");
@@ -1841,20 +1698,858 @@
     }
     initPdfSelectors();
 
-    /* ========= STUBS (mantém botões funcionando sem quebrar) ========= */
-    function buscar(){ setUiStatus("Busca de jornadas: implemente/cole sua lógica aqui.", "err"); }
-    function exportar(){ alert("Exportar CSV: implemente/cole sua lógica aqui."); }
-    function abrirCriarJornada(){ alert("Criar Jornada: cole sua versão aqui (a sua anterior)."); }
-    function exportarRHXLSX(){ alert("Exportar RH XLSX: cole sua versão aqui."); }
-    function exportarFolhasPDF_MASSA(){ alert("Exportação em massa: cole sua versão aqui."); }
-    function previewResumoMassa(){ alert("Prévia: cole sua versão aqui."); }
+    /* =========================================================
+       JORNADAS (LISTAR + ALTERAR EM POPUP)
+       - Ações: somente "Alterar" (como você pediu)
+       - Pop-up com os mesmos campos do criar
+    ========================================================= */
 
+    function getIsoStartOfDay(ymdKey){
+      return new Date(ymdKey + "T00:00:00").toISOString();
+    }
+    function getIsoEndOfDay(ymdKey){
+      return new Date(ymdKey + "T23:59:59").toISOString();
+    }
+
+    async function buscar(){
+      const ini = (document.getElementById("inicio").value||"").trim();
+      const fim = (document.getElementById("fim").value||"").trim();
+      const filtroRe = (document.getElementById("filtroRe").value||"").trim();
+      const filtroNome = (document.getElementById("filtroNome").value||"").trim().toLowerCase();
+
+      if (!ini || !fim){ alert("Selecione De/Até."); return; }
+      if (fim < ini){ alert("Até não pode ser menor que De."); return; }
+
+      setUiStatus("Carregando jornadas...");
+
+      const startIso = getIsoStartOfDay(ini);
+      const endIso   = getIsoEndOfDay(fim);
+
+      // OBS: entrada.ts é string ISO, então podemos filtrar por range lexical
+      let q = db.collection("jornadas")
+        .where("entrada.ts", ">=", startIso)
+        .where("entrada.ts", "<=", endIso);
+
+      if (filtroRe){
+        q = q.where("re","==",filtroRe);
+      }
+
+      const snap = await q.get();
+
+      let list = snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }))
+        .map(j => ({
+          id: j.id,
+          re: String(j.re||"").trim(),
+          nome: String(j.nome||"").trim(),
+          status: String(j.status||"").trim(),
+          entrada: j.entrada||{},
+          saida_intervalo: j.saida_intervalo||null,
+          retorno_intervalo: j.retorno_intervalo||null,
+          saida: j.saida||null,
+          entrada_he: j.entrada_he||null,
+          saida_he: j.saida_he||null,
+          updatedAt: String(j.updatedAt||"")
+        }));
+
+      if (filtroNome){
+        list = list.filter(x => (x.nome||"").toLowerCase().includes(filtroNome));
+      }
+
+      // ordena por entrada desc
+      list.sort((a,b)=> String(b?.entrada?.ts||"").localeCompare(String(a?.entrada?.ts||"")));
+
+      ultimaTabela = list;
+      renderJornadas();
+
+      setUiStatus(`✅ ${list.length} jornada(s) carregada(s).`, "ok");
+    }
     window.buscar = buscar;
-    window.exportar = exportar;
+
+    function renderJornadas(){
+      const tbody = document.getElementById("tbodyJornadas");
+      if (!tbody) return;
+
+      tbody.innerHTML = "";
+      ultimaTabela.forEach(j=>{
+        const entIso = String(j?.entrada?.ts||"");
+        const dataEnt = entIso ? brDateFromYmd(entIso.slice(0,10)) : "";
+        const coords = String(j?.entrada?.location || "").trim();
+        const local = String(j?.entrada?.posto || "").trim();
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${dataEnt}</td>
+          <td>${j.nome||""}</td>
+          <td>${j.re||""}</td>
+          <td>${formatHHMM(j?.entrada?.ts)}</td>
+          <td>${formatHHMM(j?.saida_intervalo?.ts)}</td>
+          <td>${formatHHMM(j?.retorno_intervalo?.ts)}</td>
+          <td>${formatHHMM(j?.saida?.ts)}</td>
+          <td>${formatHHMM(j?.entrada_he?.ts)}</td>
+          <td>${formatHHMM(j?.saida_he?.ts)}</td>
+          <td>${coords}</td>
+          <td>${local}</td>
+          <td>
+            <button class="minBtn" onclick="abrirEditarJornada('${j.id}')">Alterar</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function exportarCSV(){
+      if (!ultimaTabela || !ultimaTabela.length){
+        alert("Nada para exportar.");
+        return;
+      }
+
+      const head = ["data_entrada","nome","re","entrada","ini_intervalo","fim_intervalo","saida","he_entrada","he_saida","coords","local","id"];
+      const rows = ultimaTabela.map(j=>{
+        const entIso = String(j?.entrada?.ts||"");
+        const data = entIso ? entIso.slice(0,10) : "";
+        return [
+          data,
+          (j.nome||"").replaceAll(";"," "),
+          (j.re||""),
+          formatHHMM(j?.entrada?.ts),
+          formatHHMM(j?.saida_intervalo?.ts),
+          formatHHMM(j?.retorno_intervalo?.ts),
+          formatHHMM(j?.saida?.ts),
+          formatHHMM(j?.entrada_he?.ts),
+          formatHHMM(j?.saida_he?.ts),
+          String(j?.entrada?.location||"").replaceAll(";"," "),
+          String(j?.entrada?.posto||"").replaceAll(";"," "),
+          j.id
+        ];
+      });
+
+      const csv = [head.join(";"), ...rows.map(r=>r.join(";"))].join("\n");
+      const blob = new Blob([csv], { type:"text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `jornadas_${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+    window.exportarCSV = exportarCSV;
+
+    async function existeEntradaNoDia(re, ymdKey, ignoreId){
+      const snap = await db.collection("jornadas").where("re","==",re).get();
+      const all = snap.docs.map(d => ({ id:d.id, ...(d.data()||{}) }));
+      return all.some(j=>{
+        if (ignoreId && j.id === ignoreId) return false;
+        const k = String(j?.entrada?.ts || "").slice(0,10);
+        return k === ymdKey;
+      });
+    }
+
+    function abrirCriarJornada(){
+      openModal({
+        title: "Criar Jornada",
+        bodyHtml: `
+          <div class="grid">
+            <div>
+              <label>RE</label>
+              <input id="cjRe" placeholder="RE" inputmode="numeric">
+            </div>
+            <div>
+              <label>Data (da entrada)</label>
+              <input id="cjData" type="date">
+            </div>
+            <div>
+              <label>Entrada</label>
+              <input id="cjEntrada" type="time" value="08:00">
+            </div>
+            <div>
+              <label>Saída</label>
+              <input id="cjSaida" type="time" value="17:48">
+            </div>
+            <div>
+              <label>Início intervalo</label>
+              <input id="cjSaiInt" type="time">
+            </div>
+            <div>
+              <label>Fim intervalo</label>
+              <input id="cjRetInt" type="time">
+            </div>
+            <div>
+              <label>Entrada HE</label>
+              <input id="cjEntHe" type="time">
+            </div>
+            <div>
+              <label>Saída HE</label>
+              <input id="cjSaiHe" type="time">
+            </div>
+            <div style="grid-column:1 / -1">
+              <label>Posto</label>
+              <input id="cjPosto">
+            </div>
+            <div style="grid-column:1 / -1">
+              <label>Coords (lat,lng)</label>
+              <input id="cjLocation">
+            </div>
+          </div>
+        `,
+        onSave: async function(){
+          try{
+            const re = (document.getElementById("cjRe").value || "").trim();
+            const data = (document.getElementById("cjData").value || "").trim();
+            const hEnt = (document.getElementById("cjEntrada").value || "").trim();
+            const hSai = (document.getElementById("cjSaida").value || "").trim();
+
+            const hSaiInt = (document.getElementById("cjSaiInt").value || "").trim();
+            const hRetInt = (document.getElementById("cjRetInt").value || "").trim();
+            const hEntHe  = (document.getElementById("cjEntHe").value || "").trim();
+            const hSaiHe  = (document.getElementById("cjSaiHe").value || "").trim();
+
+            const posto = (document.getElementById("cjPosto").value || "").trim();
+            const location = (document.getElementById("cjLocation").value || "").trim();
+
+            if (!re){ alert("Informe o RE."); return; }
+            if (!data){ alert("Informe a data."); return; }
+            if (!hEnt){ alert("Informe a entrada."); return; }
+            if (!hSai){ alert("Informe a saída."); return; }
+
+            const entDt = dateFromYmdAndTime(data, hEnt);
+            if (!entDt){ alert("Entrada inválida."); return; }
+            const saiDt = dateRelativeToBase(entDt, hSai);
+            if (!saiDt){ alert("Saída inválida."); return; }
+            if (saiDt < entDt){ alert("Saída não pode ser anterior à entrada."); return; }
+
+            let siDt=null, riDt=null, ehDt=null, shDt=null;
+
+            if (hSaiInt){
+              siDt = dateRelativeToBase(entDt, hSaiInt);
+              if (!siDt || siDt < entDt){ alert("Início intervalo inválido."); return; }
+            }
+            if (hRetInt){
+              const base = siDt || entDt;
+              riDt = dateRelativeToBase(base, hRetInt);
+              if (!riDt){ alert("Fim intervalo inválido."); return; }
+              if (siDt && riDt < siDt){ alert("Fim intervalo não pode ser antes do início."); return; }
+            }
+            if (siDt && siDt > saiDt){ alert("Intervalo não pode passar da saída."); return; }
+            if (riDt && riDt > saiDt){ alert("Intervalo não pode passar da saída."); return; }
+
+            if (hEntHe){
+              ehDt = dateRelativeToBase(entDt, hEntHe);
+              if (!ehDt || ehDt < entDt){ alert("Entrada HE inválida."); return; }
+            }
+            if (hSaiHe){
+              const base = ehDt || entDt;
+              shDt = dateRelativeToBase(base, hSaiHe);
+              if (!shDt){ alert("Saída HE inválida."); return; }
+              if (ehDt && shDt < ehDt){ alert("Saída HE não pode ser antes da entrada HE."); return; }
+            }
+
+            const colSnap = await db.collection("colaboradores").doc(re).get();
+            if (!colSnap.exists){ alert("Colaborador não encontrado."); return; }
+            const col = colSnap.data() || {};
+            const nome = String(col.nome||"").trim();
+            if (!nome){ alert("Colaborador sem nome."); return; }
+
+            const dup = await existeEntradaNoDia(re, data, null);
+            if (dup){ alert("Já existe jornada com entrada nesse dia."); return; }
+
+            const payload = {
+              re, nome,
+              status: "fechada",
+              entrada: { ts: entDt.toISOString(), foto:"", location: location||"", posto: posto||"" },
+              saida: { ts: saiDt.toISOString(), foto:"", location: location||"", posto: posto||"" },
+              updatedAt: new Date().toISOString(),
+              adminCriada: true
+            };
+            if (siDt) payload.saida_intervalo = { ts: siDt.toISOString(), foto:"", location: location||"", posto: posto||"" };
+            if (riDt) payload.retorno_intervalo = { ts: riDt.toISOString(), foto:"", location: location||"", posto: posto||"" };
+            if (ehDt) payload.entrada_he = { ts: ehDt.toISOString(), foto:"", location: location||"", posto: posto||"" };
+            if (shDt) payload.saida_he = { ts: shDt.toISOString(), foto:"", location: location||"", posto: posto||"" };
+
+            await db.collection("jornadas").add(payload);
+            closeModal();
+            buscar();
+            alert("✅ Jornada criada.");
+          }catch(e){
+            console.error("abrirCriarJornada ERRO:", e);
+            alert("Não foi possível criar jornada.");
+          }
+        }
+      });
+    }
     window.abrirCriarJornada = abrirCriarJornada;
+
+    function abrirEditarJornada(id){
+      const j = ultimaTabela.find(x=>x.id===id);
+      if (!j){ alert("Jornada não encontrada na lista."); return; }
+
+      const entIso = String(j?.entrada?.ts||"");
+      const data = entIso ? entIso.slice(0,10) : "";
+      const entHH = formatHHMM(j?.entrada?.ts);
+      const saiHH = formatHHMM(j?.saida?.ts);
+      const siHH  = formatHHMM(j?.saida_intervalo?.ts);
+      const riHH  = formatHHMM(j?.retorno_intervalo?.ts);
+      const ehHH  = formatHHMM(j?.entrada_he?.ts);
+      const shHH  = formatHHMM(j?.saida_he?.ts);
+
+      openModal({
+        title: "Alterar Jornada",
+        bodyHtml: `
+          <div class="grid">
+            <div>
+              <label>RE</label>
+              <input id="ejRe" value="${String(j.re||"").replaceAll('"','&quot;')}" disabled>
+            </div>
+            <div>
+              <label>Nome</label>
+              <input id="ejNome" value="${String(j.nome||"").replaceAll('"','&quot;')}" disabled>
+            </div>
+
+            <div>
+              <label>Data (da entrada)</label>
+              <input id="ejData" type="date" value="${data}">
+            </div>
+            <div>
+              <label>Status</label>
+              <select id="ejStatus">
+                <option value="aberta" ${String(j.status||"") === "aberta" ? "selected":""}>ABERTA</option>
+                <option value="fechada" ${String(j.status||"") !== "aberta" ? "selected":""}>FECHADA</option>
+              </select>
+            </div>
+
+            <div>
+              <label>Entrada</label>
+              <input id="ejEntrada" type="time" value="${entHH}">
+            </div>
+            <div>
+              <label>Saída</label>
+              <input id="ejSaida" type="time" value="${saiHH}">
+            </div>
+
+            <div>
+              <label>Início intervalo</label>
+              <input id="ejSaiInt" type="time" value="${siHH}">
+            </div>
+            <div>
+              <label>Fim intervalo</label>
+              <input id="ejRetInt" type="time" value="${riHH}">
+            </div>
+
+            <div>
+              <label>Entrada HE</label>
+              <input id="ejEntHe" type="time" value="${ehHH}">
+            </div>
+            <div>
+              <label>Saída HE</label>
+              <input id="ejSaiHe" type="time" value="${shHH}">
+            </div>
+
+            <div style="grid-column:1 / -1">
+              <label>Posto</label>
+              <input id="ejPosto" value="${String(j?.entrada?.posto||"").replaceAll('"','&quot;')}">
+            </div>
+            <div style="grid-column:1 / -1">
+              <label>Coords (lat,lng)</label>
+              <input id="ejLocation" value="${String(j?.entrada?.location||"").replaceAll('"','&quot;')}">
+            </div>
+          </div>
+        `,
+        onSave: async function(){
+          try{
+            const re = String(j.re||"").trim();
+            const dataNew = (document.getElementById("ejData").value || "").trim();
+            const status = (document.getElementById("ejStatus").value || "fechada").trim();
+
+            const hEnt = (document.getElementById("ejEntrada").value || "").trim();
+            const hSai = (document.getElementById("ejSaida").value || "").trim();
+
+            const hSaiInt = (document.getElementById("ejSaiInt").value || "").trim();
+            const hRetInt = (document.getElementById("ejRetInt").value || "").trim();
+            const hEntHe  = (document.getElementById("ejEntHe").value || "").trim();
+            const hSaiHe  = (document.getElementById("ejSaiHe").value || "").trim();
+
+            const posto = (document.getElementById("ejPosto").value || "").trim();
+            const location = (document.getElementById("ejLocation").value || "").trim();
+
+            if (!dataNew){ alert("Informe a data."); return; }
+            if (!hEnt){ alert("Informe a entrada."); return; }
+            if (!hSai){ alert("Informe a saída."); return; }
+
+            const entDt = dateFromYmdAndTime(dataNew, hEnt);
+            if (!entDt){ alert("Entrada inválida."); return; }
+            const saiDt = dateRelativeToBase(entDt, hSai);
+            if (!saiDt){ alert("Saída inválida."); return; }
+            if (saiDt < entDt){ alert("Saída não pode ser anterior à entrada."); return; }
+
+            let siDt=null, riDt=null, ehDt=null, shDt=null;
+
+            if (hSaiInt){
+              siDt = dateRelativeToBase(entDt, hSaiInt);
+              if (!siDt || siDt < entDt){ alert("Início intervalo inválido."); return; }
+            }
+            if (hRetInt){
+              const base = siDt || entDt;
+              riDt = dateRelativeToBase(base, hRetInt);
+              if (!riDt){ alert("Fim intervalo inválido."); return; }
+              if (siDt && riDt < siDt){ alert("Fim intervalo não pode ser antes do início."); return; }
+            }
+            if (siDt && siDt > saiDt){ alert("Intervalo não pode passar da saída."); return; }
+            if (riDt && riDt > saiDt){ alert("Intervalo não pode passar da saída."); return; }
+
+            if (hEntHe){
+              ehDt = dateRelativeToBase(entDt, hEntHe);
+              if (!ehDt || ehDt < entDt){ alert("Entrada HE inválida."); return; }
+            }
+            if (hSaiHe){
+              const base = ehDt || entDt;
+              shDt = dateRelativeToBase(base, hSaiHe);
+              if (!shDt){ alert("Saída HE inválida."); return; }
+              if (ehDt && shDt < ehDt){ alert("Saída HE não pode ser antes da entrada HE."); return; }
+            }
+
+            // evita duplicar entrada no mesmo dia (caso altere a data)
+            const oldDay = String(j?.entrada?.ts||"").slice(0,10);
+            if (dataNew !== oldDay){
+              const dup = await existeEntradaNoDia(re, dataNew, id);
+              if (dup){ alert("Já existe jornada com entrada nesse dia."); return; }
+            }
+
+            const patch = {
+              status,
+              entrada: { ...(j.entrada||{}), ts: entDt.toISOString(), location: location||"", posto: posto||"" },
+              saida: { ...(j.saida||{}), ts: saiDt.toISOString(), location: location||"", posto: posto||"" },
+              updatedAt: new Date().toISOString(),
+              adminEditada: true
+            };
+
+            // limpa e regrava campos opcionais
+            if (hSaiInt){
+              patch.saida_intervalo = { ...(j.saida_intervalo||{}), ts: siDt.toISOString(), location: location||"", posto: posto||"" };
+            } else {
+              patch.saida_intervalo = firebase.firestore.FieldValue.delete();
+            }
+
+            if (hRetInt){
+              patch.retorno_intervalo = { ...(j.retorno_intervalo||{}), ts: riDt.toISOString(), location: location||"", posto: posto||"" };
+            } else {
+              patch.retorno_intervalo = firebase.firestore.FieldValue.delete();
+            }
+
+            if (hEntHe){
+              patch.entrada_he = { ...(j.entrada_he||{}), ts: ehDt.toISOString(), location: location||"", posto: posto||"" };
+            } else {
+              patch.entrada_he = firebase.firestore.FieldValue.delete();
+            }
+
+            if (hSaiHe){
+              patch.saida_he = { ...(j.saida_he||{}), ts: shDt.toISOString(), location: location||"", posto: posto||"" };
+            } else {
+              patch.saida_he = firebase.firestore.FieldValue.delete();
+            }
+
+            await db.collection("jornadas").doc(id).update(patch);
+            closeModal();
+            buscar();
+            alert("✅ Jornada atualizada.");
+          }catch(e){
+            console.error("abrirEditarJornada ERRO:", e);
+            alert("Não foi possível atualizar a jornada.");
+          }
+        }
+      });
+    }
+    window.abrirEditarJornada = abrirEditarJornada;
+
+    /* =========================================================
+       EXPORTAÇÃO RH (XLSX) - 3 abas: Resumo / Diário / Escala
+       - Resumo: total dias, faltas, folgas, ferias, HE(min)
+       - Diário: linha por dia por colaborador com status e horários
+       - Escala: cadastro do colaborador (escala/horários/cargo)
+    ========================================================= */
+    function minutesBetween(aIso, bIso){
+      const a = toDateAny(aIso), b = toDateAny(bIso);
+      if (!a || !b || isNaN(a) || isNaN(b)) return 0;
+      const ms = b - a;
+      return ms > 0 ? Math.round(ms/60000) : 0;
+    }
+    function monthDays(year, month1to12){
+      const last = new Date(year, month1to12, 0).getDate();
+      const out = [];
+      for (let d=1; d<=last; d++) out.push(new Date(year, month1to12-1, d, 12, 0, 0));
+      return out;
+    }
+    function weekdayPtShort(d){ return d.toLocaleDateString("pt-BR", { weekday:"short" }); }
+
+    function normEscala(s){ return (s||"").toString().trim().toLowerCase(); }
+    function is12x36Escala(escalaTxt){
+      const e = normEscala(escalaTxt||"");
+      return e.includes("12") && e.includes("36");
+    }
+    function getPlantaoReferencia(dateObj, historico){
+      if (!Array.isArray(historico) || !historico.length) return null;
+      const key = ymd(dateObj);
+      let best = null;
+      for (const p of historico){
+        const ini = String(p?.inicio || p?.vigencia || "").slice(0,10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(ini)) continue;
+        if (ini <= key){
+          if (!best){ best = { ...p, inicio: ini }; continue; }
+          const bestIni = String(best.inicio || "").slice(0,10);
+          if (ini > bestIni){ best = { ...p, inicio: ini }; continue; }
+          if (ini === bestIni){
+            const bestUp = String(best.updatedAt || "");
+            const curUp  = String(p.updatedAt || "");
+            if (curUp > bestUp) best = { ...p, inicio: ini };
+          }
+        }
+      }
+      return best;
+    }
+    function isFolgaByEscala(dateObj, escala, plantaoHistorico){
+      const e = normEscala(escala || "5x2");
+      const dow = dateObj.getDay();
+      if (e === "5x2") return (dow === 0 || dow === 6);
+      if (e === "6x1") return (dow === 0);
+
+      if (is12x36Escala(e)){
+        const hist = Array.isArray(plantaoHistorico) ? plantaoHistorico : [];
+        const plantao = getPlantaoReferencia(dateObj, hist);
+        if (!plantao) return true;
+        const inicio = String(plantao.inicio || "").slice(0,10);
+        const baseTxt = String(plantao.base || "trabalha").toLowerCase();
+
+        const baseDate = new Date(inicio + "T00:00:00");
+        const atual = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 12, 0, 0);
+        const diffDias = Math.floor((atual - baseDate) / 86400000);
+
+        const baseEhTrabalho = (baseTxt === "trabalha");
+        const ehTrabalhoHoje = (diffDias % 2 === 0) ? baseEhTrabalho : !baseEhTrabalho;
+        return !ehTrabalhoHoje;
+      }
+      return true;
+    }
+    function isDiaTrabalho(dateObj, escala, plantaoHistorico){
+      return !isFolgaByEscala(dateObj, escala, plantaoHistorico);
+    }
+
+    function findOcorrencia(re, ymdKey, ocorrenciasList){
+      return (ocorrenciasList||[]).find(o =>
+        String(o.re||"").trim()===re && String(o.data||"").slice(0,10)===ymdKey
+      ) || null;
+    }
+    function findFerias(re, ymdKey, dateObj, col, feriasList){
+      const escala = (col && col.escala) ? col.escala : "5x2";
+      const plantaoHistorico = (col && Array.isArray(col.plantaoHistorico)) ? col.plantaoHistorico : [];
+      for (let i=0;i<(feriasList||[]).length;i++){
+        const f = feriasList[i];
+        if (String(f.re||"").trim() !== re) continue;
+        const ini = String(f.inicio||"").slice(0,10);
+        const fim = String(f.fim||"").slice(0,10);
+        if (!ini || !fim) continue;
+        if (!(ymdKey >= ini && ymdKey <= fim)) continue;
+
+        const onlyWork = (f.aplicarSomenteDiasTrabalho === true);
+        if (onlyWork){
+          if (!isDiaTrabalho(dateObj, escala, plantaoHistorico)) continue;
+        }
+        return f;
+      }
+      return null;
+    }
+    function getJornadaOfDay(re, ymdKey, jornadasList){
+      return (jornadasList||[]).find(j =>
+        String(j.re||"").trim()===re &&
+        String(j?.entrada?.ts||"").slice(0,10)===ymdKey
+      ) || null;
+    }
+
+    async function exportarRHXLSX(){
+      try{
+        setRhStatus("Gerando...");
+        const mes = Number(document.getElementById("rhMes").value);
+        const ano = Number(document.getElementById("rhAno").value);
+        const days = monthDays(ano, mes);
+
+        const [snapCol, snapJ, snapO, snapA] = await Promise.all([
+          db.collection("colaboradores").get(),
+          db.collection("jornadas").get(),
+          db.collection("ocorrencias").get(),
+          db.collection("afastamentos").get()
+        ]);
+
+        const colaboradores = snapCol.docs.map(d => ({ id:d.id, ...(d.data()||{}) }))
+          .map(c=>({
+            re:String(c.re||c.id||"").trim(),
+            nome:String(c.nome||"").trim(),
+            cpf:String(c.cpf||"").trim(),
+            cargoId:String(c.cargoId||"").trim(),
+            escala:String(c.escala||"5x2").trim(),
+            horaEntrada:String(c.horaEntrada||"").trim(),
+            horaSaida:String(c.horaSaida||"").trim(),
+            ativo:(c.ativo !== false),
+            plantaoHistorico:Array.isArray(c.plantaoHistorico)?c.plantaoHistorico:[]
+          }))
+          .filter(c=>c.re && c.ativo)
+          .sort((a,b)=>a.nome.localeCompare(b.nome));
+
+        const jornadasAll = snapJ.docs.map(d=>({ id:d.id, ...(d.data()||{}) }));
+        const ocorrAll = snapO.docs.map(d=>({ id:d.id, ...(d.data()||{}) }));
+        const feriasAll = snapA.docs.map(d=>({ id:d.id, ...(d.data()||{}) }))
+          .filter(x => String(x.tipo||"").toLowerCase() === "ferias");
+
+        // filtra jornadas do mês
+        const jornadasMes = jornadasAll.filter(j=>{
+          const d = toDateAny(j?.entrada?.ts);
+          return d && d.getFullYear()===ano && (d.getMonth()+1)===mes;
+        });
+
+        const diario = [];
+        const resumo = [];
+        const escalaSheet = [];
+
+        for (const col of colaboradores){
+          const re = col.re;
+          const nome = col.nome;
+
+          let totalTrabalho=0, totalFolga=0, totalFerias=0, totalFalta=0, totalOcorr=0;
+          let heMin=0;
+
+          for (const dt of days){
+            const key = ymd(dt);
+            const folga = isFolgaByEscala(dt, col.escala, col.plantaoHistorico);
+
+            const fer = findFerias(re, key, dt, col, feriasAll);
+            const oc  = findOcorrencia(re, key, ocorrAll);
+            const j   = getJornadaOfDay(re, key, jornadasMes);
+
+            let status = "—";
+            if (fer){ status="FÉRIAS"; totalFerias++; }
+            else if (oc){ status=String(oc.tipo||"").toUpperCase(); totalOcorr++; }
+            else if (j){
+              status = folga ? "FT" : "OK";
+              totalTrabalho++;
+              // he via campo HE (entrada_he/saida_he)
+              heMin += minutesBetween(j?.entrada_he?.ts, j?.saida_he?.ts);
+            } else {
+              status = folga ? "FOLGA" : "FALTA";
+              if (folga) totalFolga++; else totalFalta++;
+            }
+
+            diario.push({
+              data: brDateFromYmd(key),
+              dia: weekdayPtShort(dt),
+              re, nome,
+              status,
+              ent: formatHHMM(j?.entrada?.ts),
+              ini_int: formatHHMM(j?.saida_intervalo?.ts),
+              fim_int: formatHHMM(j?.retorno_intervalo?.ts),
+              sai: formatHHMM(j?.saida?.ts),
+              he_ent: formatHHMM(j?.entrada_he?.ts),
+              he_sai: formatHHMM(j?.saida_he?.ts)
+            });
+          }
+
+          resumo.push({
+            re, nome,
+            cargo: cargoNomeById(col.cargoId) || "",
+            escala: col.escala,
+            trabalho: totalTrabalho,
+            folga: totalFolga,
+            ferias: totalFerias,
+            faltas: totalFalta,
+            ocorrencias: totalOcorr,
+            he_min: heMin,
+            he_horas: (heMin/60).toFixed(2)
+          });
+
+          escalaSheet.push({
+            re, nome,
+            cargo: cargoNomeById(col.cargoId) || "",
+            escala: col.escala,
+            hora_entrada: col.horaEntrada || "",
+            hora_saida: col.horaSaida || ""
+          });
+        }
+
+        const wb = XLSX.utils.book_new();
+        const wsResumo = XLSX.utils.json_to_sheet(resumo);
+        const wsDiario = XLSX.utils.json_to_sheet(diario);
+        const wsEscala = XLSX.utils.json_to_sheet(escalaSheet);
+
+        XLSX.utils.book_append_sheet(wb, wsResumo, "Resumo");
+        XLSX.utils.book_append_sheet(wb, wsDiario, "Diário");
+        XLSX.utils.book_append_sheet(wb, wsEscala, "Escala");
+
+        XLSX.writeFile(wb, `RH_${pad2(mes)}-${ano}.xlsx`);
+        setRhStatus("✅ Arquivo gerado.");
+      }catch(e){
+        console.error("exportarRHXLSX ERRO:", e);
+        setRhStatus("❌ Erro ao gerar.");
+        alert("Não foi possível gerar o XLSX.");
+      }
+    }
     window.exportarRHXLSX = exportarRHXLSX;
-    window.exportarFolhasPDF_MASSA = exportarFolhasPDF_MASSA;
+
+    /* =========================================================
+       EXPORTAÇÃO EM MASSA (PDF) — 1 página por colaborador
+       - Ativos + inativos que tiverem apontamento no mês
+       - Inclui TODOS os dias do mês
+    ========================================================= */
+    function monthDaysFull(year, month1to12){
+      const last = new Date(year, month1to12, 0).getDate();
+      const out = [];
+      for (let d=1; d<=last; d++) out.push(new Date(year, month1to12-1, d, 12, 0, 0));
+      return out;
+    }
+
+    async function previewResumoMassa(){
+      try{
+        setPdfStatus("Carregando...");
+        const mes = Number(document.getElementById("pdfMes").value);
+        const ano = Number(document.getElementById("pdfAno").value);
+
+        const [snapCol, snapJ] = await Promise.all([
+          db.collection("colaboradores").get(),
+          db.collection("jornadas").get()
+        ]);
+
+        const colabsAll = snapCol.docs.map(d => ({ id:d.id, ...(d.data()||{}) }))
+          .map(c=>({ re:String(c.re||c.id||"").trim(), nome:String(c.nome||"").trim(), ativo:(c.ativo!==false) }))
+          .filter(c=>c.re);
+
+        const jornadasAll = snapJ.docs.map(d => ({ id:d.id, ...(d.data()||{}) }))
+          .filter(j=>{
+            const d = toDateAny(j?.entrada?.ts);
+            return d && d.getFullYear()===ano && (d.getMonth()+1)===mes;
+          });
+
+        const reComJornada = new Set(jornadasAll.map(j=>String(j.re||"").trim()).filter(Boolean));
+
+        const ativos = colabsAll.filter(c=>c.ativo);
+        const inativosComReg = colabsAll.filter(c=>!c.ativo && reComJornada.has(c.re));
+
+        setPdfStatus(`Prévia: ${ativos.length} ativos + ${inativosComReg.length} inativos com apontamento = ${ativos.length + inativosComReg.length} páginas.`);
+      }catch(e){
+        console.error("previewResumoMassa ERRO:", e);
+        setPdfStatus("Erro na prévia.");
+      }
+    }
     window.previewResumoMassa = previewResumoMassa;
+
+    async function exportarFolhasPDF_MASSA(){
+      try{
+        setPdfStatus("Gerando PDF...");
+        const mes = Number(document.getElementById("pdfMes").value);
+        const ano = Number(document.getElementById("pdfAno").value);
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF("p","pt","a4");
+
+        const [snapCol, snapJ, snapO, snapA] = await Promise.all([
+          db.collection("colaboradores").get(),
+          db.collection("jornadas").get(),
+          db.collection("ocorrencias").get(),
+          db.collection("afastamentos").get()
+        ]);
+
+        const colabsAll = snapCol.docs.map(d => ({ id:d.id, ...(d.data()||{}) }))
+          .map(c=>({
+            re:String(c.re||c.id||"").trim(),
+            nome:String(c.nome||"").trim(),
+            escala:String(c.escala||"5x2").trim(),
+            ativo:(c.ativo!==false),
+            plantaoHistorico:Array.isArray(c.plantaoHistorico)?c.plantaoHistorico:[]
+          }))
+          .filter(c=>c.re)
+          .sort((a,b)=>a.nome.localeCompare(b.nome));
+
+        const jornadasMes = snapJ.docs.map(d => ({ id:d.id, ...(d.data()||{}) }))
+          .filter(j=>{
+            const d = toDateAny(j?.entrada?.ts);
+            return d && d.getFullYear()===ano && (d.getMonth()+1)===mes;
+          });
+
+        const ocorrAll = snapO.docs.map(d => ({ id:d.id, ...(d.data()||{}) }));
+        const feriasAll = snapA.docs.map(d => ({ id:d.id, ...(d.data()||{}) }))
+          .filter(x => String(x.tipo||"").toLowerCase() === "ferias");
+
+        const reComJornada = new Set(jornadasMes.map(j=>String(j.re||"").trim()).filter(Boolean));
+        const selecionados = [
+          ...colabsAll.filter(c=>c.ativo),
+          ...colabsAll.filter(c=>!c.ativo && reComJornada.has(c.re))
+        ];
+
+        const days = monthDaysFull(ano, mes);
+
+        let first = true;
+
+        for (const col of selecionados){
+          const re = col.re;
+          if (!first) doc.addPage();
+          first = false;
+
+          doc.setFontSize(15);
+          doc.text("Folha de Frequência", 40, 44);
+
+          doc.setFontSize(10);
+          doc.text(`Nome: ${col.nome||""}`, 40, 66);
+          doc.text(`RE: ${re}`, 40, 82);
+          doc.text(`Competência: ${pad2(mes)}/${ano}`, 40, 98);
+          doc.text(`Escala: ${col.escala || "—"}`, 320, 82);
+
+          const body = days.map(dt=>{
+            const key = ymd(dt);
+
+            const fer = findFerias(re, key, dt, col, feriasAll);
+            const oc  = findOcorrencia(re, key, ocorrAll);
+            const j   = getJornadaOfDay(re, key, jornadasMes);
+
+            const folga = isFolgaByEscala(dt, col.escala, col.plantaoHistorico);
+            let status = "—";
+
+            if (fer) status = "FÉRIAS";
+            else if (oc) status = String(oc.tipo||"").toUpperCase();
+            else if (j) status = folga ? "FT" : "OK";
+            else status = folga ? "FOLGA" : "FALTA";
+
+            return [
+              brDateFromYmd(key),
+              weekdayPtShort(dt),
+              status,
+              formatHHMM(j?.entrada?.ts),
+              formatHHMM(j?.saida_intervalo?.ts),
+              formatHHMM(j?.retorno_intervalo?.ts),
+              formatHHMM(j?.saida?.ts),
+              formatHHMM(j?.entrada_he?.ts),
+              formatHHMM(j?.saida_he?.ts),
+            ];
+          });
+
+          doc.autoTable({
+            startY: 120,
+            head: [[ "Data","Dia","Status","Ent","Ini Int","Fim Int","Sai","HE Ent","HE Sai" ]],
+            body,
+            styles:{ fontSize: 8, cellPadding: 3 },
+            headStyles:{ fontSize: 8 },
+            theme: "grid",
+            margin: { left: 40, right: 40 }
+          });
+
+          const pageH = doc.internal.pageSize.getHeight();
+          doc.setFontSize(8);
+          doc.text("Gerado automaticamente", 40, pageH - 24);
+        }
+
+        doc.save(`Folhas_${pad2(mes)}-${ano}.pdf`);
+        setPdfStatus("✅ PDF gerado.");
+      }catch(e){
+        console.error("exportarFolhasPDF_MASSA ERRO:", e);
+        setPdfStatus("❌ Erro ao gerar PDF.");
+        alert("Não foi possível gerar o PDF.");
+      }
+    }
+    window.exportarFolhasPDF_MASSA = exportarFolhasPDF_MASSA;
 
   </script>
 </body>
